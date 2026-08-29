@@ -10,11 +10,11 @@ R3 hardens the shared interaction layer used by the 50-tool Tiny Tools suite. It
 
 ## Shared interaction changes
 
-- adds a reusable modal surface with focus trapping, Escape handling, focus restoration, backdrop close, and background scroll locking;
+- adds a reusable modal surface with focus trapping, Escape handling, focus restoration, pointer-safe backdrop close, and background scroll locking;
 - moves Command Palette and Smart Paste onto the shared modal behavior;
 - prevents Command Palette and Smart Paste from stacking on top of each other;
 - removes automatic clipboard reads when Smart Paste opens; clipboard access now occurs only after an explicit user action;
-- adds outside-click and Escape dismissal to the ToolShell transfer menu;
+- adds outside-pointer and Escape dismissal to the ToolShell transfer menu, including focus return to its trigger;
 - makes the transfer menu width viewport-safe on narrow screens;
 - resets tool error boundaries when navigating to a different tool;
 - moves focus to main content after client-side route changes and scrolls new routes to the top;
@@ -46,19 +46,21 @@ R3 preserves:
 - R1 dependency audit and bundle-budget gates;
 - privacy-sensitive in-memory transfer behavior.
 
-## Validation gate
+## Validation evidence
 
-R3 must pass the existing clean Node 22 CI gate:
+Final pull-request validation on Node 22 completed successfully with:
 
-```bash
-npm ci
-npm audit --audit-level=high
-npm run typecheck
-npm test
-npm run build
-```
+- `npm ci`: passing;
+- `npm audit --audit-level=high`: **0 vulnerabilities**;
+- TypeScript check: passing with **0 errors**;
+- Vitest: **170/170 tests passing across 7 suites**;
+- R3-specific suite: **15/15 tests passing**;
+- production Vite build: passing;
+- initial JavaScript entry: **294.26 KiB raw / 88.69 KiB gzip**;
+- initial CSS: **87.06 KiB raw / 14.09 KiB gzip**;
+- R1 bundle budgets: passing (**350/110 KiB JS raw/gzip, 150/30 KiB CSS raw/gzip**).
 
-The R1 initial-entry raw/gzip bundle budgets remain authoritative. R3 adds focused tests for route metadata, keyboard shortcut targeting, and wrapped command-palette navigation.
+R3 adds 15 focused tests on top of the R2 155-test baseline. The shared modal/navigation/mobile layer remains comfortably inside the existing bundle budget.
 
 ## Deferred
 
