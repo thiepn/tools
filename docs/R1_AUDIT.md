@@ -49,27 +49,26 @@ The GitHub Pages workflow now:
 4. fails on high-severity npm audit findings;
 5. runs TypeScript checking and the complete Vitest suite;
 6. builds the production Vite bundle before deployment;
-7. enforces initial-load bundle budgets before Pages deployment.
+7. enforces raw and gzip initial-entry bundle budgets before Pages deployment.
 
-Current initial bundle budgets are deliberately above the certified baseline while low enough to catch accidental eager-loading regressions:
+Current bundle budgets are intentionally above the measured baseline while low enough to catch meaningful eager-loading regressions:
 
-- initial JavaScript: **130 KiB maximum**;
-- initial CSS: **150 KiB maximum**.
+- initial JavaScript: **350 KiB raw / 110 KiB gzip maximum**;
+- initial CSS: **150 KiB raw / 30 KiB gzip maximum**.
 
 ## Bundle and heavy-runtime findings
 
-The audited production build keeps the normal application shell small:
+The production HTML currently references an initial JavaScript entry of approximately **293.17 kB** (about **286.30 KiB raw**, **88.30 kB gzip**) and CSS of approximately **87.99 kB** (about **85.93 KiB raw**, **14.04 kB gzip**).
 
-- initial JavaScript: approximately **82.64 KiB** (**22.44 KiB gzip**);
-- initial CSS: approximately **87.99 KiB** (**14.04 KiB gzip**).
+An earlier R1 note incorrectly identified an **82.64 kB / 22.44 kB gzip** split chunk as the initial JavaScript entry. The CI budget check now reads `dist/index.html` directly and measures the assets actually referenced by the page, preventing that classification error from recurring.
 
-Large local speech-recognition assets remain separate from the initial app shell. The build currently emits approximately:
+Large local speech-recognition assets remain separate from the initial HTML entry. The build currently emits approximately:
 
 - Whisper worker: **536.70 KiB**;
 - ONNX Runtime JS bundles: roughly **400 KiB each**;
 - ONNX WASM variants: roughly **23.57 MiB** and **23.91 MiB** raw.
 
-These files support the local Whisper execution path and are not part of the initial application JavaScript entry. Whisper model weights are downloaded as static model assets only when the transcription workflow is used; user audio and transcripts are processed locally.
+These files support the local Whisper execution path and are not the JavaScript entry referenced by `dist/index.html`. Whisper model weights are downloaded as static model assets only when the transcription workflow is used; user audio and transcripts are processed locally.
 
 Reducing or selectively packaging ONNX backend/WASM variants is deferred to a dedicated heavy-runtime optimization pass because backend support differs across WebGPU/WASM/browser environments.
 
@@ -79,15 +78,15 @@ Reducing or selectively packaging ONNX backend/WASM variants is deferred to a de
 
 ## Validation evidence
 
-The lockfile/security validation run completed with:
+Clean Node 22 validation after dependency overrides and lockfile regeneration completed with:
 
-- clean npm install;
-- **0 npm vulnerabilities** after the overrides;
-- TypeScript check passing;
-- **141/141 pre-R1-runtime tests passing**;
-- production Vite build passing.
+- `npm ci`: passing;
+- `npm audit --audit-level=high`: **0 vulnerabilities**;
+- TypeScript check: passing;
+- original suite: **141/141 tests passing**;
+- production Vite build: passing.
 
-R1 also adds focused tests for the bounded text/image transfer lifecycle. The final pull-request CI is the release gate for the updated total test count and bundle-budget check.
+R1 adds **2 focused transfer-lifecycle tests**, bringing the final expected suite to **143 tests**. The final pull-request workflow is the release gate for all 143 tests plus the corrected entry-bundle budget check.
 
 ## Deferred work
 
