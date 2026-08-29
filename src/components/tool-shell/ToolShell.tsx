@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Share2, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import type { ToolCategory } from '../../types';
 import { getStoredPreferences, toggleFavorite } from '../../storage/preferences';
@@ -29,6 +29,8 @@ export const ToolShell: React.FC<ToolShellProps> = ({
     () => getStoredPreferences().favorites.includes(toolId)
   );
   const [showTransferMenu, setShowTransferMenu] = useState(false);
+  const transferMenuRef = useRef<HTMLDivElement>(null);
+  const transferButtonRef = useRef<HTMLButtonElement>(null);
 
   const categoryPresentation = getCategoryPresentation(category);
 
@@ -48,9 +50,37 @@ export const ToolShell: React.FC<ToolShellProps> = ({
     window.location.hash = `#/tool/${targetToolId}`;
   };
 
-  const relatedTools = TOOLS_REGISTRY.filter((tool) =>
-    relatedToolIds.includes(tool.id)
-  );
+  useEffect(() => {
+    if (!showTransferMenu) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        !transferMenuRef.current?.contains(target) &&
+        !transferButtonRef.current?.contains(target)
+      ) {
+        setShowTransferMenu(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowTransferMenu(false);
+        transferButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showTransferMenu]);
+
+  const relatedTools = TOOLS_REGISTRY.filter((tool) => relatedToolIds.includes(tool.id));
 
   return (
     <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -60,64 +90,65 @@ export const ToolShell: React.FC<ToolShellProps> = ({
           href="#/"
           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           <span>All tools</span>
         </a>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
             <span>Processes locally</span>
           </div>
 
-          {outputToTransfer &&
-            outputToTransfer.trim().length > 0 &&
-            compatibleTransferTools.length > 0 && (
-              <div className="relative">
-                <button
-                  id="send-output-menu-btn"
-                  type="button"
-                  onClick={() => setShowTransferMenu((open) => !open)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  title="Transfer this output to another compatible tool"
-                  aria-expanded={showTransferMenu}
-                  aria-controls="transfer-menu-popup"
-                  aria-haspopup="menu"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-neutral-500" />
-                  <span>Send output to…</span>
-                </button>
+          {outputToTransfer && outputToTransfer.trim().length > 0 && compatibleTransferTools.length > 0 && (
+            <div className="relative">
+              <button
+                ref={transferButtonRef}
+                id="send-output-menu-btn"
+                type="button"
+                onClick={() => setShowTransferMenu((open) => !open)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                title="Transfer this output to another compatible tool"
+                aria-expanded={showTransferMenu}
+                aria-controls="transfer-menu-popup"
+                aria-haspopup="menu"
+              >
+                <Share2 className="w-3.5 h-3.5 text-neutral-500" aria-hidden="true" />
+                <span>Send output to…</span>
+              </button>
 
-                {showTransferMenu && (
-                  <div
-                    id="transfer-menu-popup"
-                    role="menu"
-                    className="absolute right-0 mt-1 w-64 max-h-72 overflow-y-auto rounded-md shadow-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 py-1 z-30"
-                  >
-                    <div className="px-3 py-1.5 text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
-                      Compatible tools
-                    </div>
-                    {compatibleTransferTools.map((tool) => {
-                      const targetCategory = getCategoryPresentation(tool.category);
-                      return (
-                        <button
-                          key={tool.id}
-                          type="button"
-                          role="menuitem"
-                          onClick={() => handleSendTo(tool.id)}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-between gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-                        >
-                          <span className="truncate">{tool.name}</span>
-                          <span className="text-[10px] text-neutral-400 shrink-0">
-                            {targetCategory.shortLabel}
-                          </span>
-                        </button>
-                      );
-                    })}
+              {showTransferMenu && (
+                <div
+                  ref={transferMenuRef}
+                  id="transfer-menu-popup"
+                  role="menu"
+                  aria-label="Compatible tools"
+                  className="absolute right-0 mt-1 w-[min(16rem,calc(100vw-1.5rem))] max-h-72 overflow-y-auto rounded-md shadow-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 py-1 z-30"
+                >
+                  <div className="px-3 py-1.5 text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
+                    Compatible tools
                   </div>
-                )}
-              </div>
-            )}
+                  {compatibleTransferTools.map((tool) => {
+                    const targetCategory = getCategoryPresentation(tool.category);
+                    return (
+                      <button
+                        key={tool.id}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleSendTo(tool.id)}
+                        className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center justify-between gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                      >
+                        <span className="truncate">{tool.name}</span>
+                        <span className="text-[10px] text-neutral-400 shrink-0">
+                          {targetCategory.shortLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             id={`favorite-btn-${toolId}`}
@@ -133,10 +164,9 @@ export const ToolShell: React.FC<ToolShellProps> = ({
           >
             <Star
               className={`w-3.5 h-3.5 ${
-                isFavorite
-                  ? 'fill-amber-500 text-amber-500'
-                  : 'text-neutral-400'
+                isFavorite ? 'fill-amber-500 text-amber-500' : 'text-neutral-400'
               }`}
+              aria-hidden="true"
             />
             <span>{isFavorite ? 'Favorited' : 'Favorite'}</span>
           </button>
@@ -159,14 +189,14 @@ export const ToolShell: React.FC<ToolShellProps> = ({
         </p>
       </div>
 
-      <div className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 sm:p-6 shadow-xs">
+      <div className="w-full min-w-0 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 sm:p-6 shadow-xs">
         {children}
       </div>
 
       {relatedTools.length > 0 && (
         <div className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-800">
           <h2 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-neutral-400" />
+            <Sparkles className="w-3.5 h-3.5 text-neutral-400" aria-hidden="true" />
             <span>Related tools</span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
