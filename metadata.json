@@ -1,0 +1,6 @@
+{
+  "name": "Tiny Tools",
+  "description": "Fast, privacy-first collection of 50 client-side utilities for text, code diffing, developer tasks, math, time, design, media, and file management.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
