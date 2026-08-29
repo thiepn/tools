@@ -58,7 +58,7 @@ Current bundle budgets are intentionally above the measured baseline while low e
 
 ## Bundle and heavy-runtime findings
 
-The production HTML currently references an initial JavaScript entry of approximately **293.17 kB** (about **286.30 KiB raw**, **88.30 kB gzip**) and CSS of approximately **87.99 kB** (about **85.93 KiB raw**, **14.04 kB gzip**).
+The production HTML currently references an initial JavaScript entry of approximately **293.17 kB** (**286.30 KiB raw**). Vite reports **88.30 kB gzip** for that entry; the CI budget script's direct zlib measurement is **86.23 KiB gzip**. The initial CSS is approximately **87.99 kB** (**85.93 KiB raw**), with Vite reporting **14.04 kB gzip** and the CI zlib measurement reporting **13.71 KiB gzip**.
 
 An earlier R1 note incorrectly identified an **82.64 kB / 22.44 kB gzip** split chunk as the initial JavaScript entry. The CI budget check now reads `dist/index.html` directly and measures the assets actually referenced by the page, preventing that classification error from recurring.
 
@@ -78,15 +78,16 @@ Reducing or selectively packaging ONNX backend/WASM variants is deferred to a de
 
 ## Validation evidence
 
-Clean Node 22 validation after dependency overrides and lockfile regeneration completed with:
+Final pull-request validation on Node 22 completed successfully with:
 
 - `npm ci`: passing;
 - `npm audit --audit-level=high`: **0 vulnerabilities**;
-- TypeScript check: passing;
-- original suite: **141/141 tests passing**;
-- production Vite build: passing.
+- TypeScript check: passing with **0 errors**;
+- Vitest: **143/143 tests passing across 5 suites**;
+- production Vite build: passing;
+- initial-entry bundle-budget gate: passing at **286.30 KiB raw / 86.23 KiB gzip JS** and **85.93 KiB raw / 13.71 KiB gzip CSS**.
 
-R1 adds **2 focused transfer-lifecycle tests**, bringing the final expected suite to **143 tests**. The final pull-request workflow is the release gate for all 143 tests plus the corrected entry-bundle budget check.
+The final 143-test suite consists of the pre-R1 141-test regression baseline plus **2 focused transfer-lifecycle tests**.
 
 ## Deferred work
 
