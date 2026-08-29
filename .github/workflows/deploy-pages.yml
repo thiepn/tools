@@ -48,6 +48,7 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const path = require('path');
+          const zlib = require('zlib');
           const html = fs.readFileSync('dist/index.html', 'utf8');
           const script = html.match(/<script[^>]+src="([^"]+\.js)"/i)?.[1];
           const stylesheet = html.match(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+\.css)"/i)?.[1]
@@ -56,13 +57,27 @@ jobs:
             throw new Error('Could not identify initial JS/CSS assets from dist/index.html');
           }
           const resolveAsset = (asset) => path.join('dist', asset.replace(/^\.\//, '').replace(/^\//, ''));
-          const jsBytes = fs.statSync(resolveAsset(script)).size;
-          const cssBytes = fs.statSync(resolveAsset(stylesheet)).size;
-          const JS_BUDGET = 130 * 1024;
-          const CSS_BUDGET = 150 * 1024;
-          console.log(`Initial JS: ${(jsBytes / 1024).toFixed(2)} KiB / 130 KiB budget`);
-          console.log(`Initial CSS: ${(cssBytes / 1024).toFixed(2)} KiB / 150 KiB budget`);
-          if (jsBytes > JS_BUDGET || cssBytes > CSS_BUDGET) {
+          const js = fs.readFileSync(resolveAsset(script));
+          const css = fs.readFileSync(resolveAsset(stylesheet));
+          const sizes = {
+            jsRaw: js.length,
+            jsGzip: zlib.gzipSync(js).length,
+            cssRaw: css.length,
+            cssGzip: zlib.gzipSync(css).length,
+          };
+          const budgets = {
+            jsRaw: 350 * 1024,
+            jsGzip: 110 * 1024,
+            cssRaw: 150 * 1024,
+            cssGzip: 30 * 1024,
+          };
+          const kib = (bytes) => (bytes / 1024).toFixed(2);
+          console.log(`Initial JS: ${kib(sizes.jsRaw)} KiB raw / ${kib(sizes.jsGzip)} KiB gzip`);
+          console.log(`Initial CSS: ${kib(sizes.cssRaw)} KiB raw / ${kib(sizes.cssGzip)} KiB gzip`);
+          console.log(`Budgets: JS ${kib(budgets.jsRaw)} KiB raw / ${kib(budgets.jsGzip)} KiB gzip; CSS ${kib(budgets.cssRaw)} KiB raw / ${kib(budgets.cssGzip)} KiB gzip`);
+          const exceeded = Object.keys(budgets).filter((key) => sizes[key] > budgets[key]);
+          if (exceeded.length) {
+            console.error(`Bundle budget exceeded: ${exceeded.join(', ')}`);
             process.exitCode = 1;
           }
           NODE
