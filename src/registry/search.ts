@@ -44,18 +44,24 @@ function scoreTool(tool: ToolDefinition, query: string): number | null {
 
   let score = 0;
 
+  // Match tiers within one field are mutually exclusive. This prevents an exact
+  // keyword from also receiving the prefix/substring bonus and overpowering a
+  // tool whose actual name or ID better represents the user's intent.
   if (name === normalizedQuery) score += 1200;
+  else if (name.startsWith(normalizedQuery)) score += 800;
+  else if (name.includes(normalizedQuery)) score += 620;
+
   if (shortName === normalizedQuery) score += 1150;
+  else if (shortName.startsWith(normalizedQuery)) score += 760;
+  else if (shortName.includes(normalizedQuery)) score += 580;
+
   if (id === normalizedQuery) score += 1100;
+  else if (id.startsWith(normalizedQuery)) score += 700;
+  else if (id.includes(normalizedQuery)) score += 560;
+
   if (keywords.includes(normalizedQuery)) score += 950;
+  else if (keywords.some((keyword) => keyword.includes(normalizedQuery))) score += 500;
 
-  if (name.startsWith(normalizedQuery)) score += 800;
-  if (shortName.startsWith(normalizedQuery)) score += 760;
-  if (id.startsWith(normalizedQuery)) score += 700;
-
-  if (name.includes(normalizedQuery)) score += 620;
-  if (shortName.includes(normalizedQuery)) score += 580;
-  if (keywords.some((keyword) => keyword.includes(normalizedQuery))) score += 500;
   if (categoryLabel.includes(normalizedQuery) || categoryTerms.some((term) => term.includes(normalizedQuery))) {
     score += 300;
   }
