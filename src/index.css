@@ -32,11 +32,57 @@ textarea {
   outline-offset: 2px;
 }
 
+/* Shared per-tool UI contract. Tool implementations can remain bespoke while
+   inheriting predictable disabled, read-only, overflow, and action behavior. */
+.tt-tool-content {
+  container-type: inline-size;
+}
+
+.tt-tool-content button:disabled,
+.tt-tool-content [role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.tt-tool-content input:disabled,
+.tt-tool-content select:disabled,
+.tt-tool-content textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.tt-tool-content input[readonly],
+.tt-tool-content textarea[readonly] {
+  cursor: default;
+}
+
+.tt-tool-content pre,
+.tt-tool-content code {
+  overflow-wrap: anywhere;
+}
+
+.tt-tool-content table {
+  max-width: 100%;
+}
+
+.tt-tool-content .tt-action-bar > button,
+.tt-tool-content .tt-action-bar > a {
+  min-width: 0;
+}
+
+.tt-tool-content .tt-status {
+  max-width: 100%;
+}
+
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
   textarea,
   select {
     font-size: 16px;
+  }
+
+  .tt-tool-content .tt-action-bar > button,
+  .tt-tool-content .tt-action-bar > a {
+    width: 100%;
   }
 }
 

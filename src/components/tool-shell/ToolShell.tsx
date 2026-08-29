@@ -5,6 +5,7 @@ import { getStoredPreferences, toggleFavorite } from '../../storage/preferences'
 import { setPendingTransfer } from '../../storage/transfer';
 import { TOOLS_REGISTRY } from '../../registry/tools';
 import { getCategoryPresentation } from '../../registry/category-presentation';
+import { normalizeToolShellId } from '../../registry/tool-shell-mode';
 
 interface ToolShellProps {
   toolId: string;
@@ -25,22 +26,25 @@ export const ToolShell: React.FC<ToolShellProps> = ({
   outputToTransfer,
   children,
 }) => {
+  const canonicalToolId = normalizeToolShellId(toolId);
   const [isFavorite, setIsFavorite] = useState(
-    () => getStoredPreferences().favorites.includes(toolId)
+    () => getStoredPreferences().favorites.includes(canonicalToolId)
   );
   const [showTransferMenu, setShowTransferMenu] = useState(false);
   const transferMenuRef = useRef<HTMLDivElement>(null);
   const transferButtonRef = useRef<HTMLButtonElement>(null);
 
   const categoryPresentation = getCategoryPresentation(category);
+  const titleId = `tool-title-${canonicalToolId}`;
+  const descriptionId = `tool-description-${canonicalToolId}`;
 
   const handleToggleFavorite = () => {
-    const updated = toggleFavorite(toolId);
-    setIsFavorite(updated.includes(toolId));
+    const updated = toggleFavorite(canonicalToolId);
+    setIsFavorite(updated.includes(canonicalToolId));
   };
 
   const compatibleTransferTools = TOOLS_REGISTRY.filter(
-    (tool) => tool.id !== toolId && tool.acceptsTextTransfer
+    (tool) => tool.id !== canonicalToolId && tool.acceptsTextTransfer
   );
 
   const handleSendTo = (targetToolId: string) => {
@@ -83,7 +87,13 @@ export const ToolShell: React.FC<ToolShellProps> = ({
   const relatedTools = TOOLS_REGISTRY.filter((tool) => relatedToolIds.includes(tool.id));
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+    <section
+      className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6"
+      data-tool-id={canonicalToolId}
+      data-tool-category={category}
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-200 dark:border-neutral-800">
         <a
           id="back-to-tools-btn"
@@ -151,7 +161,7 @@ export const ToolShell: React.FC<ToolShellProps> = ({
           )}
 
           <button
-            id={`favorite-btn-${toolId}`}
+            id={`favorite-btn-${canonicalToolId}`}
             type="button"
             onClick={handleToggleFavorite}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
@@ -173,9 +183,12 @@ export const ToolShell: React.FC<ToolShellProps> = ({
         </div>
       </div>
 
-      <div className="mb-6">
+      <header className="mb-6">
         <div className="flex flex-wrap items-center gap-2 mb-1.5">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+          <h1
+            id={titleId}
+            className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
+          >
             {title}
           </h1>
           <span
@@ -184,17 +197,20 @@ export const ToolShell: React.FC<ToolShellProps> = ({
             {categoryPresentation.shortLabel}
           </span>
         </div>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 max-w-3xl">
+        <p
+          id={descriptionId}
+          className="text-sm text-neutral-600 dark:text-neutral-400 max-w-3xl"
+        >
           {description}
         </p>
-      </div>
+      </header>
 
-      <div className="w-full min-w-0 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 sm:p-6 shadow-xs">
+      <div className="tt-tool-content w-full min-w-0 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 sm:p-6 shadow-xs">
         {children}
       </div>
 
       {relatedTools.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+        <aside className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-800" aria-label="Related tools">
           <h2 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-neutral-400" aria-hidden="true" />
             <span>Related tools</span>
@@ -223,8 +239,8 @@ export const ToolShell: React.FC<ToolShellProps> = ({
               );
             })}
           </div>
-        </div>
+        </aside>
       )}
-    </div>
+    </section>
   );
 };
