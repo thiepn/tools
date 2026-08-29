@@ -86,6 +86,15 @@ async function createStaticServer() {
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', `http://${HOST}:${PORT}`);
+
+      // Chromium may probe the origin root for a favicon even when the tested
+      // application lives under /tools/. That request is outside the emulated
+      // GitHub Pages project path and is not an application asset failure.
+      if (url.pathname === '/favicon.ico') {
+        response.writeHead(204).end();
+        return;
+      }
+
       const requested = resolveDistPath(url.pathname);
       if (!requested) {
         response.writeHead(404).end('Not found');
@@ -253,7 +262,10 @@ function collectErrors(cdp) {
     errors.push(`console.${type}: ${text || 'unknown console error'}`);
   });
   cdp.on('Log.entryAdded', ({ entry }) => {
-    if (entry?.level === 'error') errors.push(`browser log: ${entry.text ?? 'unknown error'}`);
+    if (entry?.level === 'error') {
+      const location = entry.url ? ` (${entry.url})` : '';
+      errors.push(`browser log: ${entry.text ?? 'unknown error'}${location}`);
+    }
   });
   return errors;
 }
