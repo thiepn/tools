@@ -4,6 +4,7 @@ import { TOOLS_REGISTRY } from '../registry/tools';
 import { searchTools } from '../registry/search';
 import { getCategoryPresentation } from '../registry/category-presentation';
 import { getStoredPreferences } from '../storage/preferences';
+import { getWrappedIndex } from '../utilities/navigation';
 import type { ToolDefinition } from '../types';
 import { ModalSurface } from './ModalSurface';
 
@@ -77,14 +78,10 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setSelectedIndex((previous) =>
-        results.length > 0 ? (previous + 1) % results.length : 0
-      );
+      setSelectedIndex((previous) => getWrappedIndex(previous, 1, results.length));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setSelectedIndex((previous) =>
-        results.length > 0 ? (previous - 1 + results.length) % results.length : 0
-      );
+      setSelectedIndex((previous) => getWrappedIndex(previous, -1, results.length));
     } else if (event.key === 'Enter') {
       event.preventDefault();
       const selected = results[selectedIndex];
