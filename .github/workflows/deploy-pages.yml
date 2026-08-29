@@ -19,16 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
 
       - name: Typecheck
         run: npm run typecheck
@@ -39,9 +42,49 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check initial bundle budgets
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const zlib = require('zlib');
+          const html = fs.readFileSync('dist/index.html', 'utf8');
+          const script = html.match(/<script[^>]+src="([^"]+\.js)"/i)?.[1];
+          const stylesheet = html.match(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+\.css)"/i)?.[1]
+            ?? html.match(/<link[^>]+href="([^"]+\.css)"[^>]+rel="stylesheet"/i)?.[1];
+          if (!script || !stylesheet) {
+            throw new Error('Could not identify initial JS/CSS assets from dist/index.html');
+          }
+          const resolveAsset = (asset) => path.join('dist', asset.replace(/^\.\//, '').replace(/^\//, ''));
+          const js = fs.readFileSync(resolveAsset(script));
+          const css = fs.readFileSync(resolveAsset(stylesheet));
+          const sizes = {
+            jsRaw: js.length,
+            jsGzip: zlib.gzipSync(js).length,
+            cssRaw: css.length,
+            cssGzip: zlib.gzipSync(css).length,
+          };
+          const budgets = {
+            jsRaw: 350 * 1024,
+            jsGzip: 110 * 1024,
+            cssRaw: 150 * 1024,
+            cssGzip: 30 * 1024,
+          };
+          const kib = (bytes) => (bytes / 1024).toFixed(2);
+          console.log(`Initial JS: ${kib(sizes.jsRaw)} KiB raw / ${kib(sizes.jsGzip)} KiB gzip`);
+          console.log(`Initial CSS: ${kib(sizes.cssRaw)} KiB raw / ${kib(sizes.cssGzip)} KiB gzip`);
+          console.log(`Budgets: JS ${kib(budgets.jsRaw)} KiB raw / ${kib(budgets.jsGzip)} KiB gzip; CSS ${kib(budgets.cssRaw)} KiB raw / ${kib(budgets.cssGzip)} KiB gzip`);
+          const exceeded = Object.keys(budgets).filter((key) => sizes[key] > budgets[key]);
+          if (exceeded.length) {
+            console.error(`Bundle budget exceeded: ${exceeded.join(', ')}`);
+            process.exitCode = 1;
+          }
+          NODE
+
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -58,4 +101,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
