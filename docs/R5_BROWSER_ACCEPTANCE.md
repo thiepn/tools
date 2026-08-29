@@ -12,7 +12,7 @@ The goal is to catch failures that static/unit tests cannot prove away: broken l
 
 ## Browser harness
 
-`scripts/r5-browser-smoke.mjs` is intentionally dependency-free. It uses:
+`scripts/r5-browser-smoke-v2.mjs` is intentionally dependency-free. It uses:
 
 - the production `dist/` output;
 - a small Node static server mounted at `/tools/` to emulate the real `thiepn.github.io/tools/` subpath;
@@ -48,22 +48,43 @@ At both viewports, the dashboard must:
 
 - expose links to all 50 unique tool routes;
 - remain within the viewport width;
-- render with the expected Tiny Tools document title;
+- render with Tiny Tools document metadata;
 - mount without browser/page errors.
 
 ## Keyboard acceptance
 
-R5 also verifies shared keyboard behavior in Chromium:
+R5 verifies shared keyboard behavior in Chromium:
 
 - the first Tab reaches the skip-to-main control;
-- activating the skip control focuses `#main-content`;
+- Enter/Space activation of the skip control focuses `#main-content`;
 - `/` opens the command palette when focus is not in a text-entry surface;
 - the command palette focuses its search field;
 - Escape dismisses the command palette.
 
+The browser run exposed that the skip control relied only on the browser's synthesized button click. R5 makes Enter/Space activation explicit while retaining normal pointer `onClick` behavior, making the focus transfer deterministic and independently testable.
+
+## Final validation evidence
+
+Final pull-request validation on Node 22 completed successfully with:
+
+- `npm ci`: passing;
+- `npm audit --audit-level=high`: **0 vulnerabilities**;
+- TypeScript check: **0 errors**;
+- Vitest: **178/178 tests passing across 8 suites**;
+- production Vite build: passing;
+- initial JavaScript entry: **302.30 KiB raw / 90.35 KiB gzip**;
+- initial CSS: **88.59 KiB raw / 14.35 KiB gzip**;
+- R1 bundle budgets: passing (**350/110 KiB JS raw/gzip, 150/30 KiB CSS raw/gzip**);
+- Chromium route matrix: **50/50 desktop routes passing**;
+- Chromium route matrix: **50/50 320px routes passing**;
+- dashboard discovery: **50/50 tool links at both viewports**;
+- route-level horizontal overflow findings: **0**;
+- uncaught browser/page errors: **0**;
+- skip-to-main and command-palette keyboard checks: **passing**.
+
 ## CI gate
 
-The existing validation sequence remains intact and gains one additional step after the production build and bundle-budget check:
+The release validation sequence is now:
 
 ```bash
 npm ci
