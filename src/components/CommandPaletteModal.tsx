@@ -1,12 +1,39 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, ArrowRight, CornerDownLeft, Sparkles } from 'lucide-react';
-import { TOOLS_REGISTRY, searchTools } from '../registry/tools';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, CornerDownLeft, Search } from 'lucide-react';
+import { TOOLS_REGISTRY } from '../registry/tools';
+import { searchTools } from '../registry/search';
+import { getCategoryPresentation } from '../registry/category-presentation';
+import { getStoredPreferences } from '../storage/preferences';
 import type { ToolDefinition } from '../types';
 
 interface CommandPaletteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectTool: (toolId: string) => void;
+}
+
+function getQuickAccessTools(): ToolDefinition[] {
+  const prefs = getStoredPreferences();
+  const orderedIds = [
+    ...prefs.recents,
+    ...prefs.favorites,
+    ...TOOLS_REGISTRY.filter((tool) => tool.featured).map((tool) => tool.id),
+  ];
+
+  const seen = new Set<string>();
+  const tools: ToolDefinition[] = [];
+
+  for (const id of orderedIds) {
+    if (seen.has(id)) continue;
+    const tool = TOOLS_REGISTRY.find((candidate) => candidate.id === id);
+    if (!tool) continue;
+
+    seen.add(id);
+    tools.push(tool);
+    if (tools.length >= 12) break;
+  }
+
+  return tools;
 }
 
 export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
@@ -20,73 +47,71 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   const listRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  const results = useMemo(() => {
-    return searchTools(query);
-  }, [query]);
+  const results = useMemo(
+    () => (query.trim() ? searchTools(query).slice(0, 20) : getQuickAccessTools()),
+    [query, isOpen]
+  );
 
-  // Save previous focus and autofocus on open
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement as HTMLElement | null;
       setQuery('');
       setSelectedIndex(0);
-      // Small timeout to ensure modal is rendered
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 30);
-      return () => clearTimeout(timer);
-    } else {
-      // Restore focus
-      if (previousFocusRef.current && typeof previousFocusRef.current.focus === 'function') {
-        previousFocusRef.current.focus();
-      }
+      const timer = window.setTimeout(() => inputRef.current?.focus(), 30);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (
+      previousFocusRef.current &&
+      typeof previousFocusRef.current.focus === 'function'
+    ) {
+      previousFocusRef.current.focus();
     }
   }, [isOpen]);
 
-  // Keep selected index in bounds when results change
   useEffect(() => {
     setSelectedIndex(0);
-  }, [results]);
+  }, [query]);
 
-  // Scroll active item into view
   useEffect(() => {
     if (!listRef.current) return;
-    const activeItem = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
-    if (activeItem) {
-      activeItem.scrollIntoView({ block: 'nearest' });
-    }
+    const activeItem = listRef.current.querySelector(
+      `[data-index="${selectedIndex}"]`
+    );
+    activeItem?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
-
-  // Handle Keyboard Navigation inside Command Palette
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex((prev) => (results.length > 0 ? (prev + 1) % results.length : 0));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex((prev) =>
-        results.length > 0 ? (prev - 1 + results.length) % results.length : 0
-      );
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (results[selectedIndex]) {
-        handleSelect(results[selectedIndex]);
-      }
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    } else if (e.key === 'Tab') {
-      // Focus trapping: keep focus on input or close
-      e.preventDefault();
-    }
-  };
 
   const handleSelect = (tool: ToolDefinition) => {
     onSelectTool(tool.id);
     onClose();
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelectedIndex((previous) =>
+        results.length > 0 ? (previous + 1) % results.length : 0
+      );
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelectedIndex((previous) =>
+        results.length > 0
+          ? (previous - 1 + results.length) % results.length
+          : 0
+      );
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const selected = results[selectedIndex];
+      if (selected) handleSelect(selected);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
+
+  const selectedResult = results[selectedIndex];
 
   return (
     <div
@@ -98,44 +123,68 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     >
       <div
         className="w-full max-w-xl bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Search Header Input */}
+        <h2 id="command-palette-title" className="sr-only">
+          Search Tiny Tools
+        </h2>
+
         <div className="relative p-3.5 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-3">
           <Search className="w-4 h-4 text-neutral-400 shrink-0 ml-1" />
           <input
             ref={inputRef}
-            id="command-palette-title"
-            type="text"
+            type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a tool name, task, or keyword (e.g. 'json', 'clean', 'age')..."
+            placeholder="Search a tool or task…"
             className="w-full bg-transparent text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none"
             autoComplete="off"
             spellCheck={false}
+            role="combobox"
+            aria-label="Search Tiny Tools"
+            aria-expanded="true"
+            aria-controls="command-palette-results"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              selectedResult ? `command-palette-option-${selectedResult.id}` : undefined
+            }
           />
           <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded text-neutral-500">
             ESC
           </kbd>
         </div>
 
-        {/* Results List */}
-        <div ref={listRef} className="p-2 overflow-y-auto max-h-96 space-y-1">
+        <div className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+          {query.trim() ? 'Search results' : 'Quick access'}
+        </div>
+
+        <div
+          id="command-palette-results"
+          ref={listRef}
+          role="listbox"
+          className="p-2 overflow-y-auto max-h-96 space-y-1"
+        >
           {results.length === 0 ? (
-            <div className="p-8 text-center text-xs text-neutral-400 italic">
-              No matching tools found for &quot;{query}&quot;.
+            <div className="p-8 text-center text-xs text-neutral-400">
+              No matching tools found for “{query}”.
             </div>
           ) : (
-            results.map((tool, idx) => {
-              const isSelected = idx === selectedIndex;
+            results.map((tool, index) => {
+              const isSelected = index === selectedIndex;
+              const category = getCategoryPresentation(tool.category);
+
               return (
-                <div
+                <button
+                  id={`command-palette-option-${tool.id}`}
                   key={tool.id}
-                  data-index={idx}
+                  data-index={index}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => handleSelect(tool)}
-                  onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`w-full p-2.5 rounded-lg text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={`w-full p-2.5 rounded-lg text-left transition-colors flex items-center justify-between gap-3 ${
                     isSelected
                       ? 'bg-blue-600 text-white'
                       : 'bg-transparent text-neutral-900 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -145,18 +194,20 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold truncate">{tool.name}</span>
                       <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded font-mono uppercase tracking-wider ${
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium whitespace-nowrap ${
                           isSelected
                             ? 'bg-blue-700 text-blue-100'
-                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500'
+                            : `${category.badge.bg} ${category.badge.text}`
                         }`}
                       >
-                        {tool.category}
+                        {category.shortLabel}
                       </span>
                     </div>
                     <div
                       className={`text-[11px] truncate ${
-                        isSelected ? 'text-blue-100' : 'text-neutral-500 dark:text-neutral-400'
+                        isSelected
+                          ? 'text-blue-100'
+                          : 'text-neutral-500 dark:text-neutral-400'
                       }`}
                     >
                       {tool.description}
@@ -173,34 +224,35 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                       <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
                     )}
                   </div>
-                </div>
+                </button>
               );
             })
           )}
         </div>
 
-        {/* Footer shortcuts helper */}
         <div className="p-2.5 bg-neutral-50 dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between text-[11px] text-neutral-500">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-mono text-[10px]">
+              <kbd className="px-1 py-0.5 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-mono text-[10px]">
                 ↑
               </kbd>
-              <kbd className="px-1 py-0.2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-mono text-[10px]">
+              <kbd className="px-1 py-0.5 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-mono text-[10px]">
                 ↓
               </kbd>
-              <span>to navigate</span>
+              <span>navigate</span>
             </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-mono text-[10px]">
+            <span className="hidden sm:flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-mono text-[10px]">
                 ↵
               </kbd>
-              <span>to select</span>
+              <span>open</span>
             </span>
           </div>
 
           <span className="font-mono text-[10px]">
-            {results.length} of {TOOLS_REGISTRY.length} tools
+            {query.trim()
+              ? `${results.length} result${results.length === 1 ? '' : 's'}`
+              : `${results.length} quick tools`}
           </span>
         </div>
       </div>
