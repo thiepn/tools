@@ -31,6 +31,10 @@ The shared `ToolShell` now supplies:
 - `data-tool-id` and `data-tool-category` hooks;
 - a `.tt-tool-content` boundary used for cross-tool control normalization.
 
+R4 also closes an architectural inconsistency discovered by the first audit: the ten Phase 5 tools (41–50) were intentionally built as bare tool components and therefore did not render `ToolShell` themselves. Rather than rewriting those large tool implementations, `App` now wraps exactly those ten routes in the shared shell through the explicit `APP_MANAGED_TOOL_IDS` registry helper. The other 40 tools remain self-managed and continue rendering `ToolShell` internally.
+
+The result is one shared shell on every tool route, with no double-shell rendering.
+
 All existing IDs, hash routes, favorites, recent-history behavior, related-tool links, and in-memory transfer behavior remain unchanged.
 
 ## Global tool-content normalization
@@ -55,17 +59,21 @@ The R3 mobile and reduced-motion safeguards remain in place.
 - result updates are announced politely;
 - copy feedback uses the shared `CopyButton` rather than a tool-specific timer.
 
-This establishes the pattern for later low-risk migrations without forcing a large simultaneous rewrite of all 50 tools.
+This establishes the pattern for later low-risk migrations without forcing a simultaneous rewrite of every bespoke control.
 
 ## Preservation guard
 
-R4 adds a source-level CI contract that verifies:
+R4 adds a source-level CI contract that validates the real registry architecture rather than assuming folder names or filenames:
 
-- exactly 50 primary `*Tool.tsx` components remain;
-- their directory IDs match the 50 registered tool IDs;
-- every primary tool continues to render through `ToolShell`;
-- each `ToolShell` `toolId` matches its directory/registry ID;
+- the registry still contains exactly 50 unique lazy component imports;
+- every registered component path resolves to source;
+- exactly ten known bare tools are app-managed by `ToolShell`;
+- the other 40 tools remain self-managed through `ToolShell`;
+- self-managed shell IDs match their registry IDs;
+- `App` wraps the app-managed tools and supplies related-tool navigation;
 - the shared R4 controls and shell semantics remain present.
+
+The first draft of this guard intentionally failed because it assumed one folder = one registry ID and every component filename ended in `Tool.tsx`. That assumption was false for existing entries such as `encoding-tools`, `discount-vat-calculator`, and the bare Phase 5 set. The corrected guard protects the actual application architecture instead of forcing a cosmetic file-layout rewrite.
 
 ## Explicitly deferred
 
