@@ -28,14 +28,16 @@ The shared `ToolShell` now supplies:
 - semantic section/header/aside structure;
 - stable title and description IDs;
 - `aria-labelledby` and `aria-describedby` linkage;
-- `data-tool-id` and `data-tool-category` hooks;
+- canonical `data-tool-id` and `data-tool-category` hooks;
 - a `.tt-tool-content` boundary used for cross-tool control normalization.
 
-R4 also closes an architectural inconsistency discovered by the first audit: the ten Phase 5 tools (41–50) were intentionally built as bare tool components and therefore did not render `ToolShell` themselves. Rather than rewriting those large tool implementations, `App` now wraps exactly those ten routes in the shared shell through the explicit `APP_MANAGED_TOOL_IDS` registry helper. The other 40 tools remain self-managed and continue rendering `ToolShell` internally.
+R4 also closes an architectural inconsistency discovered by the first audit: the ten Phase 5 tools (41–50) were built as bare tool components and therefore did not render `ToolShell` themselves. Rather than rewriting those large tool implementations, `App` now wraps exactly those ten routes in the shared shell through the explicit `APP_MANAGED_TOOL_IDS` helper. The other 40 tools remain self-managed and continue rendering `ToolShell` internally.
 
 The result is one shared shell on every tool route, with no double-shell rendering.
 
-All existing IDs, hash routes, favorites, recent-history behavior, related-tool links, and in-memory transfer behavior remain unchanged.
+A second audit found one older internal alias: QR Studio is registered as `qr-studio` but its certified component passes the historical string `qr-code-studio` to `ToolShell`. R4 preserves the QR implementation byte-for-byte and canonicalizes that alias centrally to `qr-studio`. This prevents phantom favorite/data-hook IDs without rewriting QR scanning or generation behavior.
+
+All public tool IDs, hash routes, recent-history behavior, related-tool links, and in-memory transfer behavior remain unchanged.
 
 ## Global tool-content normalization
 
@@ -69,11 +71,27 @@ R4 adds a source-level CI contract that validates the real registry architecture
 - every registered component path resolves to source;
 - exactly ten known bare tools are app-managed by `ToolShell`;
 - the other 40 tools remain self-managed through `ToolShell`;
-- self-managed shell IDs match their registry IDs;
+- self-managed shell IDs resolve to their canonical registry IDs;
 - `App` wraps the app-managed tools and supplies related-tool navigation;
 - the shared R4 controls and shell semantics remain present.
 
-The first draft of this guard intentionally failed because it assumed one folder = one registry ID and every component filename ended in `Tool.tsx`. That assumption was false for existing entries such as `encoding-tools`, `discount-vat-calculator`, and the bare Phase 5 set. The corrected guard protects the actual application architecture instead of forcing a cosmetic file-layout rewrite.
+The initial static guard exposed false file-layout assumptions, which were corrected rather than forcing cosmetic renames. The refined guard then exposed the genuine legacy QR shell alias described above.
+
+## Validation evidence
+
+Final pull-request validation on Node 22 completed successfully with:
+
+- `npm ci`: passing;
+- `npm audit --audit-level=high`: **0 vulnerabilities**;
+- TypeScript check: **0 errors**;
+- Vitest: **178/178 tests passing across 8 suites**;
+- R4-specific suite: **8/8 tests passing**;
+- production Vite build: passing;
+- initial JavaScript entry: **302.22 KiB raw / 90.34 KiB gzip**;
+- initial CSS: **88.56 KiB raw / 14.34 KiB gzip**;
+- R1 bundle budgets: passing (**350/110 KiB JS raw/gzip, 150/30 KiB CSS raw/gzip**).
+
+R4 adds eight contract tests on top of the R3 170-test baseline. The shared UI contract and the app-managed shell wrapper remain inside the established entry-bundle budget.
 
 ## Explicitly deferred
 
@@ -87,17 +105,3 @@ R4 does not claim:
 - new utility functionality.
 
 The shared contract is designed so future tool-specific fixes can be small, reviewable, and regression-protected.
-
-## Validation gate
-
-The R1–R3 release gate remains authoritative:
-
-```bash
-npm ci
-npm audit --audit-level=high
-npm run typecheck
-npm test
-npm run build
-```
-
-Existing initial-entry bundle budgets must continue to pass.
