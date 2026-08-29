@@ -2,63 +2,88 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { TOOLS_REGISTRY } from '../registry/tools';
+import { APP_MANAGED_TOOL_IDS } from '../registry/tool-shell-mode';
 
-const toolsRoot = path.resolve(process.cwd(), 'src/tools');
+const registryPath = path.resolve(process.cwd(), 'src/registry/tools.ts');
+const registrySource = fs.readFileSync(registryPath, 'utf8');
+const registryDir = path.dirname(registryPath);
 
-function collectToolComponents(): Array<{ directory: string; path: string; source: string }> {
-  const entries = fs.readdirSync(toolsRoot, { withFileTypes: true });
-  const components: Array<{ directory: string; path: string; source: string }> = [];
+function resolveComponentSource(relativeImport: string): string {
+  const base = path.resolve(registryDir, relativeImport);
+  const candidates = [`${base}.tsx`, `${base}.ts`, path.join(base, 'index.tsx'), path.join(base, 'index.ts')];
+  const resolved = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!resolved) throw new Error(`Unable to resolve registered tool component: ${relativeImport}`);
+  return fs.readFileSync(resolved, 'utf8');
+}
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const directoryPath = path.join(toolsRoot, entry.name);
-    const filenames = fs.readdirSync(directoryPath);
-    const componentName = filenames.find((filename) => filename.endsWith('Tool.tsx'));
-    if (!componentName) continue;
-
-    const componentPath = path.join(directoryPath, componentName);
-    components.push({
-      directory: entry.name,
-      path: componentPath,
-      source: fs.readFileSync(componentPath, 'utf8'),
-    });
-  }
-
-  return components.sort((a, b) => a.directory.localeCompare(b.directory));
+function collectRegisteredComponentImports(): string[] {
+  return [...registrySource.matchAll(/component:\s*lazy\(\(\)\s*=>\s*import\(['"]([^'"]+)['"]\)\)/g)].map(
+    (match) => match[1]
+  );
 }
 
 describe('R4 per-tool UI contract', () => {
-  const components = collectToolComponents();
+  const componentImports = collectRegisteredComponentImports();
+  const appManaged = new Set<string>(APP_MANAGED_TOOL_IDS);
 
-  it('keeps exactly one primary component for each of the 50 registered tools', () => {
-    expect(components).toHaveLength(50);
+  it('keeps one unique registered component import for each of the 50 tools', () => {
     expect(TOOLS_REGISTRY).toHaveLength(50);
-    expect(new Set(components.map((component) => component.directory))).toEqual(
-      new Set(TOOLS_REGISTRY.map((tool) => tool.id))
-    );
+    expect(componentImports).toHaveLength(50);
+    expect(new Set(componentImports).size).toBe(50);
+
+    for (const componentImport of componentImports) {
+      expect(() => resolveComponentSource(componentImport)).not.toThrow();
+    }
   });
 
-  it('routes every tool through the shared ToolShell', () => {
-    const violations = components
-      .filter(
-        (component) =>
-          !component.source.includes("components/tool-shell/ToolShell") ||
-          !component.source.includes('<ToolShell')
-      )
-      .map((component) => component.directory);
+  it('keeps the app-managed shell list explicit and limited to the 10 bare Phase 5 tools', () => {
+    expect(APP_MANAGED_TOOL_IDS).toHaveLength(10);
+    expect(new Set(APP_MANAGED_TOOL_IDS).size).toBe(10);
+
+    for (const toolId of APP_MANAGED_TOOL_IDS) {
+      expect(TOOLS_REGISTRY.some((tool) => tool.id === toolId)).toBe(true);
+    }
+  });
+
+  it('ensures every registered route receives ToolShell exactly once by architecture', () => {
+    const violations: string[] = [];
+
+    TOOLS_REGISTRY.forEach((tool, index) => {
+      const source = resolveComponentSource(componentImports[index]);
+      const selfManaged =
+        source.includes("components/tool-shell/ToolShell") && source.includes('<ToolShell');
+
+      if (appManaged.has(tool.id)) {
+        if (selfManaged) violations.push(`${tool.id}: both app-managed and self-managed`);
+      } else if (!selfManaged) {
+        violations.push(`${tool.id}: no ToolShell`);
+      }
+    });
 
     expect(violations).toEqual([]);
   });
 
-  it('keeps each ToolShell toolId aligned with its registry directory ID', () => {
-    const violations = components
-      .filter((component) => {
-        const toolIdMatch = component.source.match(/toolId=["']([^"']+)["']/);
-        return !toolIdMatch || toolIdMatch[1] !== component.directory;
-      })
-      .map((component) => component.directory);
+  it('keeps self-managed ToolShell IDs aligned with registry IDs', () => {
+    const violations: string[] = [];
+
+    TOOLS_REGISTRY.forEach((tool, index) => {
+      if (appManaged.has(tool.id)) return;
+      const source = resolveComponentSource(componentImports[index]);
+      const toolIdMatch = source.match(/toolId=["']([^"']+)["']/);
+      if (!toolIdMatch || toolIdMatch[1] !== tool.id) {
+        violations.push(`${tool.id}: ${toolIdMatch?.[1] ?? 'missing'}`);
+      }
+    });
 
     expect(violations).toEqual([]);
+  });
+
+  it('wraps every app-managed bare tool through ToolShell in App', () => {
+    const appSource = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf8');
+
+    expect(appSource).toContain('isAppManagedToolShell(activeToolDef.id)');
+    expect(appSource).toContain('<ToolShell');
+    expect(appSource).toContain('getAppManagedRelatedToolIds(activeToolDef.id)');
   });
 
   it('provides the shared content contract and accessible shell semantics', () => {
@@ -73,7 +98,7 @@ describe('R4 per-tool UI contract', () => {
     expect(shellSource).toContain('aria-describedby');
   });
 
-  it('keeps the tool control contract available without tool-specific dependencies', () => {
+  it('keeps the shared tool-control primitives available', () => {
     const controlsSource = fs.readFileSync(
       path.resolve(process.cwd(), 'src/components/tool-ui/ToolControls.tsx'),
       'utf8'
@@ -86,7 +111,7 @@ describe('R4 per-tool UI contract', () => {
     expect(controlsSource).toContain("role={isError ? 'alert' : 'status'}");
   });
 
-  it('normalizes the Unit Converter as a reference implementation', () => {
+  it('normalizes Unit Converter as the reference implementation', () => {
     const unitConverter = fs.readFileSync(
       path.resolve(process.cwd(), 'src/tools/unit-converter/UnitConverterTool.tsx'),
       'utf8'
