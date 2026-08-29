@@ -56,22 +56,35 @@ R2 adds ranked task search outside the core tool registry. Ranking prefers:
 
 - exact tool names and short names;
 - exact or prefix ID/name matches;
-- explicit tool keywords;
+- explicit tool keywords without double-counting weaker match tiers;
 - multi-word task matches across names, descriptions, keywords, and category vocabulary;
+- tool identity matches when all task tokens occur in the tool's ID/name/short name;
 - category aliases such as `photos`, `office`, and `archives`.
 
 Common intent filler words such as `make`, `create`, and `tool` do not block task searches.
 
-## Validation gate
+## Validation evidence
 
-R2 must pass the existing R1 clean-environment gate:
+The final R2 pull-request validation on Node 22 completed successfully with:
 
-```bash
-npm ci
-npm audit --audit-level=high
-npm run typecheck
-npm test
-npm run build
-```
+- `npm ci`: passing;
+- `npm audit --audit-level=high`: **0 vulnerabilities**;
+- TypeScript check: passing with **0 errors**;
+- Vitest: **155/155 tests passing across 6 suites**;
+- R2-specific suite: **12/12 tests passing**;
+- production Vite build: passing;
+- initial JavaScript entry: **291.02 KiB raw / 87.72 KiB gzip**;
+- initial CSS: **86.02 KiB raw / 13.69 KiB gzip**;
+- R1 bundle budgets: passing (**350/110 KiB JS raw/gzip, 150/30 KiB CSS raw/gzip**).
 
-The R1 initial-entry raw/gzip bundle budgets remain authoritative. Final test counts and bundle measurements will be recorded after pull-request CI completes.
+R2 adds 12 focused tests on top of the R1 143-test baseline. The entry bundle remains comfortably inside the existing R1 budget while the new discovery and presentation layers are included.
+
+## Deferred work
+
+R2 intentionally leaves these areas for later phases:
+
+- individual-tool UI normalization beyond the shared ToolShell;
+- broad physical-device and cross-browser acceptance;
+- aggressive Whisper/ONNX runtime pruning;
+- major framework upgrades;
+- adding new tools or changing existing tool algorithms.
