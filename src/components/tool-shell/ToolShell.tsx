@@ -5,6 +5,7 @@ import { getStoredPreferences, toggleFavorite } from '../../storage/preferences'
 import { setPendingTransfer } from '../../storage/transfer';
 import { TOOLS_REGISTRY } from '../../registry/tools';
 import { getCategoryPresentation } from '../../registry/category-presentation';
+import { normalizeToolShellId } from '../../registry/tool-shell-mode';
 
 interface ToolShellProps {
   toolId: string;
@@ -25,24 +26,25 @@ export const ToolShell: React.FC<ToolShellProps> = ({
   outputToTransfer,
   children,
 }) => {
+  const canonicalToolId = normalizeToolShellId(toolId);
   const [isFavorite, setIsFavorite] = useState(
-    () => getStoredPreferences().favorites.includes(toolId)
+    () => getStoredPreferences().favorites.includes(canonicalToolId)
   );
   const [showTransferMenu, setShowTransferMenu] = useState(false);
   const transferMenuRef = useRef<HTMLDivElement>(null);
   const transferButtonRef = useRef<HTMLButtonElement>(null);
 
   const categoryPresentation = getCategoryPresentation(category);
-  const titleId = `tool-title-${toolId}`;
-  const descriptionId = `tool-description-${toolId}`;
+  const titleId = `tool-title-${canonicalToolId}`;
+  const descriptionId = `tool-description-${canonicalToolId}`;
 
   const handleToggleFavorite = () => {
-    const updated = toggleFavorite(toolId);
-    setIsFavorite(updated.includes(toolId));
+    const updated = toggleFavorite(canonicalToolId);
+    setIsFavorite(updated.includes(canonicalToolId));
   };
 
   const compatibleTransferTools = TOOLS_REGISTRY.filter(
-    (tool) => tool.id !== toolId && tool.acceptsTextTransfer
+    (tool) => tool.id !== canonicalToolId && tool.acceptsTextTransfer
   );
 
   const handleSendTo = (targetToolId: string) => {
@@ -87,7 +89,7 @@ export const ToolShell: React.FC<ToolShellProps> = ({
   return (
     <section
       className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6"
-      data-tool-id={toolId}
+      data-tool-id={canonicalToolId}
       data-tool-category={category}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
@@ -159,7 +161,7 @@ export const ToolShell: React.FC<ToolShellProps> = ({
           )}
 
           <button
-            id={`favorite-btn-${toolId}`}
+            id={`favorite-btn-${canonicalToolId}`}
             type="button"
             onClick={handleToggleFavorite}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs sm:text-sm font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
