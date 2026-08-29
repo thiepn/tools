@@ -19,16 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
 
       - name: Typecheck
         run: npm run typecheck
@@ -39,9 +42,34 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check initial bundle budgets
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const html = fs.readFileSync('dist/index.html', 'utf8');
+          const script = html.match(/<script[^>]+src="([^"]+\.js)"/i)?.[1];
+          const stylesheet = html.match(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+\.css)"/i)?.[1]
+            ?? html.match(/<link[^>]+href="([^"]+\.css)"[^>]+rel="stylesheet"/i)?.[1];
+          if (!script || !stylesheet) {
+            throw new Error('Could not identify initial JS/CSS assets from dist/index.html');
+          }
+          const resolveAsset = (asset) => path.join('dist', asset.replace(/^\.\//, '').replace(/^\//, ''));
+          const jsBytes = fs.statSync(resolveAsset(script)).size;
+          const cssBytes = fs.statSync(resolveAsset(stylesheet)).size;
+          const JS_BUDGET = 130 * 1024;
+          const CSS_BUDGET = 150 * 1024;
+          console.log(`Initial JS: ${(jsBytes / 1024).toFixed(2)} KiB / 130 KiB budget`);
+          console.log(`Initial CSS: ${(cssBytes / 1024).toFixed(2)} KiB / 150 KiB budget`);
+          if (jsBytes > JS_BUDGET || cssBytes > CSS_BUDGET) {
+            process.exitCode = 1;
+          }
+          NODE
+
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -58,4 +86,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

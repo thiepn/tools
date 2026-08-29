@@ -9,12 +9,17 @@ import { consumePendingTransfer } from './storage/transfer';
 import { recordRecentTool } from './storage/preferences';
 import { Loader2 } from 'lucide-react';
 
+interface ActiveTransfer {
+  toolId: string;
+  value: string;
+}
+
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string>(() => window.location.hash || '#/');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSmartPasteOpen, setIsSmartPasteOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [transferData, setTransferData] = useState<Record<string, string>>({});
+  const [activeTransfer, setActiveTransfer] = useState<ActiveTransfer | null>(null);
 
   // Route parser
   const parseRoute = useCallback((hash: string) => {
@@ -47,14 +52,21 @@ export default function App() {
         // Record recent usage
         recordRecentTool(parsed.toolId);
 
-        // Check if there is pending transferred data for this tool
+        // Keep at most the transfer for the active destination. Tool components
+        // consume initialText into their own local state on mount, so retaining a
+        // history of prior transfer payloads only wastes memory and keeps private
+        // text alive longer than necessary.
         const transferred = consumePendingTransfer(parsed.toolId);
-        if (transferred) {
-          setTransferData((prev) => ({
-            ...prev,
-            [parsed.toolId!]: transferred,
-          }));
-        }
+        setActiveTransfer(
+          transferred
+            ? {
+                toolId: parsed.toolId,
+                value: transferred,
+              }
+            : null
+        );
+      } else {
+        setActiveTransfer(null);
       }
     };
 
@@ -101,6 +113,9 @@ export default function App() {
     window.location.hash = `#/tool/${toolId}`;
   };
 
+  const initialText =
+    activeToolDef && activeTransfer?.toolId === activeToolDef.id ? activeTransfer.value : undefined;
+
   return (
     <div className="min-h-screen bg-neutral-100/50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white transition-colors">
       <Header
@@ -125,7 +140,7 @@ export default function App() {
                 </div>
               }
             >
-              <ToolComponent initialText={transferData[activeToolDef.id]} />
+              <ToolComponent initialText={initialText} />
             </Suspense>
           </ErrorBoundary>
         )}
