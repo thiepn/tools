@@ -36,3 +36,8 @@ export function isTextEntryTarget(target: ShortcutTargetLike | null | undefined)
   const role = target.getAttribute?.('role');
   return role === 'textbox' || role === 'combobox' || role === 'searchbox';
 }
+
+export function getWrappedIndex(current: number, delta: number, length: number): number {
+  if (length <= 0) return 0;
+  return ((current + delta) % length + length) % length;
+}
