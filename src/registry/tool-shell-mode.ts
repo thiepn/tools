@@ -13,6 +13,10 @@ export const APP_MANAGED_TOOL_IDS = [
 
 const APP_MANAGED_TOOL_ID_SET = new Set<string>(APP_MANAGED_TOOL_IDS);
 
+export const LEGACY_TOOL_SHELL_ID_ALIASES: Readonly<Record<string, string>> = {
+  'qr-code-studio': 'qr-studio',
+};
+
 const RELATED_TOOLS: Record<(typeof APP_MANAGED_TOOL_IDS)[number], string[]> = {
   'barcode-studio': ['qr-studio', 'encoding-tools'],
   'watermark-maker': ['image-optimizer', 'image-annotator', 'meme-maker'],
@@ -25,6 +29,10 @@ const RELATED_TOOLS: Record<(typeof APP_MANAGED_TOOL_IDS)[number], string[]> = {
   'duplicate-finder': ['batch-file-renamer', 'zip-manager'],
   'meme-maker': ['image-annotator', 'watermark-maker', 'image-optimizer'],
 };
+
+export function normalizeToolShellId(toolId: string): string {
+  return LEGACY_TOOL_SHELL_ID_ALIASES[toolId] ?? toolId;
+}
 
 export function isAppManagedToolShell(toolId: string): boolean {
   return APP_MANAGED_TOOL_ID_SET.has(toolId);
