@@ -5,7 +5,12 @@ import { Dashboard } from './components/Dashboard';
 import { SmartPasteModal } from './components/SmartPasteModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToolShell } from './components/tool-shell/ToolShell';
 import { TOOLS_REGISTRY, getToolById } from './registry/tools';
+import {
+  getAppManagedRelatedToolIds,
+  isAppManagedToolShell,
+} from './registry/tool-shell-mode';
 import { consumePendingTransfer } from './storage/transfer';
 import { recordRecentTool } from './storage/preferences';
 import { getDocumentMetadata, isTextEntryTarget } from './utilities/navigation';
@@ -139,6 +144,25 @@ export default function App() {
       ? activeTransfer.value
       : undefined;
 
+  const renderActiveTool = () => {
+    if (!activeToolDef || !ToolComponent) return null;
+
+    const content = <ToolComponent initialText={initialText} />;
+    if (!isAppManagedToolShell(activeToolDef.id)) return content;
+
+    return (
+      <ToolShell
+        toolId={activeToolDef.id}
+        title={activeToolDef.name}
+        description={activeToolDef.description}
+        category={activeToolDef.category}
+        relatedToolIds={getAppManagedRelatedToolIds(activeToolDef.id)}
+      >
+        {content}
+      </ToolShell>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-neutral-100/50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white transition-colors">
       <button
@@ -172,7 +196,7 @@ export default function App() {
                 </div>
               }
             >
-              <ToolComponent initialText={initialText} />
+              {renderActiveTool()}
             </Suspense>
           </ErrorBoundary>
         )}
