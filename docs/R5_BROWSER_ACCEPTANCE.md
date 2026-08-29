@@ -12,7 +12,7 @@ The goal is to catch failures that static/unit tests cannot prove away: broken l
 
 ## Browser harness
 
-`scripts/r5-browser-smoke-v2.mjs` is intentionally dependency-free. It uses:
+`scripts/r5-browser-smoke.mjs` is intentionally dependency-free. It uses:
 
 - the production `dist/` output;
 - a small Node static server mounted at `/tools/` to emulate the real `thiepn.github.io/tools/` subpath;
