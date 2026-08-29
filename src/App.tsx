@@ -139,6 +139,10 @@ export default function App() {
     window.location.hash = `#/tool/${toolId}`;
   };
 
+  const focusMainContent = () => {
+    mainRef.current?.focus();
+  };
+
   const initialText =
     activeToolDef && activeTransfer?.toolId === activeToolDef.id
       ? activeTransfer.value
@@ -167,7 +171,13 @@ export default function App() {
     <div className="min-h-screen bg-neutral-100/50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white transition-colors">
       <button
         type="button"
-        onClick={() => mainRef.current?.focus()}
+        onClick={focusMainContent}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            focusMainContent();
+          }
+        }}
         className="fixed left-3 top-2 z-[60] -translate-y-20 focus:translate-y-0 px-3 py-2 rounded-md bg-white dark:bg-neutral-900 text-sm font-semibold border border-neutral-300 dark:border-neutral-700 shadow-lg transition-transform"
       >
         Skip to main content
