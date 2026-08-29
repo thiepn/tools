@@ -2,7 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { TOOLS_REGISTRY } from '../registry/tools';
-import { APP_MANAGED_TOOL_IDS } from '../registry/tool-shell-mode';
+import {
+  APP_MANAGED_TOOL_IDS,
+  LEGACY_TOOL_SHELL_ID_ALIASES,
+  normalizeToolShellId,
+} from '../registry/tool-shell-mode';
 
 const registryPath = path.resolve(process.cwd(), 'src/registry/tools.ts');
 const registrySource = fs.readFileSync(registryPath, 'utf8');
@@ -63,19 +67,21 @@ describe('R4 per-tool UI contract', () => {
     expect(violations).toEqual([]);
   });
 
-  it('keeps self-managed ToolShell IDs aligned with registry IDs', () => {
+  it('keeps self-managed ToolShell IDs aligned after canonical alias normalization', () => {
     const violations: string[] = [];
 
     TOOLS_REGISTRY.forEach((tool, index) => {
       if (appManaged.has(tool.id)) return;
       const source = resolveComponentSource(componentImports[index]);
       const toolIdMatch = source.match(/toolId=["']([^"']+)["']/);
-      if (!toolIdMatch || toolIdMatch[1] !== tool.id) {
+      const canonicalId = toolIdMatch ? normalizeToolShellId(toolIdMatch[1]) : null;
+      if (!canonicalId || canonicalId !== tool.id) {
         violations.push(`${tool.id}: ${toolIdMatch?.[1] ?? 'missing'}`);
       }
     });
 
     expect(violations).toEqual([]);
+    expect(LEGACY_TOOL_SHELL_ID_ALIASES).toEqual({ 'qr-code-studio': 'qr-studio' });
   });
 
   it('wraps every app-managed bare tool through ToolShell in App', () => {
@@ -86,14 +92,15 @@ describe('R4 per-tool UI contract', () => {
     expect(appSource).toContain('getAppManagedRelatedToolIds(activeToolDef.id)');
   });
 
-  it('provides the shared content contract and accessible shell semantics', () => {
+  it('provides the shared content contract and canonical shell semantics', () => {
     const shellSource = fs.readFileSync(
       path.resolve(process.cwd(), 'src/components/tool-shell/ToolShell.tsx'),
       'utf8'
     );
 
     expect(shellSource).toContain('tt-tool-content');
-    expect(shellSource).toContain('data-tool-id');
+    expect(shellSource).toContain('data-tool-id={canonicalToolId}');
+    expect(shellSource).toContain('normalizeToolShellId(toolId)');
     expect(shellSource).toContain('aria-labelledby');
     expect(shellSource).toContain('aria-describedby');
   });
