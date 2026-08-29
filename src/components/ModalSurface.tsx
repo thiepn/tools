@@ -107,7 +107,7 @@ export const ModalSurface: React.FC<ModalSurfaceProps> = ({
   return (
     <div
       className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-xs ${overlayClassName}`}
-      onMouseDown={(event) => {
+      onPointerDown={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onClose();
       }}
     >
@@ -119,7 +119,7 @@ export const ModalSurface: React.FC<ModalSurfaceProps> = ({
         aria-describedby={describedBy}
         tabIndex={-1}
         className={className}
-        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
       >
         {children}
       </div>
