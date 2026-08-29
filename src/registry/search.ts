@@ -61,6 +61,16 @@ function scoreTool(tool: ToolDefinition, query: string): number | null {
   }
   if (description.includes(normalizedQuery)) score += 180;
 
+  // A task phrased in the user's own word order should still favor the tool
+  // whose identity contains all intent tokens. For example, "scan document"
+  // should rank Document Scanner above OCR even if OCR lists that phrase as a
+  // secondary keyword. Substring matching intentionally handles inflections
+  // such as scan/scanner and remove/remover.
+  const primaryIdentity = `${id} ${name} ${shortName}`;
+  if (tokens.every((token) => primaryIdentity.includes(token))) {
+    score += 900;
+  }
+
   const nameWords = new Set(name.split(' '));
   const shortNameWords = new Set(shortName.split(' '));
 
