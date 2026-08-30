@@ -36,12 +36,19 @@ const stabilizedQrCleanup = `    // Chromium's synthetic camera feed can occasio
       5_000
     );`;
 
+const originalBarcodeDenial = `preloadSource: DENY_USER_MEDIA_SCRIPT, clicks: ['Scan Barcode', 'Start Camera Scan'], expectedText: 'Permission denied by R7'`;
+const stabilizedBarcodeDenial = `preloadSource: BARCODE_CAPTURE_SCRIPT + '\\n' + DENY_USER_MEDIA_SCRIPT, clicks: ['Scan Barcode', 'Start Camera Scan'], expectedText: 'Permission denied by R7'`;
+
 if (!original.includes(originalQrCleanup)) {
   throw new Error('R7 QR cleanup fixture changed; update scripts/r7-capability-ci.mjs instead of silently bypassing the assertion.');
+}
+if (!original.includes(originalBarcodeDenial)) {
+  throw new Error('R7 Barcode denial fixture changed; update scripts/r7-capability-ci.mjs instead of silently bypassing the assertion.');
 }
 
 const stabilized = original
   .replace(originalQrCleanup, stabilizedQrCleanup)
+  .replace(originalBarcodeDenial, stabilizedBarcodeDenial)
   .replace("['QR camera start/stop', flowQrCamera]", "['QR camera start/cleanup', flowQrCamera]");
 
 await writeFile(tempPath, stabilized, 'utf8');
