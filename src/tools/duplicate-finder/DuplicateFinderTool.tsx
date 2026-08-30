@@ -17,6 +17,7 @@ import {
   findDuplicateFiles,
   formatDuplicateReportText,
 } from '../../utilities/duplicate-finder';
+import { copyToClipboard } from '../../utilities/clipboard';
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -68,7 +69,6 @@ export const DuplicateFinderTool: React.FC = () => {
       });
       setReport(scanReport);
 
-      // Select all duplicates except the first (original candidate) in each group
       const defaultSelected = new Set<string>();
       scanReport.duplicateGroups.forEach((grp) => {
         grp.files.slice(1).forEach((f) => defaultSelected.add(f.id));
@@ -122,17 +122,17 @@ export const DuplicateFinderTool: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleCopyReport = () => {
+  const handleCopyReport = async () => {
     if (!report) return;
     const text = formatDuplicateReportText(report);
-    navigator.clipboard.writeText(text);
+    const ok = await copyToClipboard(text);
+    if (!ok) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <div className="space-y-6">
-      {/* Dropzone & Filter Bar */}
       <div className="p-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-4">
         <div
           onDragOver={(e) => e.preventDefault()}
@@ -191,7 +191,6 @@ export const DuplicateFinderTool: React.FC = () => {
           )}
         </div>
 
-        {/* Progress Display */}
         {isScanning && progress && (
           <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-lg space-y-2">
             <div className="flex justify-between text-xs font-semibold text-indigo-900 dark:text-indigo-200">
@@ -213,10 +212,8 @@ export const DuplicateFinderTool: React.FC = () => {
         )}
       </div>
 
-      {/* Results View */}
       {report && (
         <div className="space-y-4">
-          {/* Summary Header */}
           <div className="p-4 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-xl flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-indigo-600 text-white">
@@ -265,7 +262,6 @@ export const DuplicateFinderTool: React.FC = () => {
             </div>
           </div>
 
-          {/* Group Sets */}
           {report.duplicateGroups.length === 0 ? (
             <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-500">
               No exact duplicates detected among the scanned files.
