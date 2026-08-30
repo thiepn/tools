@@ -82,8 +82,11 @@ jobs:
           }
           NODE
 
-      - name: Chromium browser acceptance
+      - name: Chromium route acceptance
         run: npm run browser:smoke
+
+      - name: Chromium functional acceptance
+        run: npm run browser:functional
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
