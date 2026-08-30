@@ -37,6 +37,7 @@ export const ScreenRecorderTool: React.FC = () => {
   const micStreamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<number | null>(null);
+  const elapsedSecondsRef = useRef(0);
 
   // Critical Cleanup on Unmount or Route Change
   useEffect(() => {
@@ -46,6 +47,14 @@ export const ScreenRecorderTool: React.FC = () => {
       if (recordingMeta?.url) URL.revokeObjectURL(recordingMeta.url);
     };
   }, [recordingMeta]);
+
+  const incrementElapsedSeconds = () => {
+    setElapsedSeconds((prev) => {
+      const next = prev + 1;
+      elapsedSecondsRef.current = next;
+      return next;
+    });
+  };
 
   // Start Recording
   const handleStartRecording = async () => {
@@ -102,7 +111,7 @@ export const ScreenRecorderTool: React.FC = () => {
         setRecordingMeta({
           blob: fullBlob,
           url: videoUrl,
-          durationSeconds: elapsedSeconds,
+          durationSeconds: elapsedSecondsRef.current,
           mimeType,
           sizeBytes: fullBlob.size,
           recordedAt: new Date(),
@@ -119,12 +128,11 @@ export const ScreenRecorderTool: React.FC = () => {
       recorder.start(1000); // 1s slice chunks
       setIsRecording(true);
       setIsPaused(false);
+      elapsedSecondsRef.current = 0;
       setElapsedSeconds(0);
 
       // Start elapsed timer
-      timerIntervalRef.current = window.setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
+      timerIntervalRef.current = window.setInterval(incrementElapsedSeconds, 1000);
     } catch (err: any) {
       console.error('Failed to start recording:', err);
       if (err.name === 'NotAllowedError') {
@@ -142,9 +150,7 @@ export const ScreenRecorderTool: React.FC = () => {
     if (isPaused) {
       mediaRecorderRef.current.resume();
       setIsPaused(false);
-      timerIntervalRef.current = window.setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
-      }, 1000);
+      timerIntervalRef.current = window.setInterval(incrementElapsedSeconds, 1000);
     } else {
       mediaRecorderRef.current.pause();
       setIsPaused(true);
@@ -163,6 +169,7 @@ export const ScreenRecorderTool: React.FC = () => {
   const handleDiscard = () => {
     if (recordingMeta?.url) URL.revokeObjectURL(recordingMeta.url);
     setRecordingMeta(null);
+    elapsedSecondsRef.current = 0;
     setElapsedSeconds(0);
     chunksRef.current = [];
   };

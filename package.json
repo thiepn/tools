@@ -14,7 +14,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "browser:smoke": "node scripts/r5-browser-smoke.mjs",
-    "browser:functional": "node scripts/r6-functional-smoke.mjs"
+    "browser:functional": "node scripts/r6-functional-smoke.mjs",
+    "browser:capabilities": "node scripts/r7-capability-smoke.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
