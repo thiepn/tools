@@ -42,6 +42,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check R9 live harness syntax
+        run: node --check scripts/r9-live-site-smoke.mjs
+
       - name: Check initial bundle budgets
         shell: bash
         run: |
