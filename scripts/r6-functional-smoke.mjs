@@ -164,7 +164,11 @@ async function evaluate(cdp, expression) {
     awaitPromise: true,
   });
   if (response.exceptionDetails) {
-    throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text ?? 'Browser evaluation failed');
+    throw new Error(
+      response.exceptionDetails.exception?.description ??
+        response.exceptionDetails.text ??
+        'Browser evaluation failed'
+    );
   }
   return response.result?.value;
 }
@@ -206,7 +210,9 @@ function collectErrors(cdp) {
     errors.push(`console.${type}: ${text || 'unknown console error'}`);
   });
   cdp.on('Log.entryAdded', ({ entry }) => {
-    if (entry?.level === 'error') errors.push(`browser log: ${entry.text ?? 'unknown error'}${entry.url ? ` (${entry.url})` : ''}`);
+    if (entry?.level === 'error') {
+      errors.push(`browser log: ${entry.text ?? 'unknown error'}${entry.url ? ` (${entry.url})` : ''}`);
+    }
   });
   return errors;
 }
@@ -225,12 +231,18 @@ async function withPage(viewport, run) {
 
 async function navigate(cdp, hash = '#/') {
   await cdp.send('Page.navigate', { url: `${BASE_URL}${hash}` });
-  await waitFor(() => evaluate(cdp, `document.readyState === 'complete' && Boolean(document.getElementById('main-content'))`), `route ${hash}`);
+  await waitFor(
+    () => evaluate(cdp, `document.readyState === 'complete' && Boolean(document.getElementById('main-content'))`),
+    `route ${hash}`
+  );
 }
 
 async function navigateTool(cdp, toolId) {
   await navigate(cdp, `#/tool/${toolId}`);
-  await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[data-tool-id="${toolId}"]'))`), `${toolId} ToolShell`);
+  await waitFor(
+    () => evaluate(cdp, `Boolean(document.querySelector('[data-tool-id="${toolId}"]'))`),
+    `${toolId} ToolShell`
+  );
 }
 
 async function setValue(cdp, selector, value) {
@@ -277,10 +289,18 @@ async function flowDashboardSearch() {
     await navigate(cdp);
     await waitFor(() => evaluate(cdp, `Boolean(document.getElementById('dashboard-search-input'))`), 'dashboard search');
     await setValue(cdp, '#dashboard-search-input', 'unit converter');
-    await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('a[href="#/tool/unit-converter"]'))`), 'Unit Converter search result');
+    await waitFor(
+      () => evaluate(cdp, `Boolean(document.querySelector('a[href="#/tool/unit-converter"]'))`),
+      'Unit Converter search result'
+    );
     await evaluate(cdp, `document.querySelector('a[href="#/tool/unit-converter"]')?.click(); true`);
-    await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[data-tool-id="unit-converter"]'))`), 'search-result navigation');
-    if ((await evaluate(cdp, `window.innerWidth`)) !== 320) findings.push('mobile search journey lost the 320px viewport');
+    await waitFor(
+      () => evaluate(cdp, `Boolean(document.querySelector('[data-tool-id="unit-converter"]'))`),
+      'search-result navigation'
+    );
+    if ((await evaluate(cdp, `window.innerWidth`)) !== 320) {
+      findings.push('mobile search journey lost the 320px viewport');
+    }
     return findings;
   });
 }
@@ -306,8 +326,9 @@ async function flowCaseConverter() {
     await navigateTool(cdp, 'case-converter');
     await setValue(cdp, '#case-converter-input', 'hello world example');
     await waitFor(() => evaluate(cdp, `document.body.innerText.includes('helloWorldExample')`), 'camelCase output');
-    const hasConstant = await evaluate(cdp, `document.body.innerText.includes('HELLO_WORLD_EXAMPLE')`);
-    if (!hasConstant) findings.push('Case Converter did not render CONSTANT_CASE output');
+    if (!(await evaluate(cdp, `document.body.innerText.includes('HELLO_WORLD_EXAMPLE')`))) {
+      findings.push('Case Converter did not render CONSTANT_CASE output');
+    }
     return findings;
   });
 }
@@ -330,7 +351,10 @@ async function flowJsonFormatterAndDownload() {
     await waitFor(() => evaluate(cdp, `document.body.innerText.includes('Valid JSON document')`), 'valid JSON state');
     await clickText(cdp, 'Sort Object Keys', 'label');
     await waitFor(
-      () => evaluate(cdp, `(() => { const value = document.getElementById('json-output-textarea')?.value ?? ''; return value.indexOf('"a"') < value.indexOf('"b"'); })()`),
+      () => evaluate(cdp, `(() => {
+        const value = document.getElementById('json-output-textarea')?.value ?? '';
+        return value.indexOf('"a"') < value.indexOf('"b"');
+      })()`),
       'sorted JSON output'
     );
     await clickText(cdp, 'Download');
@@ -338,7 +362,9 @@ async function flowJsonFormatterAndDownload() {
     const download = await evaluate(cdp, `window.__r6Download`);
     if (!download.download.endsWith('.json')) findings.push(`JSON export filename is not .json: ${download.download}`);
     const blobText = await evaluate(cdp, `window.__r6Blob ? window.__r6Blob.text() : ''`);
-    if (!blobText.includes('"a"') || !blobText.includes('"b"')) findings.push('JSON export Blob did not contain formatted JSON');
+    if (!blobText.includes('"a"') || !blobText.includes('"b"')) {
+      findings.push('JSON export Blob did not contain formatted JSON');
+    }
     await setValue(cdp, '#json-input-textarea', '{"a":}');
     await waitFor(() => evaluate(cdp, `document.body.innerText.includes('JSON Syntax Error')`), 'invalid JSON state');
     return findings;
@@ -352,9 +378,15 @@ async function flowUnitConverter() {
     await setValue(cdp, '#unit-converter-input', '1');
     await setValue(cdp, '#unit-converter-from-unit', 'm');
     await setValue(cdp, '#unit-converter-to-unit', 'ft');
-    await waitFor(() => evaluate(cdp, `document.getElementById('unit-converter-output')?.value === '3.2808399'`), 'metres-to-feet conversion');
+    await waitFor(
+      () => evaluate(cdp, `document.getElementById('unit-converter-output')?.value === '3.2808399'`),
+      'metres-to-feet conversion'
+    );
     await evaluate(cdp, `document.querySelector('button[aria-label="Swap source and target units"]')?.click(); true`);
-    await waitFor(() => evaluate(cdp, `document.getElementById('unit-converter-output')?.value === '0.3048'`), 'swapped feet-to-metres conversion');
+    await waitFor(
+      () => evaluate(cdp, `document.getElementById('unit-converter-output')?.value === '0.3048'`),
+      'swapped feet-to-metres conversion'
+    );
     return findings;
   });
 }
@@ -363,14 +395,23 @@ async function flowPercentageCalculator() {
   return withPage(DESKTOP, async (cdp) => {
     const findings = [];
     await navigateTool(cdp, 'percentage-calculator');
-    const resultSelector = `(() => { const label = [...document.querySelectorAll('div')].find((node) => node.textContent?.trim() === 'Calculated Result'); return label?.parentElement?.querySelector('.text-3xl')?.textContent?.trim() ?? ''; })()`;
+    const resultSelector = `(() => {
+      const label = [...document.querySelectorAll('div')].find((node) => node.textContent?.trim() === 'Calculated Result');
+      return label?.parentElement?.querySelector('.text-3xl')?.textContent?.trim() ?? '';
+    })()`;
     await waitFor(() => evaluate(cdp, `${resultSelector} === '37.5'`), 'default percentage result');
     const inputs = await evaluate(cdp, `[...document.querySelectorAll('[data-tool-id="percentage-calculator"] input[type="text"]')].length`);
     if (inputs < 2) return ['Percentage Calculator did not expose the expected numeric inputs'];
     await evaluate(cdp, `(() => {
       const inputs = [...document.querySelectorAll('[data-tool-id="percentage-calculator"] input[type="text"]')];
-      const set = (el, value) => { const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); };
-      set(inputs[0], '20'); set(inputs[1], '50'); return true;
+      const set = (element, value) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setter.call(element, value);
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      set(inputs[0], '20');
+      set(inputs[1], '50');
+      return true;
     })()`);
     await waitFor(() => evaluate(cdp, `${resultSelector} === '10'`), '20 percent of 50');
     return findings;
@@ -383,12 +424,21 @@ async function flowCrossToolTransfer() {
     const payload = 'alpha beta gamma';
     await navigateTool(cdp, 'text-cleaner');
     await setValue(cdp, '#cleaner-input-textarea', payload);
-    await waitFor(() => evaluate(cdp, `document.getElementById('cleaner-output-textarea')?.value === ${JSON.stringify(payload)}`), 'transfer source output');
+    await waitFor(
+      () => evaluate(cdp, `document.getElementById('cleaner-output-textarea')?.value === ${JSON.stringify(payload)}`),
+      'transfer source output'
+    );
     await evaluate(cdp, `document.getElementById('send-output-menu-btn')?.click(); true`);
     await waitFor(() => evaluate(cdp, `Boolean(document.getElementById('transfer-menu-popup'))`), 'transfer menu');
     await clickText(cdp, 'Word & Character Counter');
-    await waitFor(() => evaluate(cdp, `document.getElementById('word-counter-input')?.value === ${JSON.stringify(payload)}`), 'transferred Word Counter input');
-    const storageContainsPayload = await evaluate(cdp, `JSON.stringify(localStorage).includes(${JSON.stringify(payload)})`);
+    await waitFor(
+      () => evaluate(cdp, `document.getElementById('word-counter-input')?.value === ${JSON.stringify(payload)}`),
+      'transferred Word Counter input'
+    );
+    const storageContainsPayload = await evaluate(
+      cdp,
+      `[...Array(localStorage.length)].some((_, index) => (localStorage.getItem(localStorage.key(index)) ?? '').includes(${JSON.stringify(payload)}))`
+    );
     if (storageContainsPayload) findings.push('Transient cross-tool payload leaked into localStorage');
     return findings;
   });
@@ -402,11 +452,15 @@ async function flowNotepadPersistence() {
     await navigateTool(cdp, 'notepad');
     const selector = '[data-tool-id="notepad"] textarea';
     await setValue(cdp, selector, 'R6 persistent note');
-    await waitFor(() => evaluate(cdp, `document.body.innerText.includes('Saved locally')`), 'Notepad save status');
+    await waitFor(
+      () => evaluate(cdp, `[...Array(localStorage.length)].some((_, index) => (localStorage.getItem(localStorage.key(index)) ?? '').includes('R6 persistent note'))`),
+      'Notepad local save'
+    );
     await cdp.send('Page.reload');
-    await waitFor(() => evaluate(cdp, `document.querySelector('[data-tool-id="notepad"] textarea')?.value === 'R6 persistent note'`), 'Notepad persisted content');
-    const stored = await evaluate(cdp, `JSON.stringify(localStorage).includes('R6 persistent note')`);
-    if (!stored) findings.push('Notepad content did not persist in intentional local storage');
+    await waitFor(
+      () => evaluate(cdp, `document.querySelector('[data-tool-id="notepad"] textarea')?.value === 'R6 persistent note'`),
+      'Notepad persisted content'
+    );
     return findings;
   });
 }
@@ -416,15 +470,47 @@ async function flowChecklistPersistence() {
     const findings = [];
     await navigate(cdp);
     await clearLocalStorage(cdp);
+
+    // Checklist intentionally ships with a populated travel example. Seed a
+    // valid empty list so this journey deterministically tests add/check/reload
+    // persistence rather than making assumptions about product defaults.
+    await evaluate(cdp, `(() => {
+      localStorage.setItem('tiny_tools_checklist_store_v1', JSON.stringify({
+        version: 1,
+        activeListId: 'r6-checklist',
+        lists: [{
+          id: 'r6-checklist',
+          title: 'R6 Checklist',
+          updatedAt: Date.now(),
+          items: []
+        }]
+      }));
+      return true;
+    })()`);
+
     await navigateTool(cdp, 'checklist');
+    await waitFor(() => evaluate(cdp, `document.body.innerText.includes('0 of 0 completed (0%)')`), 'empty R6 checklist');
     const selector = 'input[placeholder="Add new checklist item..."]';
     await setValue(cdp, selector, 'Passport');
     await evaluate(cdp, `document.querySelector(${JSON.stringify(selector)})?.closest('form')?.requestSubmit(); true`);
-    await waitFor(() => evaluate(cdp, `document.body.innerText.includes('Passport') && document.body.innerText.includes('0 of 1 completed (0%)')`), 'new checklist item');
+    await waitFor(
+      () => evaluate(cdp, `document.body.innerText.includes('Passport') && document.body.innerText.includes('0 of 1 completed (0%)')`),
+      'new checklist item'
+    );
     await clickText(cdp, 'Check All');
     await waitFor(() => evaluate(cdp, `document.body.innerText.includes('1 of 1 completed (100%)')`), 'checked checklist state');
+    await waitFor(
+      () => evaluate(cdp, `[...Array(localStorage.length)].some((_, index) => {
+        const value = localStorage.getItem(localStorage.key(index)) ?? '';
+        return value.includes('Passport') && value.includes('"completed":true');
+      })`),
+      'Checklist local save'
+    );
     await cdp.send('Page.reload');
-    await waitFor(() => evaluate(cdp, `document.body.innerText.includes('Passport') && document.body.innerText.includes('1 of 1 completed (100%)')`), 'persisted checklist state');
+    await waitFor(
+      () => evaluate(cdp, `document.body.innerText.includes('Passport') && document.body.innerText.includes('1 of 1 completed (100%)')`),
+      'persisted checklist state'
+    );
     return findings;
   });
 }
@@ -434,7 +520,8 @@ async function flowDuplicateFinder() {
     const findings = [];
     await navigateTool(cdp, 'duplicate-finder');
     await evaluate(cdp, `(() => {
-      const heading = [...document.querySelectorAll('h3')].find((node) => node.textContent?.includes('Choose or Drop Files to Find Duplicates'));
+      const heading = [...document.querySelectorAll('h3')]
+        .find((node) => node.textContent?.includes('Choose or Drop Files to Find Duplicates'));
       const dropzone = heading?.parentElement;
       if (!dropzone) throw new Error('Duplicate Finder dropzone not found');
       const transfer = new DataTransfer();
@@ -445,7 +532,14 @@ async function flowDuplicateFinder() {
       return true;
     })()`);
     await waitFor(() => evaluate(cdp, `document.body.innerText.includes('Found 1 Duplicate Sets')`), 'SHA-256 duplicate scan', 15_000);
-    const state = await evaluate(cdp, `({ a: document.body.innerText.includes('copy-a.txt'), b: document.body.innerText.includes('copy-b.txt'), unique: document.body.innerText.includes('unique.txt') })`);
+    const state = await evaluate(
+      cdp,
+      `({
+        a: document.body.innerText.includes('copy-a.txt'),
+        b: document.body.innerText.includes('copy-b.txt'),
+        unique: document.body.innerText.includes('unique.txt')
+      })`
+    );
     if (!state.a || !state.b) findings.push('Duplicate Finder result omitted one of the matching files');
     if (state.unique) findings.push('Duplicate Finder incorrectly listed the unique file inside duplicate results');
     return findings;
@@ -507,10 +601,17 @@ async function main() {
   );
 
   let chromeStderr = '';
-  chrome.stderr.on('data', (chunk) => { chromeStderr += chunk.toString(); });
+  chrome.stderr.on('data', (chunk) => {
+    chromeStderr += chunk.toString();
+  });
 
   try {
-    await waitFor(async () => (await fetch(`http://${HOST}:${DEBUG_PORT}/json/version`).catch(() => null))?.ok, 'Chrome DevTools endpoint', 15_000);
+    await waitFor(
+      async () => (await fetch(`http://${HOST}:${DEBUG_PORT}/json/version`).catch(() => null))?.ok,
+      'Chrome DevTools endpoint',
+      15_000
+    );
+
     console.log(`R6 functional Chromium acceptance: ${FLOWS.length} end-to-end journeys`);
     console.log(`Serving ${BASE_URL} under the GitHub Pages project-path model`);
 
