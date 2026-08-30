@@ -17,39 +17,110 @@ export interface JsonValidationResult {
   };
 }
 
-// Deep sort keys of objects
-export function sortJsonKeys(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortJsonKeys);
-  }
-  if (value !== null && typeof value === 'object') {
-    const sortedObj: Record<string, unknown> = {};
-    const keys = Object.keys(value as Record<string, unknown>).sort();
-    for (const key of keys) {
-      sortedObj[key] = sortJsonKeys((value as Record<string, unknown>)[key]);
-    }
-    return sortedObj;
-  }
-  return value;
+function isContainer(value: unknown): value is unknown[] | Record<string, unknown> {
+  return value !== null && typeof value === 'object';
 }
 
-function calculateJsonStats(val: unknown, currentDepth = 1): { keysCount: number; maxDepth: number } {
-  let keysCount = 0;
-  let maxDepth = currentDepth;
+/**
+ * Deep-sort object keys without recursive calls.
+ *
+ * JSON can legally be much deeper than the JavaScript call stack. The old
+ * recursive implementation could therefore turn valid, deeply nested JSON
+ * into a RangeError when "Sort keys" was enabled. An explicit work stack
+ * keeps traversal bounded by heap memory instead of call-stack depth.
+ */
+export function sortJsonKeys(value: unknown): unknown {
+  if (!isContainer(value)) return value;
 
-  if (Array.isArray(val)) {
-    for (const item of val) {
-      const child = calculateJsonStats(item, currentDepth + 1);
-      keysCount += child.keysCount;
-      maxDepth = Math.max(maxDepth, child.maxDepth);
+  const root: unknown[] | Record<string, unknown> = Array.isArray(value) ? [] : {};
+  const stack: Array<{
+    source: unknown[] | Record<string, unknown>;
+    target: unknown[] | Record<string, unknown>;
+  }> = [{ source: value, target: root }];
+
+  while (stack.length > 0) {
+    const frame = stack.pop()!;
+
+    if (Array.isArray(frame.source)) {
+      const target = frame.target as unknown[];
+      target.length = frame.source.length;
+
+      for (let index = frame.source.length - 1; index >= 0; index--) {
+        const child = frame.source[index];
+        if (isContainer(child)) {
+          const childTarget: unknown[] | Record<string, unknown> = Array.isArray(child) ? [] : {};
+          target[index] = childTarget;
+          stack.push({ source: child, target: childTarget });
+        } else {
+          target[index] = child;
+        }
+      }
+      continue;
     }
-  } else if (val !== null && typeof val === 'object') {
-    const keys = Object.keys(val as Record<string, unknown>);
-    keysCount += keys.length;
-    for (const k of keys) {
-      const child = calculateJsonStats((val as Record<string, unknown>)[k], currentDepth + 1);
-      keysCount += child.keysCount;
-      maxDepth = Math.max(maxDepth, child.maxDepth);
+
+    const source = frame.source as Record<string, unknown>;
+    const target = frame.target as Record<string, unknown>;
+    const keys = Object.keys(source).sort();
+
+    // Assign keys in sorted insertion order. Push child containers in reverse
+    // so traversal order is deterministic without affecting key order.
+    const pendingChildren: Array<{
+      source: unknown[] | Record<string, unknown>;
+      target: unknown[] | Record<string, unknown>;
+    }> = [];
+
+    for (const key of keys) {
+      const child = source[key];
+      if (isContainer(child)) {
+        const childTarget: unknown[] | Record<string, unknown> = Array.isArray(child) ? [] : {};
+        target[key] = childTarget;
+        pendingChildren.push({ source: child, target: childTarget });
+      } else {
+        target[key] = child;
+      }
+    }
+
+    for (let index = pendingChildren.length - 1; index >= 0; index--) {
+      stack.push(pendingChildren[index]);
+    }
+  }
+
+  return root;
+}
+
+function calculateJsonStats(value: unknown): { keysCount: number; maxDepth: number } {
+  if (!isContainer(value)) {
+    return { keysCount: 0, maxDepth: 1 };
+  }
+
+  let keysCount = 0;
+  let maxDepth = 1;
+  const stack: Array<{ value: unknown; depth: number }> = [{ value, depth: 1 }];
+
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    maxDepth = Math.max(maxDepth, current.depth);
+
+    if (Array.isArray(current.value)) {
+      for (let index = current.value.length - 1; index >= 0; index--) {
+        const child = current.value[index];
+        if (isContainer(child)) {
+          stack.push({ value: child, depth: current.depth + 1 });
+        }
+      }
+      continue;
+    }
+
+    if (isContainer(current.value)) {
+      const record = current.value as Record<string, unknown>;
+      const keys = Object.keys(record);
+      keysCount += keys.length;
+      for (let index = keys.length - 1; index >= 0; index--) {
+        const child = record[keys[index]];
+        if (isContainer(child)) {
+          stack.push({ value: child, depth: current.depth + 1 });
+        }
+      }
     }
   }
 
@@ -57,8 +128,6 @@ function calculateJsonStats(val: unknown, currentDepth = 1): { keysCount: number
 }
 
 function parseJsonError(errorMsg: string, input: string): { line?: number; column?: number; message: string } {
-  // Extract position info from typical browser JSON.parse error messages
-  // e.g., "Unexpected token } in JSON at position 42" or "at line 3 column 5"
   const lineColMatch = errorMsg.match(/line (\d+) column (\d+)/i);
   if (lineColMatch) {
     return {
