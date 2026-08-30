@@ -12,32 +12,43 @@ const originalQrCleanup = `    await clickText(cdp, 'Stop Camera');
     await waitFor(async () => (await userStreamsState(cdp)).tracks.every((track) => track.readyState === 'ended'), 'QR camera track cleanup');`;
 
 const stabilizedQrCleanup = `    // Chromium's synthetic camera feed can occasionally be decoded by jsQR
-    // before CI reaches the manual Stop Camera click. QR Studio correctly
-    // auto-stops its stream on a successful decode, which removes that button.
-    // Accept either valid cleanup path, but never accept a missing stop control
-    // while a captured camera track is still live.
-    const stopClicked = await evaluate(cdp, \`(() => {
-      const button = [...document.querySelectorAll('button')]
-        .find((node) => node.textContent?.replace(/\\\\s+/g, ' ').trim().includes('Stop Camera'));
-      if (!button) return false;
-      button.click();
-      return true;
-    })()\`);
+    // while CI is deciding whether to click Stop Camera. Poll for either valid
+    // cleanup path instead of taking a one-time UI snapshot: automatic cleanup
+    // after decode, or the manual stop control becoming available. A live track
+    // that never reaches either cleanup path remains a hard timeout failure.
     await waitFor(
       async () => {
         const state = await userStreamsState(cdp);
-        return state.tracks.length > 0 && state.tracks.every((track) => track.readyState === 'ended');
+        if (state.tracks.length > 0 && state.tracks.every((track) => track.readyState === 'ended')) {
+          return true;
+        }
+
+        await evaluate(cdp, \`(() => {
+          const button = [...document.querySelectorAll('button')]
+            .find((node) => node.textContent?.replace(/\\\\s+/g, ' ').trim().includes('Stop Camera'));
+          if (!button) return false;
+          button.click();
+          return true;
+        })()\`);
+        return false;
       },
-      stopClicked ? 'QR manual camera track cleanup' : 'QR automatic camera track cleanup after early decode',
-      3_000
+      'QR camera track cleanup through manual stop or automatic decode stop',
+      5_000
     );`;
+
+const originalBarcodeDenial = `preloadSource: DENY_USER_MEDIA_SCRIPT, clicks: ['Scan Barcode', 'Start Camera Scan'], expectedText: 'Permission denied by R7'`;
+const stabilizedBarcodeDenial = `preloadSource: BARCODE_CAPTURE_SCRIPT + '\\n' + DENY_USER_MEDIA_SCRIPT, clicks: ['Scan Barcode', 'Start Camera Scan'], expectedText: 'Permission denied by R7'`;
 
 if (!original.includes(originalQrCleanup)) {
   throw new Error('R7 QR cleanup fixture changed; update scripts/r7-capability-ci.mjs instead of silently bypassing the assertion.');
 }
+if (!original.includes(originalBarcodeDenial)) {
+  throw new Error('R7 Barcode denial fixture changed; update scripts/r7-capability-ci.mjs instead of silently bypassing the assertion.');
+}
 
 const stabilized = original
   .replace(originalQrCleanup, stabilizedQrCleanup)
+  .replace(originalBarcodeDenial, stabilizedBarcodeDenial)
   .replace("['QR camera start/stop', flowQrCamera]", "['QR camera start/cleanup', flowQrCamera]");
 
 await writeFile(tempPath, stabilized, 'utf8');
