@@ -9,10 +9,17 @@ if (!rawUrl) {
   throw new Error('Usage: node scripts/r9-live-site-smoke.mjs <https://owner.github.io/repo/>');
 }
 
-const baseUrl = new URL(rawUrl.endsWith('/') ? rawUrl : `${rawUrl}/`);
-if (baseUrl.protocol !== 'https:') {
-  throw new Error(`R9 requires an HTTPS live-site URL, received ${baseUrl.href}`);
+const deploymentUrl = new URL(rawUrl.endsWith('/') ? rawUrl : `${rawUrl}/`);
+if (!['http:', 'https:'].includes(deploymentUrl.protocol)) {
+  throw new Error(`R9 requires an HTTP(S) Pages URL, received ${deploymentUrl.href}`);
 }
+
+// GitHub's deploy-pages output may report an http:// URL for a configured
+// custom domain even when the same Pages site is available over HTTPS. R9's
+// contract is the public HTTPS endpoint, so always probe that endpoint instead
+// of rejecting the deployment metadata before making a network request.
+const baseUrl = new URL(deploymentUrl.href);
+baseUrl.protocol = 'https:';
 
 const HOST = '127.0.0.1';
 const DEBUG_PORT = 9227;
@@ -142,11 +149,18 @@ async function verifyStaticSite() {
         return false;
       }
     },
-    `published Tiny Tools index at ${baseUrl.href}`
+    `published Tiny Tools HTTPS index at ${baseUrl.href}`
   );
 
-  if (!response.url.startsWith(baseUrl.origin)) {
+  const finalUrl = new URL(response.url);
+  if (finalUrl.protocol !== 'https:') {
+    throw new Error(`Published site did not resolve over HTTPS: ${response.url}`);
+  }
+  if (finalUrl.origin !== baseUrl.origin) {
     throw new Error(`Live-site redirect left the expected origin: ${response.url}`);
+  }
+  if (finalUrl.pathname !== baseUrl.pathname) {
+    throw new Error(`Live-site redirect changed the expected repository path: ${response.url}`);
   }
 
   const scriptSrc = html.match(/<script[^>]+src=["']([^"']+\.js)["']/i)?.[1];
@@ -160,6 +174,9 @@ async function verifyStaticSite() {
 
   for (const asset of [scriptSrc, stylesheetHref]) {
     const resolved = new URL(asset, baseUrl);
+    if (resolved.protocol !== 'https:') {
+      throw new Error(`Initial asset is not HTTPS: ${resolved.href}`);
+    }
     if (resolved.origin !== baseUrl.origin) {
       throw new Error(`Initial asset escaped the Pages origin: ${resolved.href}`);
     }
@@ -168,6 +185,9 @@ async function verifyStaticSite() {
     }
     const assetResponse = await fetch(resolved, { redirect: 'follow', cache: 'no-store' });
     if (!assetResponse.ok) throw new Error(`Initial asset failed: ${assetResponse.status} ${resolved.href}`);
+    if (new URL(assetResponse.url).protocol !== 'https:') {
+      throw new Error(`Initial asset did not remain on HTTPS: ${assetResponse.url}`);
+    }
   }
 
   return { scriptSrc, stylesheetHref };
@@ -238,8 +258,8 @@ async function verifyBrowserRoutes() {
         150
       );
 
-      const liveLocation = await evaluate(cdp, `({ origin: location.origin, pathname: location.pathname, hash: location.hash })`);
-      if (liveLocation.origin !== baseUrl.origin || liveLocation.pathname !== baseUrl.pathname || liveLocation.hash !== '#/') {
+      const liveLocation = await evaluate(cdp, `({ protocol: location.protocol, origin: location.origin, pathname: location.pathname, hash: location.hash })`);
+      if (liveLocation.protocol !== 'https:' || liveLocation.origin !== baseUrl.origin || liveLocation.pathname !== baseUrl.pathname || liveLocation.hash !== '#/') {
         failures.push(`unexpected live dashboard location: ${JSON.stringify(liveLocation)}`);
       }
 
@@ -251,8 +271,9 @@ async function verifyBrowserRoutes() {
           20_000,
           150
         );
-        const route = await evaluate(cdp, `location.pathname + location.hash`);
-        if (route !== `${baseUrl.pathname}#/tool/${toolId}`) failures.push(`route mismatch for ${toolId}: ${route}`);
+        const route = await evaluate(cdp, `location.protocol + '//' + location.host + location.pathname + location.hash`);
+        const expected = `${baseUrl.origin}${baseUrl.pathname}#/tool/${toolId}`;
+        if (route !== expected) failures.push(`route mismatch for ${toolId}: ${route}`);
       }
 
       await sleep(500);
@@ -274,10 +295,11 @@ async function verifyBrowserRoutes() {
   }
 }
 
-console.log(`R9 live-site acceptance: ${baseUrl.href}`);
+console.log(`R9 deployment URL: ${deploymentUrl.href}`);
+console.log(`R9 HTTPS live-site acceptance: ${baseUrl.href}`);
 const assets = await verifyStaticSite();
-console.log(`✓ published index and initial assets (${assets.scriptSrc}, ${assets.stylesheetHref})`);
+console.log(`✓ published HTTPS index and initial assets (${assets.scriptSrc}, ${assets.stylesheetHref})`);
 await verifyBrowserRoutes();
-console.log(`✓ dashboard + ${EXPECTED_TOOLS.length} representative lazy routes rendered from the public Pages origin`);
+console.log(`✓ dashboard + ${EXPECTED_TOOLS.length} representative lazy routes rendered from the public HTTPS Pages origin`);
 console.log('✓ no uncaught browser errors or failed same-origin production assets detected');
 console.log('\nR9 live-site acceptance PASSED');
