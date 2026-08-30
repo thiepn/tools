@@ -175,34 +175,8 @@ export const BarcodeStudioTool: React.FC = () => {
   };
 
   // Camera Scanning Loop
-  const startCamera = async () => {
-    setScanError(null);
-    setScanResult(null);
-    setCameraPermission('prompting');
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      mediaStreamRef.current = stream;
-      setCameraPermission('granted');
-      setIsScanningCamera(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute('playsinline', 'true');
-        await videoRef.current.play();
-        scanVideoFrame();
-      }
-    } catch (err: any) {
-      setCameraPermission('denied');
-      setIsScanningCamera(false);
-      setScanError(err.message || 'Camera access denied or not available.');
-    }
-  };
-
-  const scanVideoFrame = () => {
-    if (!videoRef.current || !canvasRef.current || !isScanningCamera) return;
+  const scanVideoFrame = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current || !mediaStreamRef.current) return;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -225,19 +199,73 @@ export const BarcodeStudioTool: React.FC = () => {
               const first = barcodes[0];
               setScanResult({ text: first.rawValue, format: first.format });
               stopCameraStream();
-            } else {
+            } else if (mediaStreamRef.current) {
               animFrameRef.current = requestAnimationFrame(scanVideoFrame);
             }
           })
           .catch(() => {
-            animFrameRef.current = requestAnimationFrame(scanVideoFrame);
+            if (mediaStreamRef.current) {
+              animFrameRef.current = requestAnimationFrame(scanVideoFrame);
+            }
           });
         return;
       }
     }
 
-    animFrameRef.current = requestAnimationFrame(scanVideoFrame);
+    if (mediaStreamRef.current) {
+      animFrameRef.current = requestAnimationFrame(scanVideoFrame);
+    }
+  }, [stopCameraStream]);
+
+  const startCamera = async () => {
+    setScanError(null);
+    setScanResult(null);
+    setCameraPermission('prompting');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      mediaStreamRef.current = stream;
+      setCameraPermission('granted');
+      setIsScanningCamera(true);
+    } catch (err: any) {
+      setCameraPermission('denied');
+      setIsScanningCamera(false);
+      setScanError(err.message || 'Camera access denied or not available.');
+    }
   };
+
+  // The live video element is conditionally rendered only after scanning starts.
+  // Attach the already-acquired stream after that render commits, then begin the
+  // detection loop. This avoids both a null video ref and a stale state closure.
+  useEffect(() => {
+    if (!isScanningCamera || !videoRef.current || !mediaStreamRef.current) return;
+
+    let cancelled = false;
+    const video = videoRef.current;
+    video.srcObject = mediaStreamRef.current;
+    video.setAttribute('playsinline', 'true');
+
+    const startLoop = async () => {
+      try {
+        await video.play();
+        if (!cancelled && mediaStreamRef.current) {
+          scanVideoFrame();
+        }
+      } catch {
+        if (!cancelled) {
+          setScanError('Unable to start the camera preview in this browser.');
+          stopCameraStream();
+        }
+      }
+    };
+
+    void startLoop();
+    return () => {
+      cancelled = true;
+    };
+  }, [isScanningCamera, scanVideoFrame, stopCameraStream]);
 
   // Image Upload Scanning
   const handleScanImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
