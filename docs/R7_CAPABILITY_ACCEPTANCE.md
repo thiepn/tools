@@ -1,8 +1,7 @@
 # R7 — Browser Capability & Permission Acceptance
 
 Date: 2026-08-30  
-Repository: `thiepn/tools`  
-Branch: `chatgpt/r7-capability-acceptance`
+Repository: `thiepn/tools`
 
 ## Scope
 
@@ -20,7 +19,7 @@ For screen recording, the harness supplies a browser-native `canvas.captureStrea
 
 R7 executes 12 media and permission workflows:
 
-1. **QR Studio camera** — start fake camera, attach stream to video, stop, verify tracks end.
+1. **QR Studio camera** — start fake camera, attach stream to video, verify cleanup through either the visible manual Stop Camera action or QR Studio's automatic stop after a successful early decode.
 2. **Barcode Studio camera** — start fake camera, attach stream, execute active detector loop, switch tab, verify cleanup.
 3. **Document Scanner camera** — acquire fake camera, render camera view, attach stream after video mount, cancel, verify cleanup.
 4. **Audio Recorder microphone** — record from fake microphone, verify active `MediaRecorder`, navigate away through the SPA, verify stream and recorder shutdown.
@@ -43,6 +42,19 @@ The first R7 discovery execution passed 8/12 journeys and exposed four genuine b
 - **Audio Recorder:** microphone permission rejection was written only to the console. The tool now renders user-visible, accessible recovery feedback for denied or unavailable microphone access.
 
 No registry IDs, routes, utility count, dependencies, or unrelated media algorithms were changed to resolve these findings.
+
+## Post-merge harness stabilization
+
+The first independent `main` execution after the R7 merge passed R5 and R6 and passed 11/12 R7 journeys. The only failure was the QR positive-path fixture reporting `Missing clickable text: Stop Camera`.
+
+This was not a product regression. Chromium's synthetic camera feed can occasionally be interpreted as a QR code by `jsQR`. When that happens, QR Studio correctly stops the camera immediately after decoding and removes the Stop Camera control before the harness reaches its manual click. The preceding assertions had already verified that the camera stream became live and was attached to the scanner video.
+
+The CI fixture is therefore stabilized to recognize both valid product cleanup paths:
+
+- if Stop Camera is still visible, click it and require all captured tracks to end;
+- if QR Studio has already auto-stopped after an early decode, require all captured tracks to already be ended.
+
+A missing Stop Camera control while any captured camera track remains live is still a hard failure. No QR Studio product code was changed for this stabilization.
 
 ## Validation evidence
 
