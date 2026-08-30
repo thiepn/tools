@@ -412,6 +412,17 @@ async function checkKeyboard() {
     await pressKey(cdp, '/', 'Slash', '/');
     await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[role="dialog"]'))`), 'command palette');
 
+    // ModalSurface intentionally applies autofocus on a zero-delay timer after
+    // the dialog mounts. Wait for that contract instead of racing the timer.
+    await waitFor(
+      () => evaluate(
+        cdp,
+        `document.activeElement?.getAttribute('role') === 'combobox' || document.activeElement?.tagName === 'INPUT'`
+      ),
+      'command palette search focus',
+      2_000
+    ).catch(() => findings.push('command palette search field was not focused'));
+
     const palette = await evaluate(
       cdp,
       `({
@@ -421,9 +432,6 @@ async function checkKeyboard() {
       })`
     );
     if (palette.count !== 1) findings.push(`expected one command dialog, found ${palette.count}`);
-    if (palette.activeRole !== 'combobox' && palette.activeTag !== 'INPUT') {
-      findings.push('command palette search field was not focused');
-    }
 
     await pressKey(cdp, 'Escape', 'Escape');
     await waitFor(
