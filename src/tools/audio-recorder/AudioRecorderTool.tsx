@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Circle,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
 import {
@@ -29,6 +30,7 @@ export const AudioRecorderTool: React.FC = () => {
   const [mode, setMode] = useState<'record' | 'upload'>('record');
   const [isRecording, setIsRecording] = useState(false);
   const [recordElapsed, setRecordElapsed] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [rawAudioBuffer, setRawAudioBuffer] = useState<AudioBuffer | null>(null);
   const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
@@ -96,6 +98,7 @@ export const AudioRecorderTool: React.FC = () => {
 
   // Load sample synth audio
   const handleLoadSampleAudio = () => {
+    setErrorMessage(null);
     const ctx = getAudioContext();
     const sampleRate = ctx.sampleRate;
     const duration = 6; // 6 seconds
@@ -121,6 +124,7 @@ export const AudioRecorderTool: React.FC = () => {
 
   // Start Mic Recording
   const handleStartRecord = async () => {
+    setErrorMessage(null);
     recordedChunksRef.current = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -145,6 +149,7 @@ export const AudioRecorderTool: React.FC = () => {
           setExportedWavBlob(null);
         } catch (decErr) {
           console.error('Failed to decode recorded audio:', decErr);
+          setErrorMessage('The recorded audio could not be decoded. Try recording again.');
         }
 
         // Stop mic tracks
@@ -160,8 +165,9 @@ export const AudioRecorderTool: React.FC = () => {
       recordIntervalRef.current = window.setInterval(() => {
         setRecordElapsed((p) => p + 1);
       }, 1000);
-    } catch (err) {
-      console.error('Mic access denied:', err);
+    } catch {
+      setIsRecording(false);
+      setErrorMessage('Microphone access was denied or is unavailable. Check browser permissions and try again.');
     }
   };
 
@@ -175,6 +181,7 @@ export const AudioRecorderTool: React.FC = () => {
 
   // Handle file upload
   const handleFileUpload = async (file: File) => {
+    setErrorMessage(null);
     const ctx = getAudioContext();
     try {
       const decoded = await decodeAudioBlob(file, ctx);
@@ -185,6 +192,7 @@ export const AudioRecorderTool: React.FC = () => {
       setExportedWavBlob(null);
     } catch (err) {
       console.error('Failed to decode audio file:', err);
+      setErrorMessage('This audio file could not be decoded in your browser. Try a different supported format.');
     }
   };
 
@@ -366,6 +374,7 @@ export const AudioRecorderTool: React.FC = () => {
                   setRawAudioBuffer(null);
                   setExportedWavBlob(null);
                   setIsPlaying(false);
+                  setErrorMessage(null);
                 }}
                 className="px-2.5 py-1 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
               >
@@ -387,6 +396,16 @@ export const AudioRecorderTool: React.FC = () => {
             )}
           </div>
         </div>
+
+        {errorMessage && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-center gap-2"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         {/* Input Views: Record / Upload */}
         {!rawAudioBuffer && mode === 'record' && (
