@@ -61,9 +61,6 @@ export function sortJsonKeys(value: unknown): unknown {
     const source = frame.source as Record<string, unknown>;
     const target = frame.target as Record<string, unknown>;
     const keys = Object.keys(source).sort();
-
-    // Assign keys in sorted insertion order. Push child containers in reverse
-    // so traversal order is deterministic without affecting key order.
     const pendingChildren: Array<{
       source: unknown[] | Record<string, unknown>;
       target: unknown[] | Record<string, unknown>;
@@ -95,7 +92,9 @@ function calculateJsonStats(value: unknown): { keysCount: number; maxDepth: numb
 
   let keysCount = 0;
   let maxDepth = 1;
-  const stack: Array<{ value: unknown; depth: number }> = [{ value, depth: 1 }];
+  const stack: Array<{ value: unknown[] | Record<string, unknown>; depth: number }> = [
+    { value, depth: 1 },
+  ];
 
   while (stack.length > 0) {
     const current = stack.pop()!;
@@ -104,22 +103,24 @@ function calculateJsonStats(value: unknown): { keysCount: number; maxDepth: numb
     if (Array.isArray(current.value)) {
       for (let index = current.value.length - 1; index >= 0; index--) {
         const child = current.value[index];
+        const childDepth = current.depth + 1;
+        maxDepth = Math.max(maxDepth, childDepth);
         if (isContainer(child)) {
-          stack.push({ value: child, depth: current.depth + 1 });
+          stack.push({ value: child, depth: childDepth });
         }
       }
       continue;
     }
 
-    if (isContainer(current.value)) {
-      const record = current.value as Record<string, unknown>;
-      const keys = Object.keys(record);
-      keysCount += keys.length;
-      for (let index = keys.length - 1; index >= 0; index--) {
-        const child = record[keys[index]];
-        if (isContainer(child)) {
-          stack.push({ value: child, depth: current.depth + 1 });
-        }
+    const record = current.value as Record<string, unknown>;
+    const keys = Object.keys(record);
+    keysCount += keys.length;
+    for (let index = keys.length - 1; index >= 0; index--) {
+      const child = record[keys[index]];
+      const childDepth = current.depth + 1;
+      maxDepth = Math.max(maxDepth, childDepth);
+      if (isContainer(child)) {
+        stack.push({ value: child, depth: childDepth });
       }
     }
   }
