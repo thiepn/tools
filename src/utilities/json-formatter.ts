@@ -24,10 +24,8 @@ function isContainer(value: unknown): value is unknown[] | Record<string, unknow
 /**
  * Deep-sort object keys without recursive calls.
  *
- * JSON can legally be much deeper than the JavaScript call stack. The old
- * recursive implementation could therefore turn valid, deeply nested JSON
- * into a RangeError when "Sort keys" was enabled. An explicit work stack
- * keeps traversal bounded by heap memory instead of call-stack depth.
+ * JSON can legally be much deeper than the JavaScript call stack. An explicit
+ * work stack keeps traversal bounded by heap memory instead of call-stack depth.
  */
 export function sortJsonKeys(value: unknown): unknown {
   if (!isContainer(value)) return value;
@@ -128,6 +126,91 @@ function calculateJsonStats(value: unknown): { keysCount: number; maxDepth: numb
   return { keysCount, maxDepth };
 }
 
+type SerializeTask =
+  | { type: 'text'; text: string }
+  | { type: 'value'; value: unknown; depth: number };
+
+/**
+ * Serialize parsed JSON without recursive JavaScript calls. JSON.parse only
+ * produces JSON-safe primitives, arrays, and plain objects, so primitive
+ * escaping can still delegate to native JSON.stringify while container
+ * traversal remains iterative.
+ */
+function stringifyParsedJson(value: unknown, indent: JsonFormatOptions['indent']): string {
+  const pretty = indent !== 'minify';
+  const indentSize = pretty ? indent : 0;
+  const pieces: string[] = [];
+  const stack: SerializeTask[] = [{ type: 'value', value, depth: 0 }];
+  const indentation = (depth: number) => (pretty ? ' '.repeat(depth * indentSize) : '');
+
+  while (stack.length > 0) {
+    const task = stack.pop()!;
+    if (task.type === 'text') {
+      pieces.push(task.text);
+      continue;
+    }
+
+    if (!isContainer(task.value)) {
+      const serialized = JSON.stringify(task.value);
+      pieces.push(serialized === undefined ? 'null' : serialized);
+      continue;
+    }
+
+    if (Array.isArray(task.value)) {
+      if (task.value.length === 0) {
+        pieces.push('[]');
+        continue;
+      }
+
+      pieces.push('[');
+      if (pretty) pieces.push('\n');
+      stack.push({
+        type: 'text',
+        text: pretty ? `\n${indentation(task.depth)}]` : ']',
+      });
+
+      for (let index = task.value.length - 1; index >= 0; index--) {
+        if (index < task.value.length - 1) {
+          stack.push({ type: 'text', text: pretty ? ',\n' : ',' });
+        }
+        stack.push({ type: 'value', value: task.value[index], depth: task.depth + 1 });
+        if (pretty) {
+          stack.push({ type: 'text', text: indentation(task.depth + 1) });
+        }
+      }
+      continue;
+    }
+
+    const record = task.value as Record<string, unknown>;
+    const keys = Object.keys(record);
+    if (keys.length === 0) {
+      pieces.push('{}');
+      continue;
+    }
+
+    pieces.push('{');
+    if (pretty) pieces.push('\n');
+    stack.push({
+      type: 'text',
+      text: pretty ? `\n${indentation(task.depth)}}` : '}',
+    });
+
+    for (let index = keys.length - 1; index >= 0; index--) {
+      const key = keys[index];
+      if (index < keys.length - 1) {
+        stack.push({ type: 'text', text: pretty ? ',\n' : ',' });
+      }
+      stack.push({ type: 'value', value: record[key], depth: task.depth + 1 });
+      stack.push({ type: 'text', text: `${JSON.stringify(key)}${pretty ? ': ' : ':'}` });
+      if (pretty) {
+        stack.push({ type: 'text', text: indentation(task.depth + 1) });
+      }
+    }
+  }
+
+  return pieces.join('');
+}
+
 function parseJsonError(errorMsg: string, input: string): { line?: number; column?: number; message: string } {
   const lineColMatch = errorMsg.match(/line (\d+) column (\d+)/i);
   if (lineColMatch) {
@@ -168,13 +251,7 @@ export function formatAndValidateJson(
       parsed = sortJsonKeys(parsed);
     }
 
-    let formatted: string;
-    if (options.indent === 'minify') {
-      formatted = JSON.stringify(parsed);
-    } else {
-      formatted = JSON.stringify(parsed, null, options.indent);
-    }
-
+    const formatted = stringifyParsedJson(parsed, options.indent);
     const { keysCount, maxDepth } = calculateJsonStats(parsed);
 
     return {
