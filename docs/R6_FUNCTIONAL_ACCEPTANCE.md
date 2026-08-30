@@ -36,6 +36,33 @@ R6 explicitly distinguishes two storage classes:
 
 This makes the privacy model part of executable browser acceptance rather than documentation alone.
 
+## R5 gate hardening
+
+During R6 certification, the existing command-palette check exposed a timing race in the test harness. `ModalSurface` deliberately applies autofocus on a zero-delay timer after the dialog mounts, while the old R5 script inspected focus immediately when the dialog appeared. R6 changes only the R5 acceptance script so it waits for the documented autofocus state before asserting it. Application focus behavior is unchanged.
+
+## Validation evidence
+
+Final pull-request validation on Node 22 completed successfully with:
+
+- `npm ci`: passing;
+- `npm audit --audit-level=high`: **0 vulnerabilities**;
+- TypeScript: **PASS**;
+- Vitest: **178/178 tests passing across 8 suites**;
+- production Vite build: **PASS**;
+- initial JavaScript entry: **302.30 KiB raw / 90.35 KiB gzip**;
+- initial CSS: **88.59 KiB raw / 14.35 KiB gzip**;
+- R1 bundle budgets: **PASS**;
+- R5 Chromium route acceptance: **50/50 routes at 1440px + 50/50 routes at 320px**;
+- R5 route-level horizontal overflow findings: **0**;
+- R5 uncaught browser/page errors: **0**;
+- R5 dashboard discovery and keyboard acceptance: **PASS**;
+- R6 functional browser acceptance: **10/10 journeys passed**;
+- cross-tool transient payload localStorage leakage findings: **0**;
+- Notepad and Checklist intentional persistence checks: **PASS**;
+- Duplicate File Finder SHA-256 browser-file workflow: **PASS**.
+
+The first R6 functional execution passed 9/10 journeys and revealed that the Checklist test incorrectly assumed an empty product default. Checklist intentionally ships with a populated travel example. The acceptance fixture was corrected to seed a valid empty checklist store before testing add/check/reload behavior; no Checklist product logic was changed.
+
 ## CI gate
 
 The release validation sequence is now:
