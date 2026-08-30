@@ -94,6 +94,17 @@ describe('R10 large-input resilience', () => {
     expect(sortedCursor.final).toBe(true);
   }, 15_000);
 
+  it('formats 12,000 nested JSON levels without native stringify stack overflow', () => {
+    const depth = 12_000;
+    const input = `${'{"a":'.repeat(depth)}0${'}'.repeat(depth)}`;
+    const result = formatAndValidateJson(input, { indent: 'minify', sortKeys: true });
+
+    expect(result.isValid).toBe(true);
+    expect(result.formatted).toBe(input);
+    expect(result.stats?.keysCount).toBe(depth);
+    expect(result.stats?.depth).toBe(depth + 1);
+  }, 15_000);
+
   it('formats and measures a wide 10,000-key JSON object with sorted keys', () => {
     const source: Record<string, unknown> = {};
     for (let index = 9_999; index >= 0; index--) {
