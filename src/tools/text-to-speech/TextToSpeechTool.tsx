@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Volume2,
-  VolumeX,
   Play,
   Pause,
   Square,
@@ -9,9 +7,8 @@ import {
   Check,
   RotateCcw,
   Sparkles,
-  Sliders,
-  Languages,
   ShieldCheck,
+  AlertCircle,
 } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
 import {
@@ -29,9 +26,9 @@ export const TextToSpeechTool: React.FC = () => {
   const [voices, setVoices] = useState<SpeechVoiceOption[]>([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>('');
 
-  const [rate, setRate] = useState<number>(1.0); // 0.5x to 2.0x
-  const [pitch, setPitch] = useState<number>(1.0); // 0.5 to 1.5
-  const [volume, setVolume] = useState<number>(1.0); // 0.0 to 1.0
+  const [rate, setRate] = useState<number>(1.0);
+  const [pitch, setPitch] = useState<number>(1.0);
+  const [volume, setVolume] = useState<number>(1.0);
 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -43,7 +40,11 @@ export const TextToSpeechTool: React.FC = () => {
   const chunksRef = useRef<string[]>([]);
   const chunkIndexRef = useRef<number>(0);
 
-  // Check for incoming data transfer
+  const speechSupported =
+    typeof window !== 'undefined' &&
+    typeof window.speechSynthesis?.speak === 'function' &&
+    typeof window.SpeechSynthesisUtterance === 'function';
+
   useEffect(() => {
     const pending = getPendingTransfer('text-to-speech');
     if (pending) {
@@ -52,32 +53,34 @@ export const TextToSpeechTool: React.FC = () => {
     }
   }, []);
 
-  // Initialize Speech Synthesis and Voices
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      synthRef.current = window.speechSynthesis;
-
-      const loadVoices = () => {
-        const list = getAvailableVoices();
-        setVoices(list);
-        if (list.length > 0 && !selectedVoiceURI) {
-          const defaultVoice = list.find((v) => v.default) || list[0];
-          setSelectedVoiceURI(defaultVoice.voiceURI);
-        }
-      };
-
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+    if (!speechSupported) {
+      synthRef.current = null;
+      setVoices([]);
+      return;
     }
 
-    return () => {
-      if (synthRef.current) {
-        synthRef.current.cancel();
+    const synth = window.speechSynthesis;
+    synthRef.current = synth;
+
+    const loadVoices = () => {
+      const list = getAvailableVoices();
+      setVoices(list);
+      if (list.length > 0 && !selectedVoiceURI) {
+        const defaultVoice = list.find((v) => v.default) || list[0];
+        setSelectedVoiceURI(defaultVoice.voiceURI);
       }
     };
-  }, [selectedVoiceURI]);
 
-  // Load sample texts
+    loadVoices();
+    synth.onvoiceschanged = loadVoices;
+
+    return () => {
+      synth.cancel();
+      synth.onvoiceschanged = null;
+    };
+  }, [selectedVoiceURI, speechSupported]);
+
   const handleLoadSample = (sampleType: string) => {
     if (sampleType === 'welcome') {
       setText(
@@ -93,7 +96,8 @@ export const TextToSpeechTool: React.FC = () => {
   };
 
   const handleSpeakChunk = useCallback((index: number) => {
-    if (!synthRef.current || index >= chunksRef.current.length) {
+    const synth = synthRef.current;
+    if (!synth || index >= chunksRef.current.length) {
       setIsPlaying(false);
       setIsPaused(false);
       setActiveChunkIndex(0);
@@ -104,8 +108,7 @@ export const TextToSpeechTool: React.FC = () => {
     const utterance = new SpeechSynthesisUtterance(chunk);
 
     if (selectedVoiceURI) {
-      const nativeVoices = window.speechSynthesis.getVoices();
-      const matched = nativeVoices.find((v) => v.voiceURI === selectedVoiceURI);
+      const matched = synth.getVoices().find((v) => v.voiceURI === selectedVoiceURI);
       if (matched) utterance.voice = matched;
     }
 
@@ -131,11 +134,11 @@ export const TextToSpeechTool: React.FC = () => {
       setIsPaused(false);
     };
 
-    synthRef.current.speak(utterance);
+    synth.speak(utterance);
   }, [rate, pitch, volume, selectedVoiceURI]);
 
   const handlePlay = () => {
-    if (!text.trim() || !synthRef.current) return;
+    if (!speechSupported || !text.trim() || !synthRef.current) return;
 
     if (isPaused) {
       synthRef.current.resume();
@@ -163,8 +166,7 @@ export const TextToSpeechTool: React.FC = () => {
   };
 
   const handleStop = () => {
-    if (!synthRef.current) return;
-    synthRef.current.cancel();
+    if (synthRef.current) synthRef.current.cancel();
     setIsPlaying(false);
     setIsPaused(false);
     setActiveChunkIndex(0);
@@ -197,7 +199,16 @@ export const TextToSpeechTool: React.FC = () => {
       outputToTransfer={text}
     >
       <div className="space-y-6">
-        {/* Top Actions Ribbon */}
+        {!speechSupported && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Text-to-speech is not supported in this browser. You can still edit, copy, and send the text to other tools.</span>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
@@ -252,7 +263,6 @@ export const TextToSpeechTool: React.FC = () => {
           </div>
         </div>
 
-        {/* Text Input Area */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-neutral-500">
             <span className="font-semibold text-neutral-700 dark:text-neutral-300">
@@ -270,9 +280,7 @@ export const TextToSpeechTool: React.FC = () => {
           />
         </div>
 
-        {/* Playback Controls & Voice Settings */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800">
-          {/* Left: Playback Controls */}
           <div className="space-y-4">
             <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
               Voice Playback
@@ -282,9 +290,9 @@ export const TextToSpeechTool: React.FC = () => {
               {!isPlaying || isPaused ? (
                 <button
                   type="button"
-                  disabled={!text.trim()}
+                  disabled={!speechSupported || !text.trim()}
                   onClick={handlePlay}
-                  className="px-4 py-2 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white shadow-2xs inline-flex items-center gap-2 disabled:opacity-40"
+                  className="px-4 py-2 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white shadow-2xs inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>{isPaused ? 'Resume Speech' : 'Speak Text'}</span>
@@ -339,12 +347,11 @@ export const TextToSpeechTool: React.FC = () => {
             )}
 
             <div className="flex items-center gap-2 text-xs text-neutral-500 pt-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Native Web Speech API. Audio generated 100% locally.</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-500" aria-hidden="true" />
+              <span>Uses your browser/OS speech service. Voice availability and on-device status vary by platform.</span>
             </div>
           </div>
 
-          {/* Right: Pitch / Rate / Volume / Voice Sliders */}
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
@@ -353,11 +360,12 @@ export const TextToSpeechTool: React.FC = () => {
               <select
                 value={selectedVoiceURI}
                 onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs border rounded bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
+                disabled={!speechSupported || voices.length === 0}
+                className="w-full px-2.5 py-1.5 text-xs border rounded bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 disabled:opacity-50"
               >
                 {voices.map((v) => (
                   <option key={v.voiceURI} value={v.voiceURI}>
-                    {v.name} ({v.lang})
+                    {v.name} ({v.lang}){v.localService ? ' — local' : ''}
                   </option>
                 ))}
               </select>
@@ -412,7 +420,6 @@ export const TextToSpeechTool: React.FC = () => {
           </div>
         </div>
 
-        {/* Tool Chaining */}
         {text && (
           <div className="p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 space-y-1.5 text-xs">
             <span className="font-semibold text-neutral-700 dark:text-neutral-300">
