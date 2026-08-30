@@ -66,6 +66,25 @@ export const DocumentScannerTool: React.FC = () => {
     };
   }, [imageSrc]);
 
+  // The camera video is rendered only after cameraActive becomes true. Attach
+  // the acquired stream after that render commits instead of trying to use a
+  // ref that does not exist yet inside handleStartCamera.
+  useEffect(() => {
+    if (!cameraActive || !videoRef.current || !streamRef.current) return;
+
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    void video.play().catch(() => {
+      setErrorMessage('Unable to start the camera preview in this browser.');
+    });
+
+    return () => {
+      if (video.srcObject) {
+        video.srcObject = null;
+      }
+    };
+  }, [cameraActive]);
+
   // Load image
   const handleLoadImageFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -113,10 +132,6 @@ export const DocumentScannerTool: React.FC = () => {
         video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
       setCameraActive(true);
     } catch {
       setErrorMessage('Camera access was blocked or not available.');
@@ -268,7 +283,10 @@ export const DocumentScannerTool: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+                  if (streamRef.current) {
+                    streamRef.current.getTracks().forEach((t) => t.stop());
+                    streamRef.current = null;
+                  }
                   setCameraActive(false);
                 }}
                 className="px-4 py-2 text-xs font-semibold rounded-lg bg-neutral-800 text-white"
