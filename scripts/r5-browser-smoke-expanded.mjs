@@ -8,7 +8,7 @@ const TEMP_SCRIPT = path.resolve(ROOT, 'scripts/.r5-browser-smoke-expanded.tmp.m
 const EXTENSION_CATALOGS = [
   { phase: 'P1 PDF', path: path.resolve(ROOT, 'src/pdf/publicPdfTasks.ts'), expected: 20, shape: 'object' },
   { phase: 'P2 device diagnostics', path: path.resolve(ROOT, 'src/device/publicDeviceTasks.ts'), expected: 16, shape: 'tuple' },
-  { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46, shape: 'object' },
+  { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46, shape: 'tuple' },
   { phase: 'P4 file conversion', path: path.resolve(ROOT, 'src/files/publicFileConversionTasks.ts'), expected: 18, shape: 'tuple' },
   { phase: 'P5 image micro-tools', path: path.resolve(ROOT, 'src/image/publicImageTasks.ts'), expected: 23, shape: 'tuple' },
   { phase: 'P6 audio/video media', path: path.resolve(ROOT, 'src/media/publicMediaTasks.ts'), expected: 29, shape: 'tuple' },
