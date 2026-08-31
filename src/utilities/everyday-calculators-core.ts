@@ -37,8 +37,17 @@ export function simplifyFraction(numerator: number, denominator: number): { nume
 }
 
 export function parseNumberList(raw: string): number[] {
-  return raw
-    .split(/[\s,;]+/)
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  // Commas are the familiar list separator for inputs such as "1, 2, 3".
+  // When a semicolon is present, switch to semicolon/newline-separated mode so
+  // locales that use a decimal comma can enter values such as "1,5; 2,5".
+  const parts = trimmed.includes(';')
+    ? trimmed.split(/[;\n]+/)
+    : trimmed.split(/[\s,]+/);
+
+  return parts
     .map((part) => Number(part.trim().replace(',', '.')))
     .filter(Number.isFinite);
 }
