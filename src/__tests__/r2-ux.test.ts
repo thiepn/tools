@@ -3,6 +3,7 @@ import { CATEGORIES, TOOLS_REGISTRY } from '../registry/tools';
 import { registerPdfPublicTools } from '../registry/pdf-extension';
 import { registerDeviceDiagnosticTools } from '../registry/device-extension';
 import { registerCalculatorTools } from '../registry/calculator-extension';
+import { registerFileConversionTools } from '../registry/file-conversion-extension';
 import { searchTools } from '../registry/search';
 import { CATEGORY_ORDER, getCategoryPresentation } from '../registry/category-presentation';
 import { getStoredPreferences, recordRecentTool, toggleFavorite } from '../storage/preferences';
@@ -10,6 +11,7 @@ import { getStoredPreferences, recordRecentTool, toggleFavorite } from '../stora
 registerPdfPublicTools();
 registerDeviceDiagnosticTools();
 registerCalculatorTools();
+registerFileConversionTools();
 
 describe('R2 catalog information architecture', () => {
   it('covers every registered category exactly once in the discovery order', () => {
@@ -22,6 +24,7 @@ describe('R2 catalog information architecture', () => {
   it('keeps general-use discovery ahead of developer utilities', () => {
     expect(CATEGORY_ORDER[0]).toBe('productivity');
     expect(CATEGORY_ORDER[1]).toBe('pdf');
+    expect(CATEGORY_ORDER.indexOf('files')).toBeLessThan(CATEGORY_ORDER.indexOf('developer'));
     expect(CATEGORY_ORDER.indexOf('device')).toBeLessThan(CATEGORY_ORDER.indexOf('developer'));
     expect(CATEGORY_ORDER.indexOf('calculator')).toBeLessThan(CATEGORY_ORDER.indexOf('developer'));
     expect(CATEGORY_ORDER.at(-1)).toBe('developer');
@@ -45,11 +48,13 @@ describe('R2 ranked tool discovery', () => {
   it('ranks an exact tool name ahead of partial matches', () => {
     expect(searchTools('unit converter')[0]?.id).toBe('unit-converter');
     expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');
+    expect(searchTools('csv to excel')[0]?.id).toBe('csv-to-xlsx');
   });
 
   it('supports multi-word task searches instead of only phrase substrings', () => {
     expect(searchTools('resize image')[0]?.id).toBe('image-optimizer');
     expect(searchTools('fuel trip cost')[0]?.id).toBe('fuel-trip-cost-calculator');
+    expect(searchTools('convert json csv')[0]?.id).toBe('json-to-csv');
   });
 
   it('uses category vocabulary and everyday synonyms in discovery', () => {
@@ -63,6 +68,9 @@ describe('R2 ranked tool discovery', () => {
 
     const calculatorResults = searchTools('calculator');
     expect(calculatorResults.filter((tool) => tool.category === 'calculator').length).toBeGreaterThan(40);
+
+    const fileResults = searchTools('file converter');
+    expect(fileResults.filter((tool) => tool.category === 'files').length).toBeGreaterThan(10);
   });
 
   it('respects category filtering while preserving ranked matches', () => {
@@ -74,6 +82,7 @@ describe('R2 ranked tool discovery', () => {
     expect(searchTools('', 'device')).toHaveLength(16);
     expect(searchTools('', 'calculator')).toHaveLength(46);
     expect(searchTools('', 'calculator').every((tool) => tool.category === 'calculator')).toBe(true);
+    expect(searchTools('', 'files').length).toBeGreaterThanOrEqual(22);
   });
 
   it('finds task-oriented queries across names, descriptions, and keywords', () => {
@@ -86,6 +95,9 @@ describe('R2 ranked tool discovery', () => {
     expect(searchTools('loan monthly payment')[0]?.id).toBe('loan-calculator');
     expect(searchTools('paint wall liters')[0]?.id).toBe('paint-calculator');
     expect(searchTools('running min per km')[0]?.id).toBe('running-pace-calculator');
+    expect(searchTools('excel to csv')[0]?.id).toBe('xlsx-to-csv');
+    expect(searchTools('gzip file')[0]?.id).toBe('gzip-compress');
+    expect(searchTools('merge csv')[0]?.id).toBe('csv-merger');
   });
 
   it('returns the unfiltered registry order for an empty query', () => {
