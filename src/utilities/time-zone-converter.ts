@@ -1,5 +1,5 @@
 export interface TimeZoneItem {
-  id: string; // IANA identifier, e.g. "America/New_York"
+  id: string;
   city: string;
   country?: string;
   region: string;
@@ -44,58 +44,147 @@ export interface ConvertedTimeRow {
   formattedTime: string;
   formattedDate: string;
   utcOffset: string;
-  dayDifference: string; // "+1 day", "-1 day", "Same day"
-  isBusinessHours: boolean; // 9:00 - 18:00
+  dayDifference: string;
+  isBusinessHours: boolean;
   isoString: string;
 }
 
-// Convert a given source date/time in sourceTimezone to exact UTC Date object
+export interface ZonedDateResolution {
+  date: Date;
+  status: 'exact' | 'ambiguous' | 'nonexistent';
+  candidates: Date[];
+  shiftedByMinutes: number;
+}
+
+interface WallClockParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}
+
+const zonedPartsFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getPartsFormatter(zoneId: string): Intl.DateTimeFormat {
+  let formatter = zonedPartsFormatterCache.get(zoneId);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: zoneId,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+    zonedPartsFormatterCache.set(zoneId, formatter);
+  }
+  return formatter;
+}
+
+function getWallClockParts(date: Date, zoneId: string): WallClockParts {
+  const map: Record<string, number> = {};
+  for (const part of getPartsFormatter(zoneId).formatToParts(date)) {
+    if (part.type !== 'literal') map[part.type] = Number(part.value);
+  }
+  return {
+    year: map.year,
+    month: map.month,
+    day: map.day,
+    hour: map.hour === 24 ? 0 : map.hour,
+    minute: map.minute,
+    second: map.second || 0,
+  };
+}
+
+function wallClockMillis(parts: WallClockParts): number {
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+}
+
+function getOffsetMillis(date: Date, zoneId: string): number {
+  const parts = getWallClockParts(date, zoneId);
+  // Compare the displayed wall-clock tuple with the same instant rounded to seconds.
+  const instant = Math.floor(date.getTime() / 1000) * 1000;
+  return wallClockMillis(parts) - instant;
+}
+
+function sameWallClock(a: WallClockParts, b: WallClockParts): boolean {
+  return a.year === b.year && a.month === b.month && a.day === b.day && a.hour === b.hour && a.minute === b.minute;
+}
+
+function candidateOffsets(targetWallMillis: number, zoneId: string): number[] {
+  const offsets = new Set<number>();
+  for (const hours of [-48, -24, -12, 0, 12, 24, 48]) {
+    offsets.add(getOffsetMillis(new Date(targetWallMillis + hours * 3600_000), zoneId));
+  }
+  return [...offsets];
+}
+
+/**
+ * Resolves a local wall-clock time in an IANA zone and explicitly reports DST
+ * folds (ambiguous times) and gaps (nonexistent times). For a fold the earlier
+ * instant is selected. For a gap, the wall time is shifted forward by the gap
+ * duration, matching the common "compatible" behavior used by modern date APIs.
+ */
+export function resolveDateInZone(
+  year: number,
+  month: number,
+  day: number,
+  hours: number,
+  minutes: number,
+  sourceZoneId: string
+): ZonedDateResolution {
+  const desired: WallClockParts = { year, month, day, hour: hours, minute: minutes, second: 0 };
+  const desiredMillis = wallClockMillis(desired);
+  const offsets = candidateOffsets(desiredMillis, sourceZoneId);
+  const exactCandidates = offsets
+    .map((offset) => new Date(desiredMillis - offset))
+    .filter((candidate) => sameWallClock(getWallClockParts(candidate, sourceZoneId), desired))
+    .sort((a, b) => a.getTime() - b.getTime())
+    .filter((candidate, index, array) => index === 0 || candidate.getTime() !== array[index - 1].getTime());
+
+  if (exactCandidates.length > 0) {
+    return {
+      date: exactCandidates[0],
+      status: exactCandidates.length > 1 ? 'ambiguous' : 'exact',
+      candidates: exactCandidates,
+      shiftedByMinutes: 0,
+    };
+  }
+
+  // Gap: inspect candidate instants produced by the before/after offsets and
+  // choose the smallest positive wall-clock shift. Example: 02:30 in a 1-hour
+  // spring-forward gap becomes 03:30 rather than silently becoming 03:00.
+  const shifted = offsets
+    .map((offset) => {
+      const date = new Date(desiredMillis - offset);
+      const displayed = wallClockMillis(getWallClockParts(date, sourceZoneId));
+      return { date, diffMinutes: Math.round((displayed - desiredMillis) / 60_000) };
+    })
+    .filter((entry) => entry.diffMinutes > 0)
+    .sort((a, b) => a.diffMinutes - b.diffMinutes || a.date.getTime() - b.date.getTime());
+
+  const fallback = shifted[0] || { date: new Date(desiredMillis - offsets[0]), diffMinutes: 0 };
+  return {
+    date: fallback.date,
+    status: 'nonexistent',
+    candidates: [],
+    shiftedByMinutes: fallback.diffMinutes,
+  };
+}
+
 export function createDateInZone(
   year: number,
-  month: number, // 1-12
+  month: number,
   day: number,
   hours: number,
   minutes: number,
   sourceZoneId: string
 ): Date {
-  // Use Intl to get parts of arbitrary UTC timestamp in sourceZoneId
-  // and binary search or offset deduction to find exact matching UTC point.
-  // 1. Initial approximation using basic ISO string (assumed UTC)
-  const approxUtc = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-
-  // Determine the timezone's offset at approxUtc
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: sourceZoneId,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(approxUtc);
-  const partMap: Record<string, number> = {};
-  parts.forEach((p) => {
-    if (p.type !== 'literal') {
-      partMap[p.type] = parseInt(p.value, 10);
-    }
-  });
-
-  // Calculate local date millis at approxUtc
-  const localTargetMillis = Date.UTC(year, month - 1, day, hours, minutes, 0);
-  const localActualMillis = Date.UTC(
-    partMap.year,
-    partMap.month - 1,
-    partMap.day,
-    partMap.hour === 24 ? 0 : partMap.hour,
-    partMap.minute,
-    partMap.second || 0
-  );
-
-  const diff = localTargetMillis - localActualMillis;
-  return new Date(approxUtc.getTime() + diff);
+  return resolveDateInZone(year, month, day, hours, minutes, sourceZoneId).date;
 }
 
 export function formatZoneTime(
@@ -110,81 +199,42 @@ export function formatZoneTime(
     minute: '2-digit',
     hour12: !is24Hour,
   });
-
   const dateFormatter = new Intl.DateTimeFormat('en-US', {
     timeZone: targetZoneId,
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
-
   const offsetFormatter = new Intl.DateTimeFormat('en-US', {
     timeZone: targetZoneId,
     timeZoneName: 'shortOffset',
   });
+  const offsetPart = offsetFormatter.formatToParts(utcDate).find((part) => part.type === 'timeZoneName')?.value || 'UTC';
+  const parts = getWallClockParts(utcDate, targetZoneId);
 
-  const offsetParts = offsetFormatter.formatToParts(utcDate);
-  const offsetPart = offsetParts.find((p) => p.type === 'timeZoneName')?.value || 'UTC';
+  const targetDayTimestamp = Date.UTC(parts.year, parts.month - 1, parts.day);
+  const refDayTimestamp = Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate());
+  const dayDiffDays = Math.round((targetDayTimestamp - refDayTimestamp) / 86_400_000);
+  let dayDifference = 'Same day';
+  if (dayDiffDays > 0) dayDifference = `+${dayDiffDays} day${dayDiffDays > 1 ? 's' : ''}`;
+  else if (dayDiffDays < 0) dayDifference = `${dayDiffDays} day${dayDiffDays < -1 ? 's' : ''}`;
 
-  // Calculate day difference relative to reference source date
-  const refPartsFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: targetZoneId,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    hour12: false,
-  });
-
-  const parts = refPartsFormatter.formatToParts(utcDate);
-  const zYear = parseInt(parts.find((p) => p.type === 'year')?.value || '0', 10);
-  const zMonth = parseInt(parts.find((p) => p.type === 'month')?.value || '1', 10);
-  const zDay = parseInt(parts.find((p) => p.type === 'day')?.value || '1', 10);
-  const zHour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
-
-  // Compare calendar days
-  const targetDayTimestamp = Date.UTC(zYear, zMonth - 1, zDay);
-  const refDayTimestamp = Date.UTC(
-    referenceDate.getUTCFullYear(),
-    referenceDate.getUTCMonth(),
-    referenceDate.getUTCDate()
-  );
-
-  const dayDiffMs = targetDayTimestamp - refDayTimestamp;
-  const dayDiffDays = Math.round(dayDiffMs / (1000 * 60 * 60 * 24));
-
-  let dayDiffStr = 'Same day';
-  if (dayDiffDays > 0) {
-    dayDiffStr = `+${dayDiffDays} day${dayDiffDays > 1 ? 's' : ''}`;
-  } else if (dayDiffDays < 0) {
-    dayDiffStr = `${dayDiffDays} day${dayDiffDays < -1 ? 's' : ''}`;
-  }
-
-  const isBusinessHours = zHour >= 9 && zHour < 18;
-
-  // Lookup city label
-  const foundItem = POPULAR_TIMEZONES.find((t) => t.id === targetZoneId);
-  const cityName = foundItem?.city || targetZoneId.split('/').pop()?.replace(/_/g, ' ') || targetZoneId;
-  const countryName = foundItem?.country;
-
+  const foundItem = POPULAR_TIMEZONES.find((zone) => zone.id === targetZoneId);
   return {
     zoneId: targetZoneId,
-    city: cityName,
-    country: countryName,
+    city: foundItem?.city || targetZoneId.split('/').pop()?.replace(/_/g, ' ') || targetZoneId,
+    country: foundItem?.country,
     formattedTime: timeFormatter.format(utcDate),
     formattedDate: dateFormatter.format(utcDate),
     utcOffset: offsetPart,
-    dayDifference: dayDiffStr,
-    isBusinessHours,
+    dayDifference,
+    isBusinessHours: parts.hour >= 9 && parts.hour < 18,
     isoString: utcDate.toISOString(),
   };
 }
 
 export function generateComparisonSummary(rows: ConvertedTimeRow[]): string {
   return rows
-    .map(
-      (r) =>
-        `${r.city.padEnd(20)} ${r.formattedDate.padEnd(14)} ${r.formattedTime.padEnd(10)} (${r.utcOffset}) ${r.dayDifference !== 'Same day' ? `[${r.dayDifference}]` : ''}`.trim()
-    )
+    .map((row) => `${row.city.padEnd(20)} ${row.formattedDate.padEnd(14)} ${row.formattedTime.padEnd(10)} (${row.utcOffset}) ${row.dayDifference !== 'Same day' ? `[${row.dayDifference}]` : ''}`.trim())
     .join('\n');
 }

@@ -1,99 +1,14 @@
-/**
- * Screen Recorder Utility
- * Browser-native screen and audio recording with clean MediaStream lifecycle
- */
+/** Screen Recorder Utility */
+export interface RecordingMeta{blob:Blob;url:string;durationSeconds:number;mimeType:string;sizeBytes:number;recordedAt:Date;}
+export const VIDEO_MIME_CANDIDATES=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4;codecs=avc1,mp4a.40.2','video/mp4'] as const;
 
-export interface RecordingMeta {
-  blob: Blob;
-  url: string;
-  durationSeconds: number;
-  mimeType: string;
-  sizeBytes: number;
-  recordedAt: Date;
-}
+export function getSupportedVideoMimeType():string{if(typeof MediaRecorder==='undefined')return'video/webm';for(const type of VIDEO_MIME_CANDIDATES){try{if(MediaRecorder.isTypeSupported(type))return type;}catch{/* older implementations */}}return'video/webm';}
+/** Returns no mimeType override when the browser does not advertise any candidate, allowing MediaRecorder to choose safely. */
+export function getMediaRecorderOptions(videoBitsPerSecond?:number):MediaRecorderOptions{const options:MediaRecorderOptions={};if(typeof MediaRecorder!=='undefined'){for(const type of VIDEO_MIME_CANDIDATES){try{if(MediaRecorder.isTypeSupported(type)){options.mimeType=type;break;}}catch{}}}if(Number.isFinite(videoBitsPerSecond)&&(videoBitsPerSecond??0)>0)options.videoBitsPerSecond=Math.round(videoBitsPerSecond!);return options;}
 
-/**
- * Detects the most optimal supported MIME type in the current browser
- */
-export function getSupportedVideoMimeType(): string {
-  if (typeof MediaRecorder === 'undefined') {
-    return 'video/webm';
-  }
-
-  const candidateTypes = [
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm;codecs=h264,opus',
-    'video/webm',
-    'video/mp4;codecs=avc1,mp4a.40.2',
-    'video/mp4',
-  ];
-
-  for (const type of candidateTypes) {
-    if (MediaRecorder.isTypeSupported(type)) {
-      return type;
-    }
-  }
-
-  return 'video/webm';
-}
-
-/**
- * Formats duration in seconds to mm:ss or hh:mm:ss
- */
-export function formatRecordingDuration(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds));
-  const hrs = Math.floor(s / 3600);
-  const mins = Math.floor((s % 3600) / 60);
-  const secs = s % 60;
-
-  const mm = String(mins).padStart(2, '0');
-  const ss = String(secs).padStart(2, '0');
-
-  if (hrs > 0) {
-    const hh = String(hrs).padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
-  }
-  return `${mm}:${ss}`;
-}
-
-/**
- * Formats file size in bytes to human-readable string
- */
-export function formatByteSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-/**
- * Generates standardized recording filename
- */
-export function generateRecordingFilename(mimeType = 'video/webm'): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const mins = String(now.getMinutes()).padStart(2, '0');
-
-  const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-  return `screen-recording-${year}-${month}-${day}-${hours}${mins}.${ext}`;
-}
-
-/**
- * Stops all tracks in given MediaStream(s)
- */
-export function stopAllMediaTracks(...streams: (MediaStream | null | undefined)[]): void {
-  for (const s of streams) {
-    if (s && s.getTracks) {
-      s.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch {
-          // Ignore
-        }
-      });
-    }
-  }
-}
+export function formatRecordingDuration(seconds:number):string{const value=Math.max(0,Math.floor(Number.isFinite(seconds)?seconds:0)),hours=Math.floor(value/3600),minutes=Math.floor((value%3600)/60),secs=value%60,pad=(n:number)=>String(n).padStart(2,'0');return hours>0?`${pad(hours)}:${pad(minutes)}:${pad(secs)}`:`${pad(minutes)}:${pad(secs)}`;}
+export function formatByteSize(bytes:number):string{if(!Number.isFinite(bytes)||bytes<=0)return'0 B';if(bytes<1024)return`${Math.floor(bytes)} B`;if(bytes<1024*1024)return`${(bytes/1024).toFixed(1)} KB`;if(bytes<1024**3)return`${(bytes/1024**2).toFixed(2)} MB`;if(bytes<1024**4)return`${(bytes/1024**3).toFixed(2)} GB`;return`${(bytes/1024**4).toFixed(2)} TB`;}
+export function generateRecordingFilename(mimeType='video/webm',date=new Date()):string{const pad=(n:number)=>String(n).padStart(2,'0');const ext=mimeType.toLowerCase().includes('mp4')?'mp4':'webm';return`screen-recording-${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}.${ext}`;}
+/** Accurate active duration from monotonic timestamps, excluding accumulated pause time. */
+export function calculateElapsedRecordingSeconds(startMs:number,pausedDurationMs:number,nowMs:number):number{if(![startMs,pausedDurationMs,nowMs].every(Number.isFinite))return 0;return Math.max(0,(nowMs-startMs-Math.max(0,pausedDurationMs))/1000);}
+export function stopAllMediaTracks(...streams:(MediaStream|null|undefined)[]):void{for(const stream of streams){for(const track of stream?.getTracks?.()||[]){try{track.stop();}catch{}}}}
