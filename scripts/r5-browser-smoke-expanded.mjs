@@ -10,27 +10,36 @@ const TEMP_SCRIPT = path.resolve(ROOT, 'scripts/.r5-browser-smoke-expanded.tmp.m
 const baselineSource = readFileSync(BASELINE_SCRIPT, 'utf8');
 const pdfCatalogSource = readFileSync(PDF_CATALOG, 'utf8');
 
-// The original R5 script intentionally owns the frozen 50-tool route baseline.
-// Public-completeness phases append shared-engine routes outside that source file.
-// Count only top-level `id:` declarations from the P1 PDF catalog and adjust the
-// dashboard cardinality assertion; route traversal itself remains the exact
-// historical 50-tool R5 sweep.
+// The historical R5 source still owns and validates the frozen 50-tool base
+// registry. Public-completeness families are appended only after that exact
+// baseline check succeeds, so expansion cannot silently mutate the original
+// S-tier catalog while every runtime route still receives the browser sweep.
 const pdfTaskIds = [...pdfCatalogSource.matchAll(/^\s{4}id:\s*'([^']+)'/gm)].map((match) => match[1]);
 if (pdfTaskIds.length !== 20 || new Set(pdfTaskIds).size !== 20) {
   throw new Error(`Expected 20 unique P1 PDF task IDs; found ${pdfTaskIds.length}.`);
 }
 
-const expectedDashboardTools = 50 + pdfTaskIds.length;
+const expectedRuntimeTools = 50 + pdfTaskIds.length;
 const oldAssertion = "if (state.uniqueTools !== 50) findings.push(`dashboard exposes ${state.uniqueTools}/50 tool links`);";
-const newAssertion = `if (state.uniqueTools !== ${expectedDashboardTools}) findings.push(\`dashboard exposes \${state.uniqueTools}/${expectedDashboardTools} tool links\`);`;
+const newAssertion = `if (state.uniqueTools !== ${expectedRuntimeTools}) findings.push(\`dashboard exposes \${state.uniqueTools}/${expectedRuntimeTools} tool links\`);`;
+const oldToolIds = 'const toolIds = await getToolIds();';
+const newToolIds = `const toolIds = [...await getToolIds(), ...${JSON.stringify(pdfTaskIds)}];`;
 
-if (!baselineSource.includes(oldAssertion)) {
-  throw new Error('R5 dashboard assertion changed; review the expansion wrapper before continuing.');
+for (const required of [oldAssertion, oldToolIds]) {
+  if (!baselineSource.includes(required)) {
+    throw new Error('R5 baseline structure changed; review the expansion wrapper before continuing.');
+  }
 }
 
-const patchedSource = baselineSource.replace(oldAssertion, newAssertion);
-if (patchedSource === baselineSource || patchedSource.includes(oldAssertion)) {
-  throw new Error('Unable to apply the expansion-aware R5 dashboard assertion.');
+let patchedSource = baselineSource
+  .replace(oldAssertion, newAssertion)
+  .replace(oldToolIds, newToolIds)
+  .replace("console.log('- 50/50 routes rendered at 1440px');", `console.log('- ${expectedRuntimeTools}/${expectedRuntimeTools} routes rendered at 1440px');`)
+  .replace("console.log('- 50/50 routes rendered at 320px');", `console.log('- ${expectedRuntimeTools}/${expectedRuntimeTools} routes rendered at 320px');`)
+  .replace("console.log('- dashboard exposes all 50 tools at both viewports');", `console.log('- dashboard exposes all ${expectedRuntimeTools} tools at both viewports');`);
+
+if (patchedSource === baselineSource || patchedSource.includes(oldAssertion) || patchedSource.includes(oldToolIds)) {
+  throw new Error('Unable to apply the expansion-aware R5 transformations.');
 }
 
 try {
