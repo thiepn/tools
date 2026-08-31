@@ -1,12 +1,10 @@
 {
   "name": "tiny-tools",
   "private": true,
-  "version": "0.11.0",
-  "description": "A privacy-first collection of 86 public browser utility routes for text, PDFs, device diagnostics, files, images, media, productivity, math, time, and everyday tasks.",
+  "version": "0.12.0",
+  "description": "A privacy-first collection of 132 public browser utility routes for text, PDFs, device diagnostics, calculators, files, images, media, productivity, math, time, and everyday tasks.",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
+  "engines": { "node": ">=22" },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
@@ -43,8 +41,5 @@
     "vite": "^6.2.3",
     "vitest": "^4.1.11"
   },
-  "overrides": {
-    "adm-zip": "0.6.0",
-    "sharp": "0.35.4"
-  }
+  "overrides": { "adm-zip": "0.6.0", "sharp": "0.35.4" }
 }
