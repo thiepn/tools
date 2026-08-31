@@ -1,102 +1,20 @@
-export interface QueryParamItem { id: string; key: string; value: string; }
-
-function bytesToBinary(bytes: Uint8Array): string {
-  const chunks: string[] = [];
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    chunks.push(String.fromCharCode(...bytes.subarray(i, Math.min(bytes.length, i + chunkSize))));
-  }
-  return chunks.join('');
-}
-
-export function utf8ToBase64(str: string): { result?: string; error?: string } {
-  try { return { result: btoa(bytesToBinary(new TextEncoder().encode(str))) }; }
-  catch (error) { return { error: error instanceof Error ? error.message : 'Failed to encode to Base64' }; }
-}
-
-function normalizeBase64(input: string): string | null {
-  let cleaned = input.trim().replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
-  if (!cleaned) return '';
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleaned) || cleaned.length % 4 === 1) return null;
-  cleaned = cleaned.replace(/=+$/, '');
-  return cleaned.padEnd(Math.ceil(cleaned.length / 4) * 4, '=');
-}
-
-export function base64ToUtf8(b64: string): { result?: string; error?: string } {
-  try {
-    const normalized = normalizeBase64(b64);
-    if (normalized === null) return { error: 'Invalid Base64 or Base64URL input' };
-    if (!normalized) return { result: '' };
-    const binary = atob(normalized);
-    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-    return { result: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
-  } catch { return { error: 'Invalid Base64 or corrupted UTF-8 byte sequence' }; }
-}
-
-export function utf8ToBase64Url(str: string, includePadding = false): { result?: string; error?: string } {
-  const encoded = utf8ToBase64(str);
-  if (!encoded.result) return encoded;
-  let result = encoded.result.replace(/\+/g, '-').replace(/\//g, '_');
-  if (!includePadding) result = result.replace(/=+$/, '');
-  return { result };
-}
-
-export const base64UrlToUtf8 = base64ToUtf8;
-
-export function urlEncodeComponent(text: string): string { return encodeURIComponent(text); }
-export function urlDecodeComponent(text: string): { result?: string; error?: string } {
-  try { return { result: decodeURIComponent(text) }; } catch { return { error: 'Malformed percent-encoded URI component' }; }
-}
-export function urlEncodeFull(text: string): string { return encodeURI(text); }
-export function urlDecodeFull(text: string): { result?: string; error?: string } {
-  try { return { result: decodeURI(text) }; } catch { return { error: 'Malformed percent-encoded URI' }; }
-}
-
-export function parseQueryString(input: string): { baseUrl: string; params: QueryParamItem[] } {
-  const trimmed = input.trim();
-  if (!trimmed) return { baseUrl: '', params: [] };
-
-  const qIndex = trimmed.indexOf('?');
-  const hashIndex = trimmed.indexOf('#');
-  let baseUrl = '';
-  let queryString = trimmed;
-  let fragment = '';
-
-  if (qIndex >= 0) {
-    const effectiveHash = hashIndex > qIndex ? hashIndex : -1;
-    baseUrl = trimmed.slice(0, qIndex);
-    queryString = trimmed.slice(qIndex + 1, effectiveHash >= 0 ? effectiveHash : undefined);
-    if (effectiveHash >= 0) fragment = trimmed.slice(effectiveHash);
-    baseUrl += fragment;
-  } else if (trimmed.startsWith('?')) {
-    queryString = trimmed.slice(1);
-  } else if (hashIndex >= 0) {
-    return { baseUrl: trimmed, params: [] };
-  }
-
-  const params: QueryParamItem[] = [];
-  for (const pair of queryString.split('&')) {
-    if (!pair) continue;
-    const eqIndex = pair.indexOf('=');
-    const rawKey = eqIndex >= 0 ? pair.slice(0, eqIndex) : pair;
-    const rawValue = eqIndex >= 0 ? pair.slice(eqIndex + 1) : '';
-    const decode = (value: string) => {
-      try { return decodeURIComponent(value.replace(/\+/g, ' ')); } catch { return value; }
-    };
-    params.push({ id: `param-${params.length + 1}`, key: decode(rawKey), value: decode(rawValue) });
-  }
-  return { baseUrl, params };
-}
-
-export function buildQueryString(baseUrl: string, params: QueryParamItem[]): string {
-  const validPairs = params.filter((param) => param.key.trim()).map((param) => `${encodeURIComponent(param.key)}=${encodeURIComponent(param.value)}`);
-  const query = validPairs.join('&');
-  if (!query) return baseUrl;
-  if (!baseUrl) return query;
-
-  const hashIndex = baseUrl.indexOf('#');
-  const fragment = hashIndex >= 0 ? baseUrl.slice(hashIndex) : '';
-  const withoutFragment = hashIndex >= 0 ? baseUrl.slice(0, hashIndex) : baseUrl;
-  const separator = withoutFragment.includes('?') ? (/[?&]$/.test(withoutFragment) ? '' : '&') : '?';
-  return `${withoutFragment}${separator}${query}${fragment}`;
-}
+export interface QueryParamItem{id:string;key:string;value:string;hasEquals?:boolean;}
+export interface ParsedUrlDetails{valid:boolean;href:string;protocol:string;hostname:string;port:string;pathname:string;search:string;hash:string;username:string;passwordPresent:boolean;origin:string;}
+function bytesToBinary(bytes:Uint8Array):string{const chunks:string[]=[],size=0x8000;for(let i=0;i<bytes.length;i+=size)chunks.push(String.fromCharCode(...bytes.subarray(i,Math.min(bytes.length,i+size))));return chunks.join('');}
+export function bytesToBase64(bytes:Uint8Array):string{return btoa(bytesToBinary(bytes));}
+export function base64ToBytes(input:string):{result?:Uint8Array;error?:string}{try{const normalized=normalizeBase64(input);if(normalized===null)return{error:'Invalid Base64 or Base64URL input'};if(!normalized)return{result:new Uint8Array()};const binary=atob(normalized);return{result:Uint8Array.from(binary,c=>c.charCodeAt(0))};}catch{return{error:'Invalid Base64 input'};}}
+export function utf8ToBase64(str:string):{result?:string;error?:string}{try{return{result:bytesToBase64(new TextEncoder().encode(str))};}catch(error){return{error:error instanceof Error?error.message:'Failed to encode to Base64'};}}
+function normalizeBase64(input:string):string|null{let cleaned=input.trim().replace(/\s+/g,'').replace(/-/g,'+').replace(/_/g,'/');if(!cleaned)return'';if(!/^[A-Za-z0-9+/]*={0,2}$/.test(cleaned)||cleaned.length%4===1)return null;cleaned=cleaned.replace(/=+$/,'');return cleaned.padEnd(Math.ceil(cleaned.length/4)*4,'=');}
+export function base64ToUtf8(b64:string):{result?:string;error?:string}{const bytes=base64ToBytes(b64);if(!bytes.result)return{error:bytes.error};try{return{result:new TextDecoder('utf-8',{fatal:true}).decode(bytes.result)};}catch{return{error:'Invalid Base64 or corrupted UTF-8 byte sequence'};}}
+export function utf8ToBase64Url(str:string,includePadding=false):{result?:string;error?:string}{const encoded=utf8ToBase64(str);if(encoded.result===undefined)return encoded;let result=encoded.result.replace(/\+/g,'-').replace(/\//g,'_');if(!includePadding)result=result.replace(/=+$/,'');return{result};}
+export const base64UrlToUtf8=base64ToUtf8;
+export function urlEncodeComponent(text:string):string{return encodeURIComponent(text);}
+export function urlEncodeRfc3986Component(text:string):string{return encodeURIComponent(text).replace(/[!'()*]/g,c=>`%${c.charCodeAt(0).toString(16).toUpperCase()}`);}
+export function urlDecodeComponent(text:string):{result?:string;error?:string}{try{return{result:decodeURIComponent(text)};}catch{return{error:'Malformed percent-encoded URI component'};}}
+export function urlEncodeFull(text:string):string{return encodeURI(text);}
+export function urlDecodeFull(text:string):{result?:string;error?:string}{try{return{result:decodeURI(text)};}catch{return{error:'Malformed percent-encoded URI'};}}
+export function parseUrlDetailed(input:string):ParsedUrlDetails{try{const url=new URL(input.trim());return{valid:true,href:url.href,protocol:url.protocol,hostname:url.hostname,port:url.port,pathname:url.pathname,search:url.search,hash:url.hash,username:url.username,passwordPresent:Boolean(url.password),origin:url.origin};}catch{return{valid:false,href:'',protocol:'',hostname:'',port:'',pathname:'',search:'',hash:'',username:'',passwordPresent:false,origin:''};}}
+export function parseQueryString(input:string):{baseUrl:string;params:QueryParamItem[]}{const trimmed=input.trim();if(!trimmed)return{baseUrl:'',params:[]};const q=trimmed.indexOf('?'),hash=trimmed.indexOf('#');let baseUrl='',query=trimmed,fragment='';if(q>=0){const effectiveHash=hash>q?hash:-1;baseUrl=trimmed.slice(0,q);query=trimmed.slice(q+1,effectiveHash>=0?effectiveHash:undefined);if(effectiveHash>=0)fragment=trimmed.slice(effectiveHash);baseUrl+=fragment;}else if(hash>=0)return{baseUrl:trimmed,params:[]};const decode=(value:string)=>{try{return decodeURIComponent(value.replace(/\+/g,' '));}catch{return value;}};const params:QueryParamItem[]=[];for(const pair of query.split('&')){if(!pair)continue;const eq=pair.indexOf('='),hasEquals=eq>=0,rawKey=hasEquals?pair.slice(0,eq):pair,rawValue=hasEquals?pair.slice(eq+1):'';params.push({id:`param-${params.length+1}`,key:decode(rawKey),value:decode(rawValue),hasEquals});}return{baseUrl,params};}
+export function buildQueryString(baseUrl:string,params:QueryParamItem[]):string{const pairs=params.filter(p=>p.key.trim()).map(p=>p.hasEquals===false?encodeURIComponent(p.key):`${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`),query=pairs.join('&');if(!query)return baseUrl;if(!baseUrl)return query;const hash=baseUrl.indexOf('#'),fragment=hash>=0?baseUrl.slice(hash):'',without=hash>=0?baseUrl.slice(0,hash):baseUrl,separator=without.includes('?')?(/[?&]$/.test(without)?'':'&'):'?';return`${without}${separator}${query}${fragment}`;}
+export function makeDataUrl(bytes:Uint8Array,mimeType='application/octet-stream'):string{return`data:${mimeType};base64,${bytesToBase64(bytes)}`;}
+export function parseDataUrl(input:string):{mimeType:string;bytes:Uint8Array}|null{const match=input.trim().match(/^data:([^;,]*)(;base64)?,(.*)$/s);if(!match)return null;const mime=match[1]||'text/plain';try{if(match[2]){const result=base64ToBytes(match[3]);return result.result?{mimeType:mime,bytes:result.result}:null;}return{mimeType:mime,bytes:new TextEncoder().encode(decodeURIComponent(match[3]))};}catch{return null;}}

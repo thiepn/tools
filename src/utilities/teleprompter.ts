@@ -1,12 +1,14 @@
-/** Teleprompter Utilities & Calculations */
+/** Teleprompter timing, cue and progress utilities. */
 export interface TeleprompterConfig{speed:number;fontSize:number;lineHeight:number;textColor:string;backgroundColor:string;textAlign:'left'|'center'|'right';isMirrored:boolean;showFocusGuide:boolean;marginWidthPercent:number;}
+export interface TeleprompterCue{label:string;paragraphIndex:number;}
 export const DEFAULT_TELEPROMPTER_CONFIG:TeleprompterConfig={speed:25,fontSize:44,lineHeight:1.6,textColor:'#ffffff',backgroundColor:'#09090b',textAlign:'center',isMirrored:false,showFocusGuide:true,marginWidthPercent:85};
-
-export function calculateSpeakingStats(text:string,wpm=140):{wordCount:number;estimatedSeconds:number;formattedDuration:string}{
- const clean=text.trim();if(!clean)return{wordCount:0,estimatedSeconds:0,formattedDuration:'0s'};const wordCount=clean.split(/\s+/).filter(Boolean).length;const safeWpm=Math.max(1,Number.isFinite(wpm)?wpm:140);const estimatedSeconds=Math.round(wordCount/safeWpm*60);const hours=Math.floor(estimatedSeconds/3600);const mins=Math.floor((estimatedSeconds%3600)/60);const secs=estimatedSeconds%60;const formattedDuration=hours>0?`${hours}h ${mins}m ${secs}s`:mins>0?`${mins}m ${secs}s`:`${secs}s`;return{wordCount,estimatedSeconds,formattedDuration};
-}
-
-/** Legacy 60-Hz step retained for callers/tests; prefer delta-time scrolling below. */
-export function calculateScrollStep(speed:number):number{if(speed<=0)return 0;const normalized=Math.max(1,Math.min(100,speed));return 0.2+(normalized/100)**1.5*7.8;}
+export function calculateSpeakingStats(text:string,wpm=140):{wordCount:number;estimatedSeconds:number;formattedDuration:string}{const clean=text.trim();if(!clean)return{wordCount:0,estimatedSeconds:0,formattedDuration:'0s'};const wordCount=clean.split(/\s+/).filter(Boolean).length,safe=Math.max(1,Number.isFinite(wpm)?wpm:140),seconds=Math.round(wordCount/safe*60),h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60),s=seconds%60;return{wordCount,estimatedSeconds:seconds,formattedDuration:h>0?`${h}h ${m}m ${s}s`:m>0?`${m}m ${s}s`:`${s}s`};}
+export function calculateScrollStep(speed:number):number{if(speed<=0)return 0;const n=Math.max(1,Math.min(100,speed));return .2+(n/100)**1.5*7.8;}
 export function calculateScrollSpeedPixelsPerSecond(speed:number):number{return calculateScrollStep(speed)*60;}
-export function calculateScrollDelta(speed:number,deltaMs:number):number{const safeDelta=Math.max(0,Math.min(250,Number.isFinite(deltaMs)?deltaMs:0));return calculateScrollSpeedPixelsPerSecond(speed)*(safeDelta/1000);}
+export function calculateScrollDelta(speed:number,deltaMs:number):number{const safe=Math.max(0,Math.min(250,Number.isFinite(deltaMs)?deltaMs:0));return calculateScrollSpeedPixelsPerSecond(speed)*safe/1000;}
+/** Calibrates pixels/second to an approximate target speaking WPM. */
+export function calculateScrollSpeedForWpm(wpm:number,fontSize:number,lineHeight:number,averageWordsPerLine=7.5):number{const safeWpm=Math.max(40,Math.min(400,Number.isFinite(wpm)?wpm:140)),linePx=Math.max(12,fontSize)*Math.max(1,lineHeight),linesPerSecond=safeWpm/Math.max(2,averageWordsPerLine)/60;return Number((linePx*linesPerSecond).toFixed(3));}
+export function calculatePrompterProgress(scrollTop:number,clientHeight:number,scrollHeight:number):number{const max=Math.max(0,scrollHeight-clientHeight);if(max<=0)return 1;return Number(Math.max(0,Math.min(1,scrollTop/max)).toFixed(4));}
+export function estimateRemainingSeconds(totalSeconds:number,progress:number):number{return Math.max(0,Math.round(Math.max(0,totalSeconds)*(1-Math.max(0,Math.min(1,progress)))));}
+export function parseTeleprompterCues(script:string):TeleprompterCue[]{const paragraphs=script.split(/\n\s*\n/);const cues:TeleprompterCue[]=[];paragraphs.forEach((paragraph,index)=>{const match=paragraph.trim().match(/^\[\[\s*(?:cue\s*:\s*)?(.+?)\s*\]\]$/i);if(match)cues.push({label:match[1].trim(),paragraphIndex:index});});return cues;}
+export function stripTeleprompterCueParagraphs(script:string):string[]{return script.split(/\n\s*\n/).filter(p=>!/^\[\[\s*(?:cue\s*:\s*)?.+?\s*\]\]$/i.test(p.trim()));}
