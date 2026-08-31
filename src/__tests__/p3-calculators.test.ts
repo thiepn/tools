@@ -91,7 +91,7 @@ describe('P3 calculator core correctness', () => {
 
   it('implements common fitness estimate equations deterministically', () => {
     expect(bmi(75, 180)).toBeCloseTo(23.148, 3);
-    expect(mifflinStJeor(75, 180, 30, 'male')).toBeCloseTo(1690, 8);
+    expect(mifflinStJeor(75, 180, 30, 'male')).toBeCloseTo(1730, 8);
     expect(navyBodyFatPercent('male', 180, 85, 38)).toBeGreaterThan(5);
     const max = oneRepMax(80, 8);
     expect(max.epley).toBeCloseTo(101.33, 1);
