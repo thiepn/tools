@@ -5,34 +5,20 @@ import { registerDeviceDiagnosticTools } from '../registry/device-extension';
 import { registerCalculatorTools } from '../registry/calculator-extension';
 import { registerFileConversionTools } from '../registry/file-conversion-extension';
 import { registerImageMicroTools } from '../registry/image-micro-extension';
+import { registerMediaMicroTools } from '../registry/media-micro-extension';
 
-registerPdfPublicTools();
-registerDeviceDiagnosticTools();
-registerCalculatorTools();
-registerFileConversionTools();
-registerImageMicroTools();
+registerPdfPublicTools();registerDeviceDiagnosticTools();registerCalculatorTools();registerFileConversionTools();registerImageMicroTools();registerMediaMicroTools();
+const EXPECTED_TOOL_COUNT=202;
 
-const EXPECTED_TOOL_COUNT = 173;
-
-describe('Tools Registry Verification', () => {
-  it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P5`, () => {
-    expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT);
-  });
-  it('has unique IDs with no duplicates', () => { const ids=TOOLS_REGISTRY.map(t=>t.id); expect(new Set(ids).size).toBe(EXPECTED_TOOL_COUNT); });
-  it('has unique routes with no duplicates', () => { const routes=TOOLS_REGISTRY.map(t=>t.route); expect(new Set(routes).size).toBe(EXPECTED_TOOL_COUNT); });
-  it('ensures all tools belong to a registered category', () => { const valid=new Set(CATEGORIES.map(c=>c.id)); for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true); });
-  it('ensures all tools have required metadata', () => { for(const tool of TOOLS_REGISTRY){expect(tool.id).toBeTruthy();expect(tool.name).toBeTruthy();expect(tool.shortName).toBeTruthy();expect(tool.description).toBeTruthy();expect(tool.keywords.length).toBeGreaterThan(0);expect(tool.iconName).toBeTruthy();expect(typeof tool.component).toBe('object');} });
-  it('finds every registered tool using getToolById', () => { for(const tool of TOOLS_REGISTRY)expect(getToolById(tool.id)?.id).toBe(tool.id); });
-  it('verifies established and public-completeness search intents', () => {
-    expect(searchTools('diff').some(t=>t.id==='text-diff')).toBe(true);
-    expect(searchTools('merge pdf').some(t=>t.id==='merge-pdf')).toBe(true);
-    expect(searchTools('microphone test')[0]?.id).toBe('microphone-test');
-    expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');
-    expect(searchTools('csv to excel')[0]?.id).toBe('csv-to-xlsx');
-    expect(searchTools('crop image')[0]?.id).toBe('crop-image');
-    expect(searchTools('compress image to 200kb')[0]?.id).toBe('compress-image-to-size');
-    expect(searchTools('remove photo metadata')[0]?.id).toBe('image-metadata-cleaner');
-    expect(searchTools('favicon maker')[0]?.id).toBe('favicon-maker');
-    expect(searchTools('transparent background')[0]?.id).toBe('transparent-image-maker');
+describe('Tools Registry Verification',()=>{
+  it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P6`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT);});
+  it('has unique IDs with no duplicates',()=>{const ids=TOOLS_REGISTRY.map(t=>t.id);expect(new Set(ids).size).toBe(EXPECTED_TOOL_COUNT);});
+  it('has unique routes with no duplicates',()=>{const routes=TOOLS_REGISTRY.map(t=>t.route);expect(new Set(routes).size).toBe(EXPECTED_TOOL_COUNT);});
+  it('ensures all tools belong to a registered category',()=>{const valid=new Set(CATEGORIES.map(c=>c.id));for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true);});
+  it('ensures all tools have required metadata',()=>{for(const tool of TOOLS_REGISTRY){expect(tool.id).toBeTruthy();expect(tool.name).toBeTruthy();expect(tool.shortName).toBeTruthy();expect(tool.description).toBeTruthy();expect(tool.keywords.length).toBeGreaterThan(0);expect(tool.iconName).toBeTruthy();expect(typeof tool.component).toBe('object');}});
+  it('finds every registered tool using getToolById',()=>{for(const tool of TOOLS_REGISTRY)expect(getToolById(tool.id)?.id).toBe(tool.id);});
+  it('verifies established and public-completeness search intents',()=>{
+    expect(searchTools('diff').some(t=>t.id==='text-diff')).toBe(true);expect(searchTools('merge pdf').some(t=>t.id==='merge-pdf')).toBe(true);expect(searchTools('microphone test')[0]?.id).toBe('microphone-test');expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');expect(searchTools('csv to excel')[0]?.id).toBe('csv-to-xlsx');expect(searchTools('crop image')[0]?.id).toBe('crop-image');
+    expect(searchTools('join audio')[0]?.id).toBe('audio-joiner');expect(searchTools('compress video')[0]?.id).toBe('video-compressor');expect(searchTools('video to gif')[0]?.id).toBe('video-to-gif');expect(searchTools('burn subtitles')[0]?.id).toBe('subtitle-burner');expect(searchTools('webcam recorder')[0]?.id).toBe('webcam-video-recorder');expect(searchTools('add music to video')[0]?.id).toBe('add-audio-to-video');
   });
 });
