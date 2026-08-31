@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { TOOLS_REGISTRY, CATEGORIES, getToolById, searchTools } from '../registry/tools';
+import { TOOLS_REGISTRY, CATEGORIES, getToolById } from '../registry/tools';
+import { searchTools } from '../registry/search';
 import { registerPdfPublicTools } from '../registry/pdf-extension';
 import { registerDeviceDiagnosticTools } from '../registry/device-extension';
 import { registerCalculatorTools } from '../registry/calculator-extension';
@@ -17,7 +18,7 @@ describe('Tools Registry Verification',()=>{
   it('ensures all tools belong to a registered category',()=>{const valid=new Set(CATEGORIES.map(c=>c.id));for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true);});
   it('ensures all tools have required metadata',()=>{for(const tool of TOOLS_REGISTRY){expect(tool.id).toBeTruthy();expect(tool.name).toBeTruthy();expect(tool.shortName).toBeTruthy();expect(tool.description).toBeTruthy();expect(tool.keywords.length).toBeGreaterThan(0);expect(tool.iconName).toBeTruthy();expect(typeof tool.component).toBe('object');}});
   it('finds every registered tool using getToolById',()=>{for(const tool of TOOLS_REGISTRY)expect(getToolById(tool.id)?.id).toBe(tool.id);});
-  it('verifies established and public-completeness search intents',()=>{
+  it('verifies established and public-completeness search intents through production ranking',()=>{
     expect(searchTools('diff').some(t=>t.id==='text-diff')).toBe(true);expect(searchTools('merge pdf').some(t=>t.id==='merge-pdf')).toBe(true);expect(searchTools('microphone test')[0]?.id).toBe('microphone-test');expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');expect(searchTools('csv to excel')[0]?.id).toBe('csv-to-xlsx');expect(searchTools('crop image')[0]?.id).toBe('crop-image');
     expect(searchTools('join audio')[0]?.id).toBe('audio-joiner');expect(searchTools('compress video')[0]?.id).toBe('video-compressor');expect(searchTools('video to gif')[0]?.id).toBe('video-to-gif');expect(searchTools('burn subtitles')[0]?.id).toBe('subtitle-burner');expect(searchTools('webcam recorder')[0]?.id).toBe('webcam-video-recorder');expect(searchTools('add music to video')[0]?.id).toBe('add-audio-to-video');
   });
