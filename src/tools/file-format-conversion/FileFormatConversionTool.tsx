@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import JSZip from 'jszip';
-import { Download, FileArchive, FileSearch, Upload } from 'lucide-react';
+import { Download, FileArchive, FileSearch } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
 import { getPublicFileConversionTask, PUBLIC_FILE_CONVERSION_TASKS } from '../../files/publicFileConversionTasks';
 import {
