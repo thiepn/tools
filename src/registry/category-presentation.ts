@@ -12,10 +12,12 @@ export interface CategoryPresentation {
   };
 }
 
-// General-purpose categories come first so the 50-tool catalog reads like an
-// everyday utility suite rather than a developer toolbox.
+// General-purpose categories come first so the catalog reads like an everyday
+// utility suite rather than a developer toolbox. PDF is a first-class public
+// family because document tasks are among the most common utility-site intents.
 export const CATEGORY_ORDER: ToolCategory[] = [
   'productivity',
+  'pdf',
   'image',
   'text',
   'files',
@@ -37,6 +39,17 @@ export const CATEGORY_PRESENTATION: Record<ToolCategory, CategoryPresentation> =
       bg: 'bg-cyan-50 dark:bg-cyan-950/40',
       text: 'text-cyan-700 dark:text-cyan-300',
       border: 'border-cyan-200 dark:border-cyan-800',
+    },
+  },
+  pdf: {
+    label: 'PDF Tools',
+    shortLabel: 'PDF',
+    description: 'Merge, split, compress, edit, scan, OCR, sign, protect, organize, and export PDFs locally.',
+    searchTerms: ['pdf', 'document', 'documents', 'acrobat', 'merge pdf', 'split pdf', 'compress pdf', 'scan pdf'],
+    badge: {
+      bg: 'bg-red-50 dark:bg-red-950/40',
+      text: 'text-red-700 dark:text-red-300',
+      border: 'border-red-200 dark:border-red-800',
     },
   },
   image: {
