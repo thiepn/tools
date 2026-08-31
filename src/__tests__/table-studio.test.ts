@@ -119,6 +119,22 @@ describe('CSV & Table Studio', () => {
     expect(filterTableRows(rows, 'green', 1)).toEqual([['Grace', 'Green']]);
   });
 
+  it('preserves source row identity through filtering so preview edits target the exact row', () => {
+    const duplicateA = ['Ada', 'Blue'];
+    const duplicateB = ['Ada', 'Blue'];
+    const grace = ['Grace', 'Green'];
+    const rows = [duplicateA, duplicateB, grace];
+
+    const filteredDuplicates = filterTableRows(rows, 'Ada');
+    expect(filteredDuplicates[0]).toBe(duplicateA);
+    expect(filteredDuplicates[1]).toBe(duplicateB);
+    expect(rows.indexOf(filteredDuplicates[1])).toBe(1);
+
+    const filteredGrace = filterTableRows(rows, 'Grace');
+    expect(filteredGrace[0]).toBe(grace);
+    expect(rows.indexOf(filteredGrace[0])).toBe(2);
+  });
+
   it('deduplicates exact rows or unique values in a selected column', () => {
     const rows = [
       ['Ada', 'Blue'],
