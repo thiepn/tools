@@ -7,7 +7,7 @@ export const DEFAULT_ARCHIVE_SAFETY:Required<ArchiveSafetyOptions>={maxEntries:5
 
 export function sanitizeZipPath(rawPath:string):string{const normalized=rawPath.replace(/\\/g,'/').replace(/^\/+/, '');const safe:string[]=[];for(const segment of normalized.split('/').filter(Boolean)){if(segment==='.')continue;if(segment==='..'){safe.pop();continue;}safe.push(segment.replace(/[\u0000-\u001f\u007f]/g,''));}return safe.join('/');}
 
-export async function parseZipArchive(zipBlob:Blob|ArrayBuffer,options:ArchiveSafetyOptions={}):Promise<{entries:ArchiveEntry[];totalUncompressedSize:number;zipInstance:JSZip}>{
+export async function parseZipArchive(zipBlob:Blob|ArrayBuffer|Uint8Array,options:ArchiveSafetyOptions={}):Promise<{entries:ArchiveEntry[];totalUncompressedSize:number;zipInstance:JSZip}>{
  const limits={...DEFAULT_ARCHIVE_SAFETY,...options};const zip=new JSZip();const loaded=await zip.loadAsync(zipBlob);const rawEntries=Object.entries(loaded.files);if(rawEntries.length>limits.maxEntries)throw new Error(`Archive contains ${rawEntries.length.toLocaleString()} entries; safety limit is ${limits.maxEntries.toLocaleString()}.`);
  const entries:ArchiveEntry[]=[];let total=0;const safePaths=new Set<string>();
  for(const [relativePath,fileObj] of rawEntries){const safePath=sanitizeZipPath(relativePath);const isFolder=fileObj.dir||relativePath.endsWith('/');if(!safePath&&!isFolder)throw new Error('Archive contains an invalid empty file path.');const collisionKey=safePath.toLocaleLowerCase();if(safePath&&safePaths.has(collisionKey))throw new Error(`Archive contains multiple entries that resolve to the same safe path: ${safePath}`);if(safePath)safePaths.add(collisionKey);
@@ -17,5 +17,11 @@ export async function parseZipArchive(zipBlob:Blob|ArrayBuffer,options:ArchiveSa
  return{entries,totalUncompressedSize:total,zipInstance:loaded};
 }
 
-export async function createZipArchive(files:PendingZipFile[],compressionLevel:'STORE'|'DEFLATE'='DEFLATE',onProgress?:(percent:number)=>void):Promise<Blob>{const zip=new JSZip();const used=new Set<string>();for(const item of files){const safePath=sanitizeZipPath(item.relativePath||item.file.name);if(!safePath)throw new Error(`Invalid archive path for ${item.file.name}.`);const key=safePath.toLocaleLowerCase();if(used.has(key))throw new Error(`Two files resolve to the same archive path: ${safePath}`);used.add(key);zip.file(safePath,item.file);}return zip.generateAsync({type:'blob',compression:compressionLevel,compressionOptions:{level:compressionLevel==='DEFLATE'?6:1}},metadata=>onProgress?.(Math.round(metadata.percent)));}
+export async function createZipArchive(files:PendingZipFile[],compressionLevel:'STORE'|'DEFLATE'='DEFLATE',onProgress?:(percent:number)=>void):Promise<Blob>{
+ // Validate every destination first. Besides producing clearer errors, this
+ // prevents JSZip from beginning asynchronous reads before a later path
+ // collision/path error aborts the operation.
+ const used=new Set<string>();const planned=files.map(item=>{const safePath=sanitizeZipPath(item.relativePath||item.file.name);if(!safePath)throw new Error(`Invalid archive path for ${item.file.name}.`);const key=safePath.toLocaleLowerCase();if(used.has(key))throw new Error(`Two files resolve to the same archive path: ${safePath}`);used.add(key);return{item,safePath};});
+ const zip=new JSZip();for(const{item,safePath}of planned)zip.file(safePath,item.file);return zip.generateAsync({type:'blob',compression:compressionLevel,compressionOptions:{level:compressionLevel==='DEFLATE'?6:1}},metadata=>onProgress?.(Math.round(metadata.percent)));
+}
 export function formatArchiveSize(bytes:number):string{if(!Number.isFinite(bytes)||bytes<=0)return'0 B';const units=['B','KB','MB','GB','TB'];const index=Math.min(units.length-1,Math.floor(Math.log(bytes)/Math.log(1024)));return`${parseFloat((bytes/1024**index).toFixed(2))} ${units[index]}`;}
