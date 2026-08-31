@@ -506,8 +506,8 @@ export const TableStudioTool: React.FC = () => {
                               <input
                                 value={row[columnIndex] ?? ''}
                                 onChange={(event) => {
-                                  const targetIndex = originalIndex >= 0 ? originalIndex : filteredIndex;
-                                  updateCell(targetIndex, columnIndex, event.target.value);
+                                  if (originalIndex < 0) return;
+                                  updateCell(originalIndex, columnIndex, event.target.value);
                                 }}
                                 aria-label={`Row ${filteredIndex + 1}, ${workingData.headers[columnIndex]}`}
                                 className="w-full min-w-32 rounded border border-transparent bg-transparent px-1.5 py-1 text-neutral-800 hover:border-neutral-300 focus:border-blue-500 focus:outline-none dark:text-neutral-200"
