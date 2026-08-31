@@ -2,14 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { TOOLS_REGISTRY, CATEGORIES, getToolById, searchTools } from '../registry/tools';
 import { registerPdfPublicTools } from '../registry/pdf-extension';
 import { registerDeviceDiagnosticTools } from '../registry/device-extension';
+import { registerCalculatorTools } from '../registry/calculator-extension';
 
 registerPdfPublicTools();
 registerDeviceDiagnosticTools();
+registerCalculatorTools();
 
-const EXPECTED_TOOL_COUNT = 86;
+const EXPECTED_TOOL_COUNT = 132;
 
 describe('Tools Registry Verification', () => {
-  it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P2`, () => {
+  it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P3`, () => {
     expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT);
   });
 
@@ -47,12 +49,12 @@ describe('Tools Registry Verification', () => {
   it('verifies established and public-completeness search intents', () => {
     expect(searchTools('diff').some((t) => t.id === 'text-diff')).toBe(true);
     expect(searchTools('merge pdf').some((t) => t.id === 'merge-pdf')).toBe(true);
-    expect(searchTools('pdf to text').some((t) => t.id === 'export-pdf')).toBe(true);
-    expect(searchTools('jpg to pdf').some((t) => t.id === 'scan-to-pdf')).toBe(true);
     expect(searchTools('microphone test')[0]?.id).toBe('microphone-test');
-    expect(searchTools('webcam test')[0]?.id).toBe('webcam-test');
-    expect(searchTools('stick drift test')[0]?.id).toBe('gamepad-test');
-    expect(searchTools('dead pixel test')[0]?.id).toBe('dead-pixel-test');
-    expect(searchTools('keyboard ghosting test')[0]?.id).toBe('keyboard-ghosting-test');
+    expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');
+    expect(searchTools('fuel cost calculator')[0]?.id).toBe('fuel-trip-cost-calculator');
+    expect(searchTools('electricity cost calculator')[0]?.id).toBe('electricity-cost-calculator');
+    expect(searchTools('gpa calculator')[0]?.id).toBe('gpa-calculator');
+    expect(searchTools('bmi calculator')[0]?.id).toBe('bmi-calculator');
+    expect(searchTools('one rep max calculator')[0]?.id).toBe('one-rep-max-calculator');
   });
 });

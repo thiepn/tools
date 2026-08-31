@@ -1,10 +1,10 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **86 task routes** for text, PDFs, device diagnostics, files, images, media, productivity, math, time, and everyday tasks.
+Tiny Tools is a privacy-first public utility suite with **132 task routes** for text, PDFs, device diagnostics, calculators, files, images, media, productivity, math, time, and everyday tasks.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
-> Some advanced tools download static runtime/model assets when first used, such as local Whisper transcription, OCR, background-removal assets, or the dedicated PDF runtime. Those downloads are separate from user-content processing.
+> Some advanced tools download static runtime/model assets when first used, such as local Whisper transcription, OCR, background-removal assets, or the dedicated PDF runtime. Currency conversion is the only P3 calculator that intentionally fetches current external reference-rate data.
 
 ## Principles
 
@@ -22,32 +22,26 @@ The original 50-tool suite remains the hardened S-tier baseline. Public-complete
 
 ### P1 — PDF Suite
 
-P1 adds a first-class PDF category with 20 public task routes covering creation, merge, scan/images-to-PDF, edit, annotation, visual signatures, redaction, page organization, split, crop, watermark/page numbers, forms, password protection, sanitization, OCR, compression, metadata, export, comparison, and page operations.
-
-Tiny Tools intentionally does not maintain a second PDF processing stack. These routes use one shared gateway into the dedicated **PDF Everything** browser application, which already implements the mature PDF engine and task-specific safety/capability checks.
+P1 adds 20 public PDF task routes covering creation, merge, scan/images-to-PDF, edit, annotation, visual signatures, redaction, page organization, split, crop, watermark/page numbers, forms, password protection, sanitization, OCR, compression, metadata, export, comparison, and page operations. These routes share the dedicated **PDF Everything** local-first engine instead of duplicating a PDF stack.
 
 ### P2 — Device Diagnostics Suite
 
-P2 adds 16 native browser diagnostic routes:
+P2 adds 16 native browser diagnostic routes for microphone, webcam, speakers/headphones, keyboard, mouse, pixels/display patterns, refresh rate, screen/device information, touch, gamepad/stick drift, pointer-event rate, keyboard ghosting/NKRO, battery status, tone generation, and instrument tuning.
 
-- microphone level test
-- webcam preview and active camera settings
-- speaker/headphone stereo test
-- keyboard event tester
-- mouse/button/wheel test
-- dead/stuck pixel test
-- fullscreen display patterns
-- browser-visible refresh-rate measurement
-- screen and browser-exposed device information
-- touchscreen and multi-touch contact test
-- gamepad/controller and observed stick-drift test
-- browser pointer-event rate measurement
-- keyboard ghosting/NKRO observation
-- Battery Status API viewer
-- local Web Audio tone generator
-- microphone-based chromatic instrument tuner
+Device diagnostics are capability-aware and avoid overstating what the browser can measure. Pointer rate is browser-delivered event cadence rather than raw USB polling; Battery Status does not invent health/cycle values; controller axes are browser-normalized observations rather than calibration certification.
 
-Device diagnostics are intentionally capability-aware. Tiny Tools reports only what browser APIs expose: for example, the pointer-rate tool does not claim to measure raw USB HID polling, and the battery tool does not invent health, cycle count, wear, or temperature values that web browsers do not provide.
+### P3 — Everyday Calculator Suite
+
+P3 adds 46 config-driven calculator routes grouped into:
+
+- school/math: basic and scientific expressions, fractions, averages, ratios, grades/GPA, statistics, geometry, and probability
+- money: tips, bill splitting, currency, loans/mortgages/amortization, savings/interest/ROI/retirement, debt payoff, salary conversion, car loans, rent-vs-buy, inflation, and debt-to-income
+- household/travel/construction: fuel/trip costs, fuel economy, electricity/appliance costs, room area, paint, flooring, tiles, box volume, and concrete
+- general fitness estimates: BMI, BMR, TDEE, running pace, circumference-based body-fat estimate, and 1RM
+
+The calculator family uses one shared typed UI and pure formula engine. Scientific expressions use a dedicated parser rather than `eval`. Forty-five routes are fully local. Currency conversion is the sole P3 network-dependent route and requests only the selected pair from Frankfurter using ECB reference-rate data; the UI labels the rate as informational and discloses the network boundary.
+
+P3 intentionally does not include pregnancy/ovulation estimators or country-specific income-tax calculators. Those are higher-stakes or time-sensitive enough that they should not be presented as timeless general-purpose formulas.
 
 ## Tech stack
 
@@ -59,6 +53,7 @@ Device diagnostics are intentionally capability-aware. Tiny Tools reports only w
 - Browser APIs including Canvas, Web Audio, Web Crypto, MediaRecorder, MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, and Battery Status when available
 - Local browser ML/OCR runtimes for tools that require them
 - A shared dedicated local-first PDF workspace for PDF routes
+- Config-driven pure TypeScript calculator formulas
 
 ## Local development
 
@@ -81,57 +76,33 @@ npm run build
 
 The production build is emitted to `dist/`.
 
-The original R5–R10 hardening/release gates remain in place. The original R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper then appends the P1 and P2 public route catalogs and browser-tests the entire runtime catalog at desktop and mobile widths.
+The original R5–R10 hardening/release gates remain in place. The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper then appends the P1, P2, and P3 catalogs and browser-tests the full runtime catalog at desktop and mobile widths.
 
 ## GitHub Pages
 
 The repository includes a GitHub Actions workflow that validates the project and deploys `dist/` to GitHub Pages after successful pushes to `main`.
 
-The Vite build uses relative asset URLs and Tiny Tools uses hash-based client routing, so the application remains compatible with repository-subpath hosting such as:
+Tiny Tools uses hash-based client routing and relative build assets, so repository-subpath hosting remains supported.
 
-```text
-https://thiepn.github.io/tools/
-```
-
-PDF routes link to the sibling PDF application at `/pdf/` on deployed hosts. Local development uses the canonical production PDF application rather than trying to load a nonexistent local sibling route.
-
-In GitHub repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**.
+PDF routes link to the sibling `/pdf/` application on deployed hosts. The currency converter uses `api.frankfurter.dev` only when the user requests a current exchange rate.
 
 ## Privacy model
 
 Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage.
 
-Examples of local processing include:
+Examples of local processing include text transformations/calculations, image/canvas operations, ZIP work, duplicate hashing, audio/video capture/editing, OCR/Whisper, PDF work in the local-first sibling workspace, device diagnostic streams/events, and all non-currency P3 calculator inputs.
 
-- text transformations and calculations
-- image/canvas operations
-- ZIP creation/extraction
-- SHA-256 duplicate-file detection
-- audio/video capture and editing
-- OCR and local Whisper speech transcription
-- PDF work through the local-first PDF workspace
-- microphone/camera/device diagnostic streams handled inside the active page
-- display, keyboard, pointer, touchscreen, and gamepad measurements derived from local browser events
-
-Some libraries and model weights may be fetched as static assets on first use. Tiny Tools does not intentionally transmit the user's files, microphone audio, camera stream, diagnostic event data, transcripts, notes, signatures, images, or PDF contents to a remote processing service.
+Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. In particular:
-
-- camera, microphone, screen capture, and clipboard APIs require a secure context and user permission;
-- available audio/video codecs differ by browser;
-- WebGPU acceleration is not available everywhere and local ML tools may fall back to WebAssembly;
-- browser file APIs cannot universally modify or delete arbitrary files on disk;
-- available text-to-speech voices depend on the browser and operating system;
-- Gamepad and Battery Status APIs are not exposed identically by every browser;
-- browsers may coalesce pointer events, throttle animation frames, and reduce hardware information for privacy;
-- PDF tasks that require Web Workers/WebAssembly or document-specific structures expose capability warnings in the dedicated PDF workspace.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; codecs and hardware APIs differ; browsers can coalesce input events or throttle animation; PDF tasks have document/runtime-specific limits; and live currency conversion requires network access.
 
 ## Project structure
 
 ```text
 src/
+├── calculators/      P3 public calculator catalog and typed definitions
 ├── components/       Shared application UI
 ├── device/           Public device-diagnostic task metadata
 ├── pdf/              Public PDF task metadata and gateway routing
@@ -144,13 +115,13 @@ src/
 
 ## Adding a tool or public task family
 
-1. Prefer extending a proven shared engine when several public intents use the same underlying operation family.
-2. Create focused UI under `src/tools/<tool-id>/`, or a shared implementation/gateway for a family.
-3. Put reusable/pure logic under `src/utilities/` or a dedicated family module.
+1. Prefer a proven shared engine when multiple public intents use the same capability family.
+2. Create a focused UI or shared family shell.
+3. Put reusable logic in pure modules where possible.
 4. Register stable IDs, routes, categories, keywords, and lazy components.
-5. Add meaningful tests for correctness, discovery, capability claims, and regression-sensitive behavior.
-6. Run type checking, tests, production build, and the established release gates before merging.
+5. Add correctness, discovery, capability-claim, and regression tests.
+6. Run type checking, tests, build, browser gates, deployment, and live acceptance before merging.
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 + P2 expand the public catalog to 86 routes** while retaining one implementation per capability family and preserving the original release baseline.
+The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 expand the public catalog to 132 routes** while keeping one implementation per capability family and preserving the original release baseline.
