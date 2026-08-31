@@ -96,9 +96,9 @@ describe('A-tier uplift regressions', () => {
   });
 
   describe('Case Converter', () => {
-    it('splits acronyms and digit transitions without discarding Unicode', () => {
-      expect(splitIntoWords('XMLHttpRequest2')).toEqual(['XML', 'Http', 'Request', '2']);
-      expect(convertCase('ÜberHTTPServer2', 'snake_case')).toBe('über_http_server_2');
+    it('splits acronym boundaries while preserving stable letter+digit identifiers and Unicode', () => {
+      expect(splitIntoWords('XMLHttpRequest2')).toEqual(['XML', 'Http', 'Request2']);
+      expect(convertCase('ÜberHTTPServer2', 'snake_case')).toBe('über_http_server2');
     });
 
     it('keeps English title-case minor words lowercase away from boundaries', () => {
@@ -322,8 +322,8 @@ describe('A-tier uplift regressions', () => {
       const zip = new JSZip();
       zip.file('one.txt', '1');
       zip.file('two.txt', '2');
-      const blob = await zip.generateAsync({ type: 'blob' });
-      await expect(parseZipArchive(blob, { maxEntries: 1 })).rejects.toThrow(/entries/i);
+      const bytes = await zip.generateAsync({ type: 'uint8array' });
+      await expect(parseZipArchive(bytes, { maxEntries: 1 })).rejects.toThrow(/entries/i);
     });
   });
 
