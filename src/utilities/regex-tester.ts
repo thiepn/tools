@@ -15,6 +15,11 @@ export interface RegexMatchItem {
   namedGroups?: Record<string, string>;
 }
 
+export interface RegexRiskAnalysis {
+  level: 'low' | 'medium' | 'high';
+  warnings: string[];
+}
+
 export interface RegexTestResult {
   isValid: boolean;
   error?: string;
@@ -23,7 +28,12 @@ export interface RegexTestResult {
   replacementPreview: string;
   executionTimeMs: number;
   isTruncated: boolean;
+  risk: RegexRiskAnalysis;
 }
+
+const MAX_MATCHES = 2500;
+const LARGE_RISKY_SUBJECT_CHARS = 20_000;
+const ABSOLUTE_SUBJECT_CHARS = 2_000_000;
 
 export function buildFlagString(flags: RegexFlags): string {
   let str = '';
@@ -36,21 +46,91 @@ export function buildFlagString(flags: RegexFlags): string {
   return str;
 }
 
+function simplifyPatternForRiskScan(pattern: string): string {
+  // Escaped characters and character classes are atomic for this heuristic and
+  // should not be mistaken for quantifier syntax.
+  return pattern
+    .replace(/\\./g, 'x')
+    .replace(/\[(?:\\.|[^\]\\])*\]/g, '[]');
+}
+
+/**
+ * Lightweight static warning pass for common catastrophic-backtracking shapes.
+ * It is intentionally conservative: it does not claim to prove regex safety.
+ */
+export function analyzeRegexRisk(pattern: string): RegexRiskAnalysis {
+  if (!pattern) return { level: 'low', warnings: [] };
+  const scan = simplifyPatternForRiskScan(pattern);
+  const warnings: string[] = [];
+  let high = false;
+
+  const quantifier = String.raw`(?:\*|\+|\{\d+(?:,\d*)?\})`;
+  const nestedQuantifier = new RegExp(String.raw`\([^)]*${quantifier}[^)]*\)${quantifier}`);
+  const repeatedAlternation = new RegExp(String.raw`\([^)]*\|[^)]*\)${quantifier}`);
+
+  if (nestedQuantifier.test(scan)) {
+    warnings.push('Nested quantified groups can cause excessive backtracking on long input.');
+    high = true;
+  }
+  if (repeatedAlternation.test(scan)) {
+    warnings.push('A repeated alternation group may be ambiguous and backtracking-heavy.');
+    high = true;
+  }
+  if (/\.\*[^\n]{0,80}\.\*/.test(scan) || /\.\+[^\n]{0,80}\.\+/.test(scan)) {
+    warnings.push('Multiple broad wildcard repetitions may scan the same input many times.');
+  }
+  if (pattern.length > 1000) {
+    warnings.push('Very large regular-expression patterns can be expensive to compile and execute.');
+  }
+
+  return {
+    level: high ? 'high' : warnings.length ? 'medium' : 'low',
+    warnings,
+  };
+}
+
+function emptyResult(text: string, risk: RegexRiskAnalysis, error?: string): RegexTestResult {
+  return {
+    isValid: !error,
+    error,
+    matches: [],
+    matchCount: 0,
+    replacementPreview: text,
+    executionTimeMs: 0,
+    isTruncated: false,
+    risk,
+  };
+}
+
+function advanceAfterZeroLengthMatch(text: string, index: number, unicode: boolean): number {
+  if (!unicode) return index + 1;
+  const codePoint = text.codePointAt(index);
+  return index + (codePoint !== undefined && codePoint > 0xffff ? 2 : 1);
+}
+
 export function testRegex(
   pattern: string,
   flags: RegexFlags,
   text: string,
   replacement: string = ''
 ): RegexTestResult {
-  if (!pattern) {
-    return {
-      isValid: true,
-      matches: [],
-      matchCount: 0,
-      replacementPreview: text,
-      executionTimeMs: 0,
-      isTruncated: false,
-    };
+  const risk = analyzeRegexRisk(pattern);
+  if (!pattern) return emptyResult(text, risk);
+
+  if (text.length > ABSOLUTE_SUBJECT_CHARS) {
+    return emptyResult(
+      text,
+      risk,
+      `Test text is too large for synchronous browser regex execution (${text.length.toLocaleString()} characters). Reduce it below ${ABSOLUTE_SUBJECT_CHARS.toLocaleString()} characters.`
+    );
+  }
+
+  if (risk.level === 'high' && text.length > LARGE_RISKY_SUBJECT_CHARS) {
+    return emptyResult(
+      text,
+      risk,
+      `Potentially backtracking-heavy pattern blocked on large input. Reduce the test text below ${LARGE_RISKY_SUBJECT_CHARS.toLocaleString()} characters or simplify nested/repeated groups.`
+    );
   }
 
   const startTime = performance.now();
@@ -61,46 +141,33 @@ export function testRegex(
     regex = new RegExp(pattern, flagStr);
   } catch (err: unknown) {
     return {
-      isValid: false,
-      error: err instanceof Error ? err.message : String(err),
-      matches: [],
-      matchCount: 0,
-      replacementPreview: text,
-      executionTimeMs: 0,
-      isTruncated: false,
+      ...emptyResult(text, risk, err instanceof Error ? err.message : String(err)),
+      executionTimeMs: Number((performance.now() - startTime).toFixed(2)),
     };
   }
 
   const matches: RegexMatchItem[] = [];
-  const maxMatches = 2500;
   let isTruncated = false;
 
   try {
     if (flags.global || flags.sticky) {
       let match: RegExpExecArray | null;
-      let loopCount = 0;
-
       while ((match = regex.exec(text)) !== null) {
-        loopCount++;
-        if (loopCount > maxMatches) {
+        if (matches.length >= MAX_MATCHES) {
           isTruncated = true;
           break;
         }
-
-        const groups = match.slice(1);
-        const namedGroups = match.groups ? { ...match.groups } : undefined;
 
         matches.push({
           index: match.index,
           endIndex: match.index + match[0].length,
           match: match[0],
-          groups,
-          namedGroups,
+          groups: match.slice(1),
+          namedGroups: match.groups ? { ...match.groups } : undefined,
         });
 
-        // Zero-length match protection: advance index to prevent infinite loop
         if (match[0].length === 0) {
-          regex.lastIndex = match.index + 1;
+          regex.lastIndex = advanceAfterZeroLengthMatch(text, match.index, flags.unicode);
           if (regex.lastIndex > text.length) break;
         }
       }
@@ -117,25 +184,22 @@ export function testRegex(
       }
     }
 
-    // Generate replacement preview safely
     let replacementPreview = text;
     try {
-      // Re-create regex to reset lastIndex
       const replaceRegex = new RegExp(pattern, flagStr);
       replacementPreview = text.replace(replaceRegex, replacement);
     } catch {
       replacementPreview = text;
     }
 
-    const executionTimeMs = Number((performance.now() - startTime).toFixed(2));
-
     return {
       isValid: true,
       matches,
       matchCount: matches.length,
       replacementPreview,
-      executionTimeMs,
+      executionTimeMs: Number((performance.now() - startTime).toFixed(2)),
       isTruncated,
+      risk,
     };
   } catch (err: unknown) {
     return {
@@ -146,6 +210,7 @@ export function testRegex(
       replacementPreview: text,
       executionTimeMs: Number((performance.now() - startTime).toFixed(2)),
       isTruncated: false,
+      risk,
     };
   }
 }
