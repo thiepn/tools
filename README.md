@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **173 task routes** for text, PDFs, device diagnostics, calculators, file conversion, images, media, productivity, math, time, and everyday tasks.
+Tiny Tools is a privacy-first public utility suite with **202 task routes** for text, PDFs, device diagnostics, calculators, file conversion, images, audio/video, productivity, math, time, and everyday tasks.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -33,21 +33,16 @@ The original 50-tool suite remains the hardened S-tier baseline. Public-complete
 18 routes cover CSV/JSON/XML/XLSX interchange, CSV split/merge, signature-based file inspection, TAR/GZIP, and ZIP↔TAR. XLSX is deliberately value-oriented rather than a claim of full Excel fidelity.
 
 ### P5 — Image Micro-Tools Suite
-P5 adds 23 task-specific image routes while reusing the existing image optimizer and local background-removal engines:
+23 task-specific image routes reuse the existing image optimizer and local background-removal engines for crop/rotation, format conversion, target-size compression, EXIF cleaning, social sizing, privacy redaction, favicon packs, grids, filters, comparison, background workflows, contact sheets, guided portrait cropping, and high-quality non-AI resampling.
 
-- crop and rotate/flip
-- HEIC/HEIF and AVIF conversion when the browser can decode the source
-- SVG → PNG/JPEG and JPEG/PNG/WebP conversion
-- target-KB compression and batch image conversion
-- profile/circle crop, headshot/portrait crop, and social-media presets
-- blur/pixelation and manual privacy-region redaction
-- JPEG EXIF privacy inspection plus metadata-stripping re-export
-- favicon/ICO generation
-- grid splitting, borders/frames, photo filters, and image comparison
-- background replacement and transparent-background output through the established local background-removal engine
-- contact sheets and high-quality non-AI upscaling
+### P6 — Audio & Video Micro-Tools Suite
+P6 adds **29 public media routes**: 12 audio workflows and 17 video workflows.
 
-P5 intentionally avoids pretending that browser support is universal. HEIC/HEIF conversion works only where the browser can decode the format; privacy blur is manual rather than universal face recognition; headshot cropping is guided rather than biometric; and upscaling is high-quality resampling rather than invented AI detail.
+Audio routes cover joining, browser-decodable audio → PCM WAV conversion, gain, speed, peak normalization, silence trimming, three-band EQ, reverse, basic filter/gate cleanup, stereo↔mono conversion, ringtone trimming, and coupled pitch/speed shifting. Audio export deliberately uses standard WAV because browsers do not expose a reliable universal MP3/AAC encoder. Speed/pitch routes clearly state that native playback-rate rendering changes pitch and duration together.
+
+Video routes cover merging, compression, browser-supported format conversion, WAV extraction, adding/mixing audio, text and logo overlays, looping, PNG frame extraction, thumbnail extraction, webcam recording, SRT/WebVTT subtitle burning, video → GIF, speed changes, crop/resize, mute, and source-volume adjustment.
+
+Transformed video uses a shared Canvas + Web Audio + MediaRecorder renderer. It is intentionally real-time, must remain in a visible tab, and exports only containers/codecs actually supported by the current browser. Mixed-aspect merge inputs are letterboxed rather than stretched. Mute Video omits the source audio track instead of merely reducing volume to zero. Additional audio is decoded through Web Audio and mixed locally. P6 does not claim GIF → MP4 conversion or automatic video stabilization because those would require a dedicated animated-GIF/transcoding or motion-analysis engine that Tiny Tools does not currently ship.
 
 ## Tech stack
 
@@ -56,11 +51,11 @@ P5 intentionally avoids pretending that browser support is universal. HEIC/HEIF 
 - Vite
 - Tailwind CSS
 - Vitest
-- Canvas, Web Audio, Web Crypto, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
+- Canvas, Web Audio/OfflineAudioContext, Web Crypto, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
 - Local browser ML/OCR/background-removal runtimes for tools that require them
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
-- Shared table/ZIP safety layers and shared image-processing engines
+- Shared table/ZIP safety layers and shared image/audio/video processing engines
 
 ## Local development
 
@@ -79,17 +74,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P5 catalogs and browser-tests the full runtime catalog at desktop and mobile widths before the later R6–R9 gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P6 catalogs and browser-tests the full **202-route** runtime catalog at desktop and mobile widths (**404 route renders**) before the later R6–R9 gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image micro-tools operate on local Blob/Canvas data; background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media codecs differ; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine.
 
 ## Project structure
 
@@ -100,6 +95,7 @@ src/
 ├── device/           P2 device task metadata
 ├── files/            P4 file-conversion metadata
 ├── image/            P5 public image task metadata
+├── media/            P6 public audio/video task metadata
 ├── pdf/              P1 PDF metadata/gateway routing
 ├── registry/         Base 50-tool registry plus expansion registration
 ├── storage/          Local preferences/transfers
@@ -110,4 +106,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 expand the public catalog to 173 routes** while preserving the original release baseline and shared-engine architecture.
+The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 + P6 expand the public catalog to 202 routes** while preserving the original release baseline, truthful browser boundaries, and shared-engine architecture.
