@@ -1,99 +1,21 @@
-export interface CalendarDate { year: number; month: number; day: number; }
-
-export function parseDateString(str: string): CalendarDate | null {
-  if (!/^\d{4,}-\d{2}-\d{2}$/.test(str || '')) return null;
-  const [year, month, day] = str.split('-').map(Number);
-  if (![year, month, day].every(Number.isFinite) || month < 1 || month > 12 || day < 1 || day > getDaysInMonth(year, month)) return null;
-  return { year, month, day };
-}
-
-export function formatDateString(date: CalendarDate): string {
-  return `${String(date.year).padStart(4, '0')}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
-}
-export function isLeapYear(year: number): boolean { return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0; }
-export function getDaysInMonth(year: number, month: number): number {
-  if (month === 2) return isLeapYear(year) ? 29 : 28;
-  return [4, 6, 9, 11].includes(month) ? 30 : 31;
-}
-export function toUtcTimestamp(date: CalendarDate): number { return Date.UTC(date.year, date.month - 1, date.day); }
-export function fromUtcTimestamp(ms: number): CalendarDate {
-  const date = new Date(ms); return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
-}
-
-export function calculateDateDifference(start: CalendarDate, end: CalendarDate, includeEndDate = false): { totalDays: number; weeks: number; remainingDays: number; isNegative: boolean } {
-  const diff = toUtcTimestamp(end) - toUtcTimestamp(start);
-  let totalDays = Math.round(Math.abs(diff) / 86_400_000) + (includeEndDate ? 1 : 0);
-  return { totalDays, weeks: Math.floor(totalDays / 7), remainingDays: totalDays % 7, isNegative: diff < 0 };
-}
-
-function positiveModulo(value: number, divisor: number): number { return ((value % divisor) + divisor) % divisor; }
-
-export function addSubtractTime(base: CalendarDate, amount: number, unit: 'days' | 'weeks' | 'months' | 'years', operation: 'add' | 'subtract'): CalendarDate {
-  const safeAmount = Number.isFinite(amount) ? Math.trunc(amount) : 0;
-  const delta = safeAmount * (operation === 'add' ? 1 : -1);
-  if (unit === 'days' || unit === 'weeks') {
-    return fromUtcTimestamp(toUtcTimestamp(base) + (unit === 'weeks' ? delta * 7 : delta) * 86_400_000);
-  }
-  if (unit === 'years') {
-    const year = base.year + delta;
-    return { year, month: base.month, day: Math.min(base.day, getDaysInMonth(year, base.month)) };
-  }
-  const totalMonths = base.year * 12 + (base.month - 1) + delta;
-  const year = Math.floor(totalMonths / 12);
-  const month = positiveModulo(totalMonths, 12) + 1;
-  return { year, month, day: Math.min(base.day, getDaysInMonth(year, month)) };
-}
-
-export function calculateAge(birthDate: CalendarDate, asOfDate: CalendarDate): { years: number; months: number; days: number; totalDays: number; daysToNextBirthday: number; isInvalid: boolean } {
-  const birth = toUtcTimestamp(birthDate); const asOf = toUtcTimestamp(asOfDate);
-  if (asOf < birth) return { years: 0, months: 0, days: 0, totalDays: 0, daysToNextBirthday: 0, isInvalid: true };
-  let years = asOfDate.year - birthDate.year;
-  let months = asOfDate.month - birthDate.month;
-  let days = asOfDate.day - birthDate.day;
-  if (days < 0) {
-    months -= 1;
-    const previousMonth = asOfDate.month === 1 ? 12 : asOfDate.month - 1;
-    const previousYear = asOfDate.month === 1 ? asOfDate.year - 1 : asOfDate.year;
-    days += getDaysInMonth(previousYear, previousMonth);
-  }
-  if (months < 0) { years -= 1; months += 12; }
-  let birthdayYear = asOfDate.year;
-  const birthdayForYear = (year: number): CalendarDate => ({ year, month: birthDate.month, day: Math.min(birthDate.day, getDaysInMonth(year, birthDate.month)) });
-  let nextBirthday = birthdayForYear(birthdayYear);
-  if (toUtcTimestamp(nextBirthday) < asOf) nextBirthday = birthdayForYear(++birthdayYear);
-  return {
-    years, months, days, totalDays: Math.round((asOf - birth) / 86_400_000),
-    daysToNextBirthday: Math.round((toUtcTimestamp(nextBirthday) - asOf) / 86_400_000), isInvalid: false,
-  };
-}
-
-export interface BusinessDayOptions {
-  includeEndDate?: boolean;
-  weekendDays?: number[]; // UTC day numbers, Sunday=0 ... Saturday=6
-  excludedDates?: CalendarDate[];
-}
-
-/** Working-day calculator with custom weekends and manual holiday/exclusion dates. */
-export function calculateBusinessDays(start: CalendarDate, end: CalendarDate, options: BusinessDayOptions = {}): { workingDays: number; weekendDays: number; excludedDays: number; totalCalendarDays: number } {
-  const startMs = toUtcTimestamp(start); const endMs = toUtcTimestamp(end);
-  if (endMs < startMs) return { workingDays: 0, weekendDays: 0, excludedDays: 0, totalCalendarDays: 0 };
-  const includeEnd = options.includeEndDate ?? true;
-  const finalMs = includeEnd ? endMs : endMs - 86_400_000;
-  if (finalMs < startMs) return { workingDays: 0, weekendDays: 0, excludedDays: 0, totalCalendarDays: 0 };
-  const weekend = new Set((options.weekendDays?.length ? options.weekendDays : [0, 6]).map((day) => positiveModulo(Math.trunc(day), 7)));
-  const excluded = new Set((options.excludedDates || []).map(formatDateString));
-  let workingDays = 0; let weekendDays = 0; let excludedDays = 0; let totalCalendarDays = 0;
-  for (let current = startMs; current <= finalMs; current += 86_400_000) {
-    totalCalendarDays++;
-    const date = new Date(current);
-    if (weekend.has(date.getUTCDay())) { weekendDays++; continue; }
-    if (excluded.has(formatDateString(fromUtcTimestamp(current)))) { excludedDays++; continue; }
-    workingDays++;
-  }
-  return { workingDays, weekendDays, excludedDays, totalCalendarDays };
-}
-
-export function calculateWorkingDays(start: CalendarDate, end: CalendarDate, includeEndDate = true): { workingDays: number; weekendDays: number; totalCalendarDays: number } {
-  const result = calculateBusinessDays(start, end, { includeEndDate });
-  return { workingDays: result.workingDays, weekendDays: result.weekendDays, totalCalendarDays: result.totalCalendarDays };
-}
+export interface CalendarDate{year:number;month:number;day:number;}
+export function isLeapYear(year:number):boolean{return year%4===0&&year%100!==0||year%400===0;}
+export function getDaysInMonth(year:number,month:number):number{if(month===2)return isLeapYear(year)?29:28;return[4,6,9,11].includes(month)?30:31;}
+export function isValidCalendarDate(date:CalendarDate):boolean{return Number.isInteger(date.year)&&Number.isInteger(date.month)&&Number.isInteger(date.day)&&date.month>=1&&date.month<=12&&date.day>=1&&date.day<=getDaysInMonth(date.year,date.month);}
+export function parseDateString(str:string):CalendarDate|null{if(!/^\d{4,}-\d{2}-\d{2}$/.test(str||''))return null;const[y,m,d]=str.split('-').map(Number),date={year:y,month:m,day:d};return isValidCalendarDate(date)?date:null;}
+export function formatDateString(d:CalendarDate):string{return`${String(d.year).padStart(4,'0')}-${String(d.month).padStart(2,'0')}-${String(d.day).padStart(2,'0')}`;}
+/** Avoids Date.UTC's special 1900 offset for years 0..99. */
+export function toUtcTimestamp(d:CalendarDate):number{const date=new Date(0);date.setUTCFullYear(d.year,d.month-1,d.day);date.setUTCHours(0,0,0,0);return date.getTime();}
+export function fromUtcTimestamp(ms:number):CalendarDate{const d=new Date(ms);return{year:d.getUTCFullYear(),month:d.getUTCMonth()+1,day:d.getUTCDate()};}
+export function calculateDateDifference(start:CalendarDate,end:CalendarDate,includeEndDate=false):{totalDays:number;weeks:number;remainingDays:number;isNegative:boolean}{const diff=toUtcTimestamp(end)-toUtcTimestamp(start),total=Math.round(Math.abs(diff)/86400000)+(includeEndDate?1:0);return{totalDays:total,weeks:Math.floor(total/7),remainingDays:total%7,isNegative:diff<0};}
+const mod=(v:number,d:number)=>((v%d)+d)%d;
+export function addSubtractTime(base:CalendarDate,amount:number,unit:'days'|'weeks'|'months'|'years',operation:'add'|'subtract'):CalendarDate{const delta=(Number.isFinite(amount)?Math.trunc(amount):0)*(operation==='add'?1:-1);if(unit==='days'||unit==='weeks')return fromUtcTimestamp(toUtcTimestamp(base)+(unit==='weeks'?delta*7:delta)*86400000);if(unit==='years'){const year=base.year+delta;return{year,month:base.month,day:Math.min(base.day,getDaysInMonth(year,base.month))};}const total=base.year*12+base.month-1+delta,year=Math.floor(total/12),month=mod(total,12)+1;return{year,month,day:Math.min(base.day,getDaysInMonth(year,month))};}
+export function calculateAge(birth:CalendarDate,asOf:CalendarDate):{years:number;months:number;days:number;totalDays:number;daysToNextBirthday:number;isInvalid:boolean}{const b=toUtcTimestamp(birth),a=toUtcTimestamp(asOf);if(a<b)return{years:0,months:0,days:0,totalDays:0,daysToNextBirthday:0,isInvalid:true};let years=asOf.year-birth.year,months=asOf.month-birth.month,days=asOf.day-birth.day;if(days<0){months--;const pm=asOf.month===1?12:asOf.month-1,py=asOf.month===1?asOf.year-1:asOf.year;days+=getDaysInMonth(py,pm);}if(months<0){years--;months+=12;}const birthday=(year:number):CalendarDate=>({year,month:birth.month,day:Math.min(birth.day,getDaysInMonth(year,birth.month))});let next=birthday(asOf.year);if(toUtcTimestamp(next)<a)next=birthday(asOf.year+1);return{years,months,days,totalDays:Math.round((a-b)/86400000),daysToNextBirthday:Math.round((toUtcTimestamp(next)-a)/86400000),isInvalid:false};}
+export interface BusinessDayOptions{includeEndDate?:boolean;weekendDays?:number[];excludedDates?:CalendarDate[];}
+function countWeekendDays(startMs:number,totalDays:number,weekend:Set<number>):number{if(totalDays<=0)return 0;const full=Math.floor(totalDays/7);let count=full*weekend.size,remaining=totalDays%7,day=new Date(startMs).getUTCDay();for(let i=0;i<remaining;i++)if(weekend.has((day+i)%7))count++;return count;}
+export function calculateBusinessDays(start:CalendarDate,end:CalendarDate,options:BusinessDayOptions={}):{workingDays:number;weekendDays:number;excludedDays:number;totalCalendarDays:number}{const startMs=toUtcTimestamp(start),endMs=toUtcTimestamp(end);if(endMs<startMs)return{workingDays:0,weekendDays:0,excludedDays:0,totalCalendarDays:0};const include=options.includeEndDate??true,finalMs=include?endMs:endMs-86400000;if(finalMs<startMs)return{workingDays:0,weekendDays:0,excludedDays:0,totalCalendarDays:0};const total=Math.floor((finalMs-startMs)/86400000)+1,weekend=new Set((options.weekendDays?.length?options.weekendDays:[0,6]).map(v=>mod(Math.trunc(v),7))),weekendDays=countWeekendDays(startMs,total,weekend),excludedSet=new Set((options.excludedDates||[]).filter(isValidCalendarDate).map(formatDateString));let excludedDays=0;for(const date of excludedSet){const parsed=parseDateString(date);if(!parsed)continue;const ms=toUtcTimestamp(parsed);if(ms<startMs||ms>finalMs||weekend.has(new Date(ms).getUTCDay()))continue;excludedDays++;}return{workingDays:Math.max(0,total-weekendDays-excludedDays),weekendDays,excludedDays,totalCalendarDays:total};}
+export function calculateWorkingDays(start:CalendarDate,end:CalendarDate,includeEndDate=true){const r=calculateBusinessDays(start,end,{includeEndDate});return{workingDays:r.workingDays,weekendDays:r.weekendDays,totalCalendarDays:r.totalCalendarDays};}
+export function addBusinessDays(base:CalendarDate,amount:number,options:Omit<BusinessDayOptions,'includeEndDate'>={}):CalendarDate{let remaining=Math.abs(Math.trunc(amount)),direction=amount>=0?1:-1,current=base;if(!remaining)return current;const weekend=new Set((options.weekendDays?.length?options.weekendDays:[0,6]).map(v=>mod(Math.trunc(v),7))),excluded=new Set((options.excludedDates||[]).map(formatDateString));if(weekend.size===2&&weekend.has(0)&&weekend.has(6)&&excluded.size===0&&remaining>=5){const weeks=Math.floor(remaining/5);current=addSubtractTime(current,weeks*7,'days',direction>0?'add':'subtract');remaining-=weeks*5;}while(remaining>0){current=addSubtractTime(current,1,'days',direction>0?'add':'subtract');const day=new Date(toUtcTimestamp(current)).getUTCDay();if(!weekend.has(day)&&!excluded.has(formatDateString(current)))remaining--;}return current;}
+export function getIsoWeek(date:CalendarDate):{week:number;weekYear:number;weekday:number}{const ms=toUtcTimestamp(date),d=new Date(ms),weekday=((d.getUTCDay()+6)%7)+1;d.setUTCDate(d.getUTCDate()+4-weekday);const weekYear=d.getUTCFullYear(),yearStart=new Date(0);yearStart.setUTCFullYear(weekYear,0,1);yearStart.setUTCHours(0,0,0,0);const week=Math.ceil((((d.getTime()-yearStart.getTime())/86400000)+1)/7);return{week,weekYear,weekday};}
+export function getNthWeekdayOfMonth(year:number,month:number,weekday:number,nth:number):CalendarDate|null{if(month<1||month>12||nth===0)return null;const wd=mod(weekday,7);if(nth>0){const first=new Date(toUtcTimestamp({year,month,day:1})).getUTCDay(),day=1+mod(wd-first,7)+(nth-1)*7;return day<=getDaysInMonth(year,month)?{year,month,day}:null;}const last=getDaysInMonth(year,month),lastWd=new Date(toUtcTimestamp({year,month,day:last})).getUTCDay(),day=last-mod(lastWd-wd,7)+(nth+1)*7;return day>=1?{year,month,day}:null;}
+export function calculateCalendarMonthDifference(start:CalendarDate,end:CalendarDate):{months:number;remainingDays:number}{if(toUtcTimestamp(end)<toUtcTimestamp(start)){const r=calculateCalendarMonthDifference(end,start);return{months:-r.months,remainingDays:-r.remainingDays};}let months=(end.year-start.year)*12+end.month-start.month;let anchor=addSubtractTime(start,months,'months','add');if(toUtcTimestamp(anchor)>toUtcTimestamp(end)){months--;anchor=addSubtractTime(start,months,'months','add');}return{months,remainingDays:Math.round((toUtcTimestamp(end)-toUtcTimestamp(anchor))/86400000)};}
