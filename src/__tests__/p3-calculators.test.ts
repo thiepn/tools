@@ -12,6 +12,10 @@ import {
   oneRepMax,
   simplifyFraction,
 } from '../utilities/everyday-calculators-core';
+import {
+  salaryEquivalentsFromAnnual,
+  salaryEquivalentsFromHourly,
+} from '../utilities/salary-converter';
 import { CATEGORIES, TOOLS_REGISTRY } from '../registry/tools';
 import { registerPdfPublicTools } from '../registry/pdf-extension';
 import { registerDeviceDiagnosticTools } from '../registry/device-extension';
@@ -54,6 +58,12 @@ describe('P3 public calculator catalog', () => {
     const external = CALCULATOR_DEFINITIONS.filter((definition) => definition.externalData);
     expect(external.map((definition) => definition.id)).toEqual(['currency-converter']);
   });
+
+  it('describes salary conversion as bidirectional in public registry discovery', () => {
+    const tool = TOOLS_REGISTRY.find((candidate) => candidate.id === 'salary-hourly-calculator');
+    expect(tool?.description).toContain('either direction');
+    expect(tool?.keywords).toContain('hourly wage to salary');
+  });
 });
 
 describe('P3 calculator core correctness', () => {
@@ -87,6 +97,22 @@ describe('P3 calculator core correctness', () => {
     expect(payoff.possible).toBe(true);
     expect(payoff.months).toBeGreaterThan(20);
     expect(payoff.interest).toBeGreaterThan(0);
+  });
+
+  it('converts annual salary and hourly wage in both directions consistently', () => {
+    const annual = salaryEquivalentsFromAnnual(52000, 40, 52);
+    expect(annual.hourly).toBeCloseTo(25, 8);
+    expect(annual.monthly).toBeCloseTo(4333.3333, 3);
+
+    const hourly = salaryEquivalentsFromHourly(25, 40, 52);
+    expect(hourly.annual).toBeCloseTo(52000, 8);
+    expect(hourly.weekly).toBeCloseTo(1000, 8);
+    expect(hourly.hourly).toBeCloseTo(25, 8);
+  });
+
+  it('rejects impossible work schedules in salary conversion', () => {
+    expect(() => salaryEquivalentsFromAnnual(50000, 0, 52)).toThrow('Hours per week');
+    expect(() => salaryEquivalentsFromHourly(25, 40, 0)).toThrow('Paid weeks per year');
   });
 
   it('implements common fitness estimate equations deterministically', () => {
