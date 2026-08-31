@@ -11,6 +11,7 @@ const EXTENSION_CATALOGS = [
   { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46 },
   { phase: 'P4 file conversion', path: path.resolve(ROOT, 'src/files/publicFileConversionTasks.ts'), expected: 18 },
   { phase: 'P5 image micro-tools', path: path.resolve(ROOT, 'src/image/publicImageTasks.ts'), expected: 23 },
+  { phase: 'P6 audio/video media', path: path.resolve(ROOT, 'src/media/publicMediaTasks.ts'), expected: 29 },
 ];
 
 const baselineSource = readFileSync(BASELINE_SCRIPT, 'utf8');
