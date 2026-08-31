@@ -47,8 +47,22 @@ export interface BoardState {
   updatedAt: number;
 }
 
+const MARKER_RADIUS = 14;
+
+function getTextDimensions(el: BoardElement): { width: number; height: number } {
+  const fontSize = Math.max(1, el.fontSize || 18);
+  const lines = (el.text || '').split('\n');
+  const longest = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  return {
+    width: Math.max(fontSize * 0.6, longest * fontSize * 0.6),
+    height: Math.max(fontSize * 1.2, lines.length * fontSize * 1.2),
+  };
+}
+
 /**
- * Calculates element bounding box
+ * Calculates element bounding box.
+ * The box includes stroke padding so selection/eraser hit testing remains usable
+ * for thin lines and freehand paths.
  */
 export function getElementBoundingBox(el: BoardElement): {
   minX: number;
@@ -82,23 +96,52 @@ export function getElementBoundingBox(el: BoardElement): {
     };
   }
 
-  const w = Math.abs(el.width || 0);
-  const h = Math.abs(el.height || 0);
-  const minX = Math.min(el.x, el.x + (el.width || 0));
-  const minY = Math.min(el.y, el.y + (el.height || 0));
+  if (el.type === 'text') {
+    const size = getTextDimensions(el);
+    return {
+      minX: el.x,
+      minY: el.y,
+      maxX: el.x + size.width,
+      maxY: el.y + size.height,
+      width: size.width,
+      height: size.height,
+    };
+  }
+
+  if (el.type === 'marker') {
+    return {
+      minX: el.x - MARKER_RADIUS,
+      minY: el.y - MARKER_RADIUS,
+      maxX: el.x + MARKER_RADIUS,
+      maxY: el.y + MARKER_RADIUS,
+      width: MARKER_RADIUS * 2,
+      height: MARKER_RADIUS * 2,
+    };
+  }
+
+  const rawWidth = el.width || 0;
+  const rawHeight = el.height || 0;
+  const pad = el.strokeWidth / 2;
+  const minX = Math.min(el.x, el.x + rawWidth) - pad;
+  const minY = Math.min(el.y, el.y + rawHeight) - pad;
+  const maxX = Math.max(el.x, el.x + rawWidth) + pad;
+  const maxY = Math.max(el.y, el.y + rawHeight) + pad;
 
   return {
     minX,
     minY,
-    maxX: minX + w,
-    maxY: minY + h,
-    width: w,
-    height: h,
+    maxX,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
   };
 }
 
 /**
- * Checks if a point (px, py) is inside or near a BoardElement
+ * Checks if a point (px, py) is inside or near a BoardElement.
+ * Paths and line-like elements use segment distance instead of a broad bounding
+ * rectangle. Ellipses use the actual ellipse equation so corner clicks outside
+ * the shape no longer erase/select it accidentally.
  */
 export function isPointInsideElement(
   px: number,
@@ -116,8 +159,40 @@ export function isPointInsideElement(
     return false;
   }
 
-  if (el.type === 'rectangle' || el.type === 'text' || el.type === 'marker') {
+  if (el.type === 'marker') {
+    return Math.hypot(px - el.x, py - el.y) <= MARKER_RADIUS + hitThreshold;
+  }
+
+  if (el.type === 'text') {
+    return px >= box.minX - hitThreshold && px <= box.maxX + hitThreshold && py >= box.minY - hitThreshold && py <= box.maxY + hitThreshold;
+  }
+
+  if (el.type === 'line' || el.type === 'arrow') {
+    const x2 = el.x + (el.width || 0);
+    const y2 = el.y + (el.height || 0);
+    return distanceToSegment(px, py, el.x, el.y, x2, y2) <= el.strokeWidth / 2 + hitThreshold;
+  }
+
+  if (el.type === 'ellipse') {
+    const width = el.width || 0;
+    const height = el.height || 0;
+    const rx = Math.abs(width) / 2;
+    const ry = Math.abs(height) / 2;
+    if (rx < 1 || ry < 1) return Math.hypot(px - el.x, py - el.y) <= hitThreshold;
+    const cx = el.x + width / 2;
+    const cy = el.y + height / 2;
+    const nx = (px - cx) / (rx + hitThreshold);
+    const ny = (py - cy) / (ry + hitThreshold);
+    return nx * nx + ny * ny <= 1;
+  }
+
+  if (el.type === 'rectangle') {
     return true;
+  }
+
+  if (el.points && el.points.length === 1) {
+    const point = el.points[0];
+    return Math.hypot(px - point.x, py - point.y) <= el.strokeWidth / 2 + hitThreshold;
   }
 
   if (el.points && el.points.length > 1) {
@@ -125,12 +200,12 @@ export function isPointInsideElement(
       const p1 = el.points[i];
       const p2 = el.points[i + 1];
       const dist = distanceToSegment(px, py, p1.x, p1.y, p2.x, p2.y);
-      if (dist <= (el.strokeWidth / 2 + hitThreshold)) return true;
+      if (dist <= el.strokeWidth / 2 + hitThreshold) return true;
     }
     return false;
   }
 
-  return true;
+  return false;
 }
 
 function distanceToSegment(
