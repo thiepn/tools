@@ -6,20 +6,29 @@ const ROOT = process.cwd();
 const BASELINE_SCRIPT = path.resolve(ROOT, 'scripts/r5-browser-smoke.mjs');
 const TEMP_SCRIPT = path.resolve(ROOT, 'scripts/.r5-browser-smoke-expanded.tmp.mjs');
 const EXTENSION_CATALOGS = [
-  { phase: 'P1 PDF', path: path.resolve(ROOT, 'src/pdf/publicPdfTasks.ts'), expected: 20 },
-  { phase: 'P2 device diagnostics', path: path.resolve(ROOT, 'src/device/publicDeviceTasks.ts'), expected: 16 },
-  { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46 },
-  { phase: 'P4 file conversion', path: path.resolve(ROOT, 'src/files/publicFileConversionTasks.ts'), expected: 18 },
-  { phase: 'P5 image micro-tools', path: path.resolve(ROOT, 'src/image/publicImageTasks.ts'), expected: 23 },
-  { phase: 'P6 audio/video media', path: path.resolve(ROOT, 'src/media/publicMediaTasks.ts'), expected: 29 },
+  { phase: 'P1 PDF', path: path.resolve(ROOT, 'src/pdf/publicPdfTasks.ts'), expected: 20, shape: 'object' },
+  { phase: 'P2 device diagnostics', path: path.resolve(ROOT, 'src/device/publicDeviceTasks.ts'), expected: 16, shape: 'object' },
+  { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46, shape: 'object' },
+  { phase: 'P4 file conversion', path: path.resolve(ROOT, 'src/files/publicFileConversionTasks.ts'), expected: 18, shape: 'object' },
+  { phase: 'P5 image micro-tools', path: path.resolve(ROOT, 'src/image/publicImageTasks.ts'), expected: 23, shape: 'object' },
+  { phase: 'P6 audio/video media', path: path.resolve(ROOT, 'src/media/publicMediaTasks.ts'), expected: 29, shape: 'tuple' },
 ];
+
+function readCatalogIds(catalog) {
+  const source = readFileSync(catalog.path, 'utf8');
+  const pattern = catalog.shape === 'tuple'
+    ? /^\s*\['([^']+)'/gm
+    : /^\s{2,4}(?:\{ )?id:\s*'([^']+)'/gm;
+  return [...source.matchAll(pattern)].map((match) => match[1]);
+}
 
 const baselineSource = readFileSync(BASELINE_SCRIPT, 'utf8');
 const extensionIds = [];
 for (const catalog of EXTENSION_CATALOGS) {
-  const source = readFileSync(catalog.path, 'utf8');
-  const ids = [...source.matchAll(/^\s{2,4}(?:\{ )?id:\s*'([^']+)'/gm)].map((match) => match[1]);
-  if (ids.length !== catalog.expected || new Set(ids).size !== catalog.expected) throw new Error(`Expected ${catalog.expected} unique ${catalog.phase} task IDs; found ${ids.length}.`);
+  const ids = readCatalogIds(catalog);
+  if (ids.length !== catalog.expected || new Set(ids).size !== catalog.expected) {
+    throw new Error(`Expected ${catalog.expected} unique ${catalog.phase} task IDs; found ${ids.length}.`);
+  }
   extensionIds.push(...ids);
 }
 if (new Set(extensionIds).size !== extensionIds.length) throw new Error('Public-completeness extension catalogs contain duplicate IDs.');
