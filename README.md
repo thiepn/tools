@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **202 task routes** for text, PDFs, device diagnostics, calculators, file conversion, images, audio/video, productivity, math, time, and everyday tasks.
+Tiny Tools is a privacy-first public utility suite with **224 task routes** for text, study, PDFs, device diagnostics, calculators, file conversion, images, audio/video, productivity, math, time, and everyday tasks.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -44,6 +44,15 @@ Video routes cover merging, compression, browser-supported format conversion, WA
 
 Transformed video uses a shared Canvas + Web Audio + MediaRecorder renderer. It is intentionally real-time, must remain in a visible tab, and exports only containers/codecs actually supported by the current browser. Mixed-aspect merge inputs are letterboxed rather than stretched. Mute Video omits the source audio track instead of merely reducing volume to zero. Additional audio is decoded through Web Audio and mixed locally. P6 does not claim GIF → MP4 conversion or automatic video stabilization because those would require a dedicated animated-GIF/transcoding or motion-analysis engine that Tiny Tools does not currently ship.
 
+### P7 — Text & Study Expansion
+P7 adds **22 public routes**: 14 text/Markdown workflows and 8 study/citation workflows.
+
+Text routes cover English Flesch readability estimates, n-grams, email/URL/hashtag/mention extraction, repeated-phrase discovery, Jaccard/cosine text similarity, Unicode inspection, repetition, grapheme-aware reversal, hard wrapping, whitespace visualization, deterministic Lorem Ipsum, safe common-Markdown preview, Markdown → plain text, and HTML → plain text.
+
+Study routes cover local flashcards, cloze deletion practice, typed memorization scoring, self-testing, a deterministic spaced-review interval helper, weighted study-session planning, inclusive page-range reading plans, and basic APA 7 / MLA 9 / Chicago author-date citation formatting. The review planner does not claim SM-2 or FSRS equivalence, readability formulas are explicitly English-oriented approximations, and the citation formatter tells users to verify advanced or institution-specific requirements against the relevant style guide.
+
+The text and study workspaces are separately lazy-loaded and add no runtime dependency. Markdown preview is rendered from a deliberately limited React-node parser rather than executing raw HTML.
+
 ## Tech stack
 
 - React 19
@@ -56,6 +65,7 @@ Transformed video uses a shared Canvas + Web Audio + MediaRecorder renderer. It 
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
+- Dependency-free text-analysis and study-planning helpers
 
 ## Local development
 
@@ -74,17 +84,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P6 catalogs and browser-tests the full **202-route** runtime catalog at desktop and mobile widths (**404 route renders**) before the later R6–R9 gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P7 catalogs and browser-tests the full **224-route** runtime catalog at desktop and mobile widths (**448 route renders**) before the later R6–R9 gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study workflows operate on in-memory strings and local deterministic algorithms. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals.
 
 ## Project structure
 
@@ -97,6 +107,7 @@ src/
 ├── image/            P5 public image task metadata
 ├── media/            P6 public audio/video task metadata
 ├── pdf/              P1 PDF metadata/gateway routing
+├── text-study/       P7 text/study public task metadata
 ├── registry/         Base 50-tool registry plus expansion registration
 ├── storage/          Local preferences/transfers
 ├── tools/            Lazy-loaded tools/shared family shells
@@ -106,4 +117,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 + P6 expand the public catalog to 202 routes** while preserving the original release baseline, truthful browser boundaries, and shared-engine architecture.
+The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 + P6 + P7 expand the public catalog to 224 routes** while preserving the original release baseline, truthful browser boundaries, and shared-engine architecture.
