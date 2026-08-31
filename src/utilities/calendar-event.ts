@@ -44,10 +44,9 @@ export const COMMON_TIMEZONES = [
   'Pacific/Auckland',
 ];
 
-/**
- * Escapes characters for RFC 5545 text values
- * Escapes backslashes, semicolons, commas, and newlines
- */
+let fallbackUidCounter = 0;
+
+/** Escapes RFC 5545 TEXT values. */
 export function escapeIcsText(str: string): string {
   if (!str) return '';
   return str
@@ -57,9 +56,45 @@ export function escapeIcsText(str: string): string {
     .replace(/\r?\n/g, '\\n');
 }
 
+/** Quotes/escapes a parameter value such as ORGANIZER CN. */
+export function escapeIcsParameter(str: string): string {
+  const value = str.replace(/[\r\n]/g, ' ').trim();
+  if (!value) return '';
+  const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return /[,:;\s]/.test(escaped) ? `"${escaped}"` : escaped;
+}
+
 /**
- * Formats a Date or date string to ICS UTC timestamp (YYYYMMDDTHHMMSSZ)
+ * RFC 5545 content lines SHOULD be folded at 75 octets. Continuation lines
+ * begin with one space. This implementation counts UTF-8 bytes, not JS code units.
  */
+export function foldIcsLine(line: string, maxOctets = 75): string[] {
+  const encoder = new TextEncoder();
+  const limit = Math.max(16, maxOctets);
+  if (encoder.encode(line).length <= limit) return [line];
+
+  const output: string[] = [];
+  let current = '';
+  let currentBytes = 0;
+
+  for (const char of line) {
+    const charBytes = encoder.encode(char).length;
+    const effectiveLimit = output.length === 0 ? limit : limit - 1; // continuation leading space
+    if (current && currentBytes + charBytes > effectiveLimit) {
+      output.push(output.length === 0 ? current : ` ${current}`);
+      current = char;
+      currentBytes = charBytes;
+    } else {
+      current += char;
+      currentBytes += charBytes;
+    }
+  }
+
+  if (current) output.push(output.length === 0 ? current : ` ${current}`);
+  return output;
+}
+
+/** Formats a Date to ICS UTC timestamp (YYYYMMDDTHHMMSSZ). */
 export function formatIcsUtcTimestamp(date: Date): string {
   const pad = (n: number) => n.toString().padStart(2, '0');
   const y = date.getUTCFullYear();
@@ -71,9 +106,14 @@ export function formatIcsUtcTimestamp(date: Date): string {
   return `${y}${m}${d}T${h}${min}${s}Z`;
 }
 
-/**
- * Formats date and time into ICS DTSTART/DTEND string
- */
+function addDaysToDateString(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Formats date and time into ICS DTSTART/DTEND string. */
 export function formatIcsDateTime(
   dateStr: string,
   timeStr: string,
@@ -83,46 +123,26 @@ export function formatIcsDateTime(
   const cleanDate = dateStr.replace(/-/g, '');
 
   if (isAllDay) {
-    return {
-      icsKey: ';VALUE=DATE',
-      icsValue: cleanDate,
-    };
+    return { icsKey: ';VALUE=DATE', icsValue: cleanDate };
   }
 
   const cleanTime = (timeStr || '09:00').replace(/:/g, '') + '00';
   if (timezone === 'UTC') {
-    return {
-      icsKey: '',
-      icsValue: `${cleanDate}T${cleanTime}Z`,
-    };
+    return { icsKey: '', icsValue: `${cleanDate}T${cleanTime}Z` };
   }
 
-  return {
-    icsKey: `;TZID=${timezone}`,
-    icsValue: `${cleanDate}T${cleanTime}`,
-  };
+  return { icsKey: `;TZID=${timezone}`, icsValue: `${cleanDate}T${cleanTime}` };
 }
 
-/**
- * Validates calendar event inputs
- */
 export function validateCalendarEvent(event: CalendarEventData): {
   isValid: boolean;
   errors: string[];
 } {
   const errors: string[] = [];
 
-  if (!event.title.trim()) {
-    errors.push('Event title is required.');
-  }
-
-  if (!event.startDate) {
-    errors.push('Start date is required.');
-  }
-
-  if (!event.isAllDay && !event.startTime) {
-    errors.push('Start time is required for timed events.');
-  }
+  if (!event.title.trim()) errors.push('Event title is required.');
+  if (!event.startDate) errors.push('Start date is required.');
+  if (!event.isAllDay && !event.startTime) errors.push('Start time is required for timed events.');
 
   if (event.startDate && event.endDate) {
     const startIso = event.isAllDay
@@ -134,25 +154,32 @@ export function validateCalendarEvent(event: CalendarEventData): {
 
     const startTs = new Date(startIso).getTime();
     const endTs = new Date(endIso).getTime();
-
-    if (endTs < startTs) {
-      errors.push('End date/time cannot be earlier than start date/time.');
-    }
+    if (endTs < startTs) errors.push('End date/time cannot be earlier than start date/time.');
   }
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
+  if (event.organizerEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(event.organizerEmail.trim())) {
+    errors.push('Organizer email address is invalid.');
+  }
+
+  if (event.repeatCount !== undefined && (!Number.isInteger(event.repeatCount) || event.repeatCount < 1)) {
+    errors.push('Repeat count must be a positive whole number.');
+  }
+
+  return { isValid: errors.length === 0, errors };
 }
 
-/**
- * Generates RFC 5545 compliant .ics file content
- */
+export function createCalendarUid(): string {
+  const randomUuid = globalThis.crypto?.randomUUID?.();
+  if (randomUuid) return `${randomUuid}@tinytools.local`;
+  fallbackUidCounter += 1;
+  return `event-${Date.now()}-${fallbackUidCounter.toString(36)}@tinytools.local`;
+}
+
+/** Generates RFC 5545 compliant .ics file content. */
 export function generateIcsFile(event: CalendarEventData): string {
   const now = new Date();
   const dtStamp = formatIcsUtcTimestamp(now);
-  const uid = `event-${Date.now()}-${Math.random().toString(36).substring(2, 9)}@tinytools.local`;
+  const uid = createCalendarUid();
 
   const startDt = formatIcsDateTime(
     event.startDate,
@@ -161,9 +188,11 @@ export function generateIcsFile(event: CalendarEventData): string {
     event.timezone || 'UTC'
   );
 
-  const effectiveEndDate = event.endDate || event.startDate;
+  // RFC 5545 all-day DTEND is exclusive. The UI treats endDate as inclusive,
+  // so add one calendar day when serializing an all-day event.
+  const selectedEndDate = event.endDate || event.startDate;
+  const effectiveEndDate = event.isAllDay ? addDaysToDateString(selectedEndDate, 1) : selectedEndDate;
   const effectiveEndTime = event.endTime || event.startTime;
-
   const endDt = formatIcsDateTime(
     effectiveEndDate,
     effectiveEndTime,
@@ -185,43 +214,31 @@ export function generateIcsFile(event: CalendarEventData): string {
     `SUMMARY:${escapeIcsText(event.title)}`,
   ];
 
-  if (event.description.trim()) {
-    lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
-  }
-
-  if (event.location.trim()) {
-    lines.push(`LOCATION:${escapeIcsText(event.location)}`);
-  }
-
-  if (event.url.trim()) {
-    lines.push(`URL:${event.url.trim()}`);
-  }
+  if (event.description.trim()) lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
+  if (event.location.trim()) lines.push(`LOCATION:${escapeIcsText(event.location)}`);
+  if (event.url.trim()) lines.push(`URL:${event.url.trim()}`);
 
   if (event.organizerEmail?.trim()) {
-    const orgName = event.organizerName?.trim()
-      ? `;CN=${escapeIcsText(event.organizerName.trim())}`
-      : '';
+    const name = event.organizerName?.trim();
+    const orgName = name ? `;CN=${escapeIcsParameter(name)}` : '';
     lines.push(`ORGANIZER${orgName}:mailto:${event.organizerEmail.trim()}`);
   }
 
-  // Recurrence rule
   if (event.recurrence !== 'NONE') {
     let rrule = `RRULE:FREQ=${event.recurrence}`;
     if (event.repeatCount && event.repeatCount > 0) {
       rrule += `;COUNT=${event.repeatCount}`;
     } else if (event.repeatUntil) {
       const cleanUntil = event.repeatUntil.replace(/-/g, '');
-      rrule += `;UNTIL=${cleanUntil}T235959Z`;
+      rrule += event.isAllDay ? `;UNTIL=${cleanUntil}` : `;UNTIL=${cleanUntil}T235959Z`;
     }
     lines.push(rrule);
   }
 
-  // Reminder / Alarm
   if (event.reminderMinutes > 0) {
     let trigger = `-PT${event.reminderMinutes}M`;
-    if (event.reminderMinutes === 1440) {
-      trigger = '-P1D';
-    } else if (event.reminderMinutes >= 60 && event.reminderMinutes % 60 === 0) {
+    if (event.reminderMinutes === 1440) trigger = '-P1D';
+    else if (event.reminderMinutes >= 60 && event.reminderMinutes % 60 === 0) {
       trigger = `-PT${event.reminderMinutes / 60}H`;
     }
 
@@ -235,7 +252,5 @@ export function generateIcsFile(event: CalendarEventData): string {
   }
 
   lines.push('END:VEVENT', 'END:VCALENDAR');
-
-  // RFC 5545 requires CRLF line endings
-  return lines.join('\r\n');
+  return lines.flatMap((line) => foldIcsLine(line)).join('\r\n');
 }

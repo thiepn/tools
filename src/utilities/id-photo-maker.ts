@@ -1,6 +1,6 @@
 /**
  * Passport & ID Photo Maker Utility
- * Physical unit conversion (mm, inch, px at DPI), passport presets, alignment guides, and print sheet layout calculator
+ * Physical unit conversion, passport presets, alignment guides and print-sheet layout.
  */
 
 export interface IdPhotoPreset {
@@ -9,7 +9,7 @@ export interface IdPhotoPreset {
   countryGuidance: string;
   widthMm: number;
   heightMm: number;
-  headMinPercent: number; // Head height as % of photo height (typically 70-80%)
+  headMinPercent: number;
   headMaxPercent: number;
   recommendedDpi: number;
 }
@@ -91,35 +91,23 @@ export const PRINT_SHEET_PRESETS: PrintSheetPreset[] = [
   { id: 'photo-5x7', name: '5 × 7 inch (13 × 18 cm)', widthMm: 177.8, heightMm: 127 },
 ];
 
-/**
- * Converts millimeters to pixels given a DPI (default 300)
- */
 export function mmToPixels(mm: number, dpi = 300): number {
-  if (mm <= 0 || dpi <= 0) return 0;
+  if (!Number.isFinite(mm) || !Number.isFinite(dpi) || mm <= 0 || dpi <= 0) return 0;
   return Math.round((mm / 25.4) * dpi);
 }
 
-/**
- * Converts inches to pixels given a DPI (default 300)
- */
 export function inchToPixels(inches: number, dpi = 300): number {
-  if (inches <= 0 || dpi <= 0) return 0;
+  if (!Number.isFinite(inches) || !Number.isFinite(dpi) || inches <= 0 || dpi <= 0) return 0;
   return Math.round(inches * dpi);
 }
 
-/**
- * Converts pixels to millimeters given a DPI
- */
 export function pixelsToMm(pixels: number, dpi = 300): number {
-  if (pixels <= 0 || dpi <= 0) return 0;
+  if (!Number.isFinite(pixels) || !Number.isFinite(dpi) || pixels <= 0 || dpi <= 0) return 0;
   return Number(((pixels * 25.4) / dpi).toFixed(1));
 }
 
-/**
- * Converts pixels to inches given a DPI
- */
 export function pixelsToInches(pixels: number, dpi = 300): number {
-  if (pixels <= 0 || dpi <= 0) return 0;
+  if (!Number.isFinite(pixels) || !Number.isFinite(dpi) || pixels <= 0 || dpi <= 0) return 0;
   return Number((pixels / dpi).toFixed(2));
 }
 
@@ -139,9 +127,34 @@ export interface SheetLayoutResult {
   gapYPx: number;
 }
 
-/**
- * Calculates optimal grid tiling of passport photos on a print sheet
- */
+function emptyLayout(
+  sheetWidthPx: number,
+  sheetHeightPx: number,
+  photoWidthPx: number,
+  photoHeightPx: number,
+  marginXPx: number,
+  marginYPx: number,
+  gapXPx: number,
+  gapYPx: number
+): SheetLayoutResult {
+  return {
+    sheetWidthPx,
+    sheetHeightPx,
+    photoWidthPx,
+    photoHeightPx,
+    columns: 0,
+    rows: 0,
+    maxCopies: 0,
+    actualCopies: 0,
+    positions: [],
+    marginXPx,
+    marginYPx,
+    gapXPx,
+    gapYPx,
+  };
+}
+
+/** Calculates a centered grid of passport photos on a print sheet. */
 export function calculatePrintSheetLayout(
   sheetWidthMm: number,
   sheetHeightMm: number,
@@ -155,8 +168,8 @@ export function calculatePrintSheetLayout(
   } = {}
 ): SheetLayoutResult {
   const dpi = options.dpi || 300;
-  const marginMm = options.marginMm ?? 5;
-  const gapMm = options.gapMm ?? 3;
+  const marginMm = Math.max(0, options.marginMm ?? 5);
+  const gapMm = Math.max(0, options.gapMm ?? 3);
 
   const sheetWidthPx = mmToPixels(sheetWidthMm, dpi);
   const sheetHeightPx = mmToPixels(sheetHeightMm, dpi);
@@ -171,54 +184,43 @@ export function calculatePrintSheetLayout(
   const availableHeight = sheetHeightPx - marginYPx * 2;
 
   if (availableWidth <= 0 || availableHeight <= 0 || photoWidthPx <= 0 || photoHeightPx <= 0) {
-    return {
-      sheetWidthPx,
-      sheetHeightPx,
-      photoWidthPx,
-      photoHeightPx,
-      columns: 0,
-      rows: 0,
-      maxCopies: 0,
-      actualCopies: 0,
-      positions: [],
-      marginXPx,
-      marginYPx,
-      gapXPx,
-      gapYPx,
-    };
+    return emptyLayout(sheetWidthPx, sheetHeightPx, photoWidthPx, photoHeightPx, marginXPx, marginYPx, gapXPx, gapYPx);
   }
 
-  const columns = Math.max(1, Math.floor((availableWidth + gapXPx) / (photoWidthPx + gapXPx)));
-  const rows = Math.max(1, Math.floor((availableHeight + gapYPx) / (photoHeightPx + gapYPx)));
+  const columns = Math.floor((availableWidth + gapXPx) / (photoWidthPx + gapXPx));
+  const rows = Math.floor((availableHeight + gapYPx) / (photoHeightPx + gapYPx));
+
+  // Do not invent a 1×1 layout when the photo physically cannot fit inside the
+  // printable area. The old Math.max(1, ...) behavior could draw off-sheet.
+  if (columns < 1 || rows < 1) {
+    return emptyLayout(sheetWidthPx, sheetHeightPx, photoWidthPx, photoHeightPx, marginXPx, marginYPx, gapXPx, gapYPx);
+  }
+
   const maxCopies = columns * rows;
-
-  const actualCopies = options.requestedCopies && options.requestedCopies > 0
-    ? Math.min(options.requestedCopies, maxCopies)
-    : maxCopies;
-
-  // Compute centered offset
-  const gridContentW = columns * photoWidthPx + (columns - 1) * gapXPx;
-  const gridContentH = rows * photoHeightPx + (rows - 1) * gapYPx;
-  const startX = Math.max(marginXPx, Math.round((sheetWidthPx - gridContentW) / 2));
-  const startY = Math.max(marginYPx, Math.round((sheetHeightPx - gridContentH) / 2));
-
+  const requestedCopies = Number.isFinite(options.requestedCopies)
+    ? Math.max(0, Math.floor(options.requestedCopies || 0))
+    : 0;
+  const actualCopies = requestedCopies > 0 ? Math.min(requestedCopies, maxCopies) : maxCopies;
+  const actualRows = Math.ceil(actualCopies / columns);
+  const usedHeight = actualRows * photoHeightPx + Math.max(0, actualRows - 1) * gapYPx;
+  const startY = Math.max(marginYPx, Math.round((sheetHeightPx - usedHeight) / 2));
   const positions: { x: number; y: number; width: number; height: number }[] = [];
 
-  let count = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < columns; c++) {
-      if (count >= actualCopies) break;
-      const x = startX + c * (photoWidthPx + gapXPx);
-      const y = startY + r * (photoHeightPx + gapYPx);
+  let remaining = actualCopies;
+  for (let row = 0; row < actualRows && remaining > 0; row++) {
+    const itemsInRow = Math.min(columns, remaining);
+    const rowWidth = itemsInRow * photoWidthPx + Math.max(0, itemsInRow - 1) * gapXPx;
+    const startX = Math.max(marginXPx, Math.round((sheetWidthPx - rowWidth) / 2));
+
+    for (let column = 0; column < itemsInRow; column++) {
       positions.push({
-        x,
-        y,
+        x: startX + column * (photoWidthPx + gapXPx),
+        y: startY + row * (photoHeightPx + gapYPx),
         width: photoWidthPx,
         height: photoHeightPx,
       });
-      count++;
     }
-    if (count >= actualCopies) break;
+    remaining -= itemsInRow;
   }
 
   return {
@@ -238,9 +240,6 @@ export function calculatePrintSheetLayout(
   };
 }
 
-/**
- * Draws print cut marks (corner crosshairs or cut lines) on the print sheet
- */
 export function drawPrintCutMarks(
   ctx: CanvasRenderingContext2D,
   positions: { x: number; y: number; width: number; height: number }[],
@@ -251,9 +250,6 @@ export function drawPrintCutMarks(
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
 
-  for (const pos of positions) {
-    ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
-  }
-
+  for (const pos of positions) ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
   ctx.restore();
 }

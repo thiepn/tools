@@ -1,103 +1,106 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  Upload,
-  Copy,
-  Check,
-  Download,
-  FileText,
-  Sparkles,
-  ShieldCheck,
-  RotateCcw,
-  Languages,
-  CheckCheck,
-  Share2,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Download, FileText, Languages, RotateCcw, Sparkles, Upload } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
 import {
-  performLocalOcr,
+  AccessibleDropZone,
+  CopyButton,
+  ToolActionBar,
+  ToolStatus,
+} from '../../components/tool-ui/ToolControls';
+import {
   cancelOcrWorker,
+  performLocalOcr,
   SUPPORTED_OCR_LANGUAGES,
-  OcrLanguage,
-  OcrResult,
+  type OcrLanguage,
+  type OcrResult,
 } from '../../utilities/image-ocr';
-import { copyToClipboard } from '../../utilities/clipboard';
-import { setPendingTransfer } from '../../storage/transfer';
 
 export const ImageToTextTool: React.FC = () => {
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [selectedLang, setSelectedLang] = useState<OcrLanguage>('eng');
-
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progressStatus, setProgressStatus] = useState<string>('');
-  const [progressPct, setProgressPct] = useState<number>(0);
-
+  const [progressStatus, setProgressStatus] = useState('');
+  const [progressPct, setProgressPct] = useState(0);
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
-  const [outputText, setOutputText] = useState<string>('');
-  const [copied, setCopied] = useState(false);
-
+  const [outputText, setOutputText] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const currentUrlRef = useRef<string | null>(null);
 
-  // Terminate any active worker on unmount
+  // Keep the language worker warm while this tool is open. Changing the image
+  // only revokes the previous image URL; it no longer tears down Tesseract.
   useEffect(() => {
     return () => {
-      cancelOcrWorker();
-      if (imageDataUrl) URL.revokeObjectURL(imageDataUrl);
+      if (currentUrlRef.current) URL.revokeObjectURL(currentUrlRef.current);
+      void cancelOcrWorker();
     };
-  }, [imageDataUrl]);
+  }, []);
 
   const handleSetImage = (file: Blob) => {
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Please select a JPEG, PNG, or WebP image.');
+      return;
+    }
+    if (currentUrlRef.current) URL.revokeObjectURL(currentUrlRef.current);
     const url = URL.createObjectURL(file);
+    currentUrlRef.current = url;
     setImageBlob(file);
     setImageDataUrl(url);
     setOcrResult(null);
     setOutputText('');
+    setErrorMessage(null);
+    setProgressPct(0);
+    setProgressStatus('');
   };
 
-  // Load sample text image
+  const handleClear = () => {
+    if (currentUrlRef.current) URL.revokeObjectURL(currentUrlRef.current);
+    currentUrlRef.current = null;
+    setImageBlob(null);
+    setImageDataUrl(null);
+    setOcrResult(null);
+    setOutputText('');
+    setErrorMessage(null);
+    setProgressPct(0);
+    setProgressStatus('');
+  };
+
   const handleLoadSampleDocument = () => {
-    const c = document.createElement('canvas');
-    c.width = 800;
-    c.height = 400;
-    const ctx = c.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, 800, 400);
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      ctx.fillStyle = '#0F172A';
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillText('Sample Invoice & Document OCR', 40, 60);
-
-      ctx.font = '16px monospace';
-      ctx.fillStyle = '#334155';
-      ctx.fillText('Invoice Number: INV-2026-0882', 40, 110);
-      ctx.fillText('Date: August 28, 2026', 40, 140);
-      ctx.fillText('Client: Acme International Labs', 40, 170);
-      ctx.fillText('Description: Full-Stack Web Development & Optimization', 40, 200);
-      ctx.fillText('Subtotal: $4,500.00 | VAT (20%): $900.00', 40, 240);
-      ctx.fillText('Total Amount Due: $5,400.00', 40, 270);
-
-      ctx.font = 'italic 14px sans-serif';
-      ctx.fillStyle = '#64748B';
-      ctx.fillText('Thank you for your business. Payment due within 14 days.', 40, 330);
-    }
-
-    c.toBlob((blob) => {
-      if (blob) handleSetImage(blob);
-    }, 'image/png');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillText('Sample Invoice & Document OCR', 40, 60);
+    ctx.font = '16px monospace';
+    ctx.fillStyle = '#334155';
+    [
+      'Invoice Number: INV-2026-0882',
+      'Date: August 28, 2026',
+      'Client: Acme International Labs',
+      'Description: Full-Stack Web Development & Optimization',
+      'Subtotal: $4,500.00 | VAT (20%): $900.00',
+      'Total Amount Due: $5,400.00',
+    ].forEach((line, index) => ctx.fillText(line, 40, 110 + index * 30));
+    ctx.font = 'italic 14px sans-serif';
+    ctx.fillStyle = '#64748B';
+    ctx.fillText('Thank you for your business. Payment due within 14 days.', 40, 330);
+    canvas.toBlob((blob) => blob && handleSetImage(blob), 'image/png');
   };
 
-  // Clipboard paste
   useEffect(() => {
-    const handlePaste = (e: ClipboardEvent) => {
-      if (!e.clipboardData) return;
-      for (const item of e.clipboardData.items) {
-        if (item.type.startsWith('image/')) {
-          const f = item.getAsFile();
-          if (f) handleSetImage(f);
-          break;
-        }
+    const handlePaste = (event: ClipboardEvent) => {
+      for (const item of event.clipboardData?.items ?? []) {
+        if (!item.type.startsWith('image/')) continue;
+        const file = item.getAsFile();
+        if (file) handleSetImage(file);
+        break;
       }
     };
     window.addEventListener('paste', handlePaste);
@@ -105,9 +108,10 @@ export const ImageToTextTool: React.FC = () => {
   }, []);
 
   const handleRunOcr = async () => {
-    if (!imageBlob) return;
+    if (!imageBlob || isProcessing) return;
     setIsProcessing(true);
-    setProgressStatus('Initializing OCR engine...');
+    setErrorMessage(null);
+    setProgressStatus('Preparing OCR…');
     setProgressPct(5);
 
     try {
@@ -115,27 +119,17 @@ export const ImageToTextTool: React.FC = () => {
         setProgressStatus(status.status);
         setProgressPct(status.progress);
       });
-
       setOcrResult(result);
       setOutputText(result.text);
-    } catch (err) {
-      console.error('OCR Error:', err);
-      setProgressStatus('Recognition failed or unreadable image');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'OCR failed for this image.');
+      setProgressStatus('Recognition failed');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleCopy = async () => {
-    if (!outputText) return;
-    const ok = await copyToClipboard(outputText);
-    if (ok) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleDownloadTxt = () => {
+  const handleDownload = () => {
     if (!outputText) return;
     const blob = new Blob([outputText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -146,262 +140,102 @@ export const ImageToTextTool: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleSendToTool = (targetToolId: string) => {
-    if (!outputText) return;
-    setPendingTransfer(targetToolId, outputText);
-    window.location.hash = `#/tool/${targetToolId}`;
-  };
+  const wordCount = outputText.trim() ? outputText.trim().split(/\s+/).filter(Boolean).length : 0;
 
   return (
     <ToolShell
       toolId="image-to-text"
       title="Image to Text / OCR"
-      description="Extract selectable text from images, photos, and screenshots locally using in-browser optical character recognition."
+      description="Extract editable text from images locally with a reusable in-browser OCR worker. Language data may download when first used."
       category="productivity"
       relatedToolIds={['text-cleaner', 'word-counter', 'text-to-speech']}
       outputToTransfer={outputText}
     >
-      <div className="space-y-6">
-        {/* Top Action Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white shadow-2xs inline-flex items-center gap-1.5"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>{imageDataUrl ? 'Change Image' : 'Select Image'}</span>
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              {imageDataUrl ? 'Change image' : 'Select image'}
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  handleSetImage(e.target.files[0]);
-                }
-                e.target.value = '';
-              }}
-            />
-
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) handleSetImage(file); event.target.value = ''; }} />
             {!imageDataUrl && (
-              <button
-                type="button"
-                onClick={handleLoadSampleDocument}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 inline-flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Load Sample Document</span>
+              <button type="button" onClick={handleLoadSampleDocument} className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Load sample
               </button>
             )}
-
             {imageDataUrl && (
-              <button
-                type="button"
-                onClick={() => {
-                  setImageBlob(null);
-                  setImageDataUrl(null);
-                  setOcrResult(null);
-                  setOutputText('');
-                }}
-                className="px-2.5 py-1.5 text-xs font-medium rounded-md text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
+              <button type="button" onClick={handleClear} disabled={isProcessing} className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Clear
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-xs">
-              <Languages className="w-3.5 h-3.5 text-neutral-400" />
-              <select
-                value={selectedLang}
-                onChange={(e) => setSelectedLang(e.target.value as OcrLanguage)}
-                className="px-2 py-1 text-xs border rounded bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
-              >
-                {SUPPORTED_OCR_LANGUAGES.map((lang) => (
-                  <option key={lang.id} value={lang.id}>
-                    {lang.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {imageDataUrl && !ocrResult && (
-              <button
-                type="button"
-                disabled={isProcessing}
-                onClick={handleRunOcr}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs inline-flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>{isProcessing ? 'Recognizing...' : 'Extract Text'}</span>
-              </button>
-            )}
-          </div>
+          <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            <span className="mb-1 flex items-center gap-1.5"><Languages className="h-3.5 w-3.5" aria-hidden="true" /> OCR language</span>
+            <select value={selectedLang} onChange={(event) => setSelectedLang(event.target.value as OcrLanguage)} disabled={isProcessing} className="rounded-md border border-neutral-300 bg-white px-2.5 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-900">
+              {SUPPORTED_OCR_LANGUAGES.map((language) => <option key={language.id} value={language.id}>{language.label}</option>)}
+            </select>
+          </label>
         </div>
 
-        {/* Empty Dropzone */}
         {!imageDataUrl && (
-          <div
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                handleSetImage(e.dataTransfer.files[0]);
-              }
-            }}
-            onClick={() => fileInputRef.current?.click()}
-            className="p-12 border-2 border-dashed border-neutral-300 dark:border-neutral-700 hover:border-blue-500 rounded-xl bg-neutral-50 dark:bg-neutral-900/40 text-center cursor-pointer transition-colors space-y-3"
+          <AccessibleDropZone
+            ariaLabel="Select or drop an image for OCR"
+            onActivate={() => fileInputRef.current?.click()}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => { event.preventDefault(); const file = event.dataTransfer.files?.[0]; if (file) handleSetImage(file); }}
+            className="rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 p-10 text-center hover:border-blue-500 dark:border-neutral-700 dark:bg-neutral-950"
           >
-            <div className="w-12 h-12 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <FileText className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                Drop Screenshot or Image for Local OCR
-              </p>
-              <p className="text-xs text-neutral-500 mt-1">
-                Supports JPEG, PNG, and WebP (or paste directly from clipboard with Ctrl+V)
-              </p>
-            </div>
-            <div className="pt-2 flex justify-center items-center gap-2 text-xs text-neutral-400">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>100% In-Browser OCR. Images are never uploaded anywhere.</span>
-            </div>
-          </div>
+            <FileText className="mx-auto h-8 w-8 text-blue-600" aria-hidden="true" />
+            <p className="mt-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Drop a screenshot, scan, or photo</p>
+            <p className="mt-1 text-xs text-neutral-500">JPEG, PNG, WebP, or paste an image with Ctrl/Cmd+V.</p>
+            <p className="mt-3 text-[11px] text-neutral-400">Image content stays in this browser. OCR runtime/language assets may download on first use.</p>
+          </AccessibleDropZone>
         )}
 
-        {/* Loaded Image & Processing Display */}
+        {errorMessage && <ToolStatus tone="error">{errorMessage}</ToolStatus>}
+
         {imageDataUrl && (
-          <div className="space-y-4">
-            {/* Progress Bar */}
+          <>
             {isProcessing && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2 text-xs">
-                <div className="flex items-center justify-between text-blue-900 dark:text-blue-200 font-medium">
-                  <span>{progressStatus}</span>
-                  <span className="font-mono">{progressPct}%</span>
-                </div>
-                <div className="w-full bg-blue-200 dark:bg-blue-900/60 rounded-full h-1.5 overflow-hidden">
-                  <div
-                    className="bg-blue-600 h-full transition-all duration-300 rounded-full"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
+              <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40" role="status" aria-live="polite">
+                <div className="flex justify-between gap-3 text-xs font-medium text-blue-900 dark:text-blue-200"><span>{progressStatus}</span><span className="font-mono">{progressPct}%</span></div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-blue-200 dark:bg-blue-900"><div className="h-full rounded-full bg-blue-600 transition-[width]" style={{ width: `${progressPct}%` }} /></div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left: Image Preview */}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <div className="space-y-2">
-                <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                  Input Image
-                </span>
-                <div className="p-3 bg-neutral-900 rounded-xl flex items-center justify-center min-h-[300px] max-h-[480px] overflow-hidden border border-neutral-800">
-                  <img
-                    src={imageDataUrl}
-                    alt="Source"
-                    className="max-h-[440px] max-w-full object-contain rounded shadow"
-                  />
+                <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Source image</div>
+                <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950 p-3">
+                  <img src={imageDataUrl} alt="OCR source" className="max-h-[440px] max-w-full rounded object-contain" />
                 </div>
               </div>
 
-              {/* Right: OCR Text Output Area */}
-              <div className="space-y-2 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                    Recognized Text Output
-                  </span>
-                  {ocrResult && (
-                    <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                      Confidence: {ocrResult.confidence}%
-                    </span>
-                  )}
+              <div className="flex min-w-0 flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Recognized text</span>
+                  {ocrResult && <ToolStatus tone="success">{ocrResult.confidence}% confidence</ToolStatus>}
                 </div>
-
-                <div className="flex-1 min-h-[280px]">
-                  <textarea
-                    ref={textAreaRef}
-                    value={outputText}
-                    onChange={(e) => setOutputText(e.target.value)}
-                    placeholder={
-                      isProcessing
-                        ? 'Extracting text locally in browser...'
-                        : 'Extracted text will appear here. Click "Extract Text" above to begin OCR.'
-                    }
-                    className="w-full h-full min-h-[260px] p-3 text-xs sm:text-sm font-mono border rounded-lg bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                  />
-                </div>
-
-                {/* Text Stats */}
-                <div className="flex items-center justify-between text-xs text-neutral-500 pt-1">
-                  <span>
-                    Words: {outputText.trim() ? outputText.trim().split(/\s+/).filter(Boolean).length : 0} | Characters:{' '}
-                    {outputText.length}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => textAreaRef.current?.select()}
-                    className="text-neutral-600 dark:text-neutral-400 hover:underline"
-                  >
-                    Select all
-                  </button>
-                </div>
-
-                {/* Bottom Action Ribbon */}
-                {outputText && (
-                  <div className="space-y-3 pt-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCopy}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 inline-flex items-center gap-1.5"
-                      >
-                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copied ? 'Copied!' : 'Copy Text'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleDownloadTxt}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 inline-flex items-center gap-1.5"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Download .TXT</span>
-                      </button>
-                    </div>
-
-                    {/* Tool Chaining */}
-                    <div className="p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 space-y-1.5 text-xs">
-                      <span className="font-semibold text-neutral-700 dark:text-neutral-300">
-                        Transfer Text Directly To:
-                      </span>
-                      <div className="flex flex-wrap gap-2 pt-0.5">
-                        {[
-                          { id: 'text-cleaner', label: 'Text Cleaner' },
-                          { id: 'word-counter', label: 'Word Counter' },
-                          { id: 'case-converter', label: 'Case Converter' },
-                          { id: 'text-to-speech', label: 'Text-to-Speech' },
-                        ].map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => handleSendToTool(t.id)}
-                            className="px-2 py-1 rounded bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-[11px] font-medium"
-                          >
-                            → {t.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <textarea value={outputText} onChange={(event) => setOutputText(event.target.value)} rows={16} spellCheck={false} placeholder="Recognized text will appear here." aria-label="Recognized OCR text" className="min-h-72 w-full flex-1 resize-y rounded-lg border border-neutral-300 bg-white p-3 font-mono text-sm text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100" />
+                <div className="text-[11px] text-neutral-500">{wordCount.toLocaleString()} words · {outputText.length.toLocaleString()} characters</div>
               </div>
             </div>
-          </div>
+
+            <ToolActionBar align="between">
+              <button type="button" onClick={handleRunOcr} disabled={isProcessing || !imageBlob} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                {ocrResult ? 'Run OCR again' : 'Extract text'}
+              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <CopyButton value={outputText} label="Copy text" />
+                <button type="button" onClick={handleDownload} disabled={!outputText} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" /> Download .txt
+                </button>
+              </div>
+            </ToolActionBar>
+          </>
         )}
       </div>
     </ToolShell>

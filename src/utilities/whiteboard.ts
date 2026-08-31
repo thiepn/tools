@@ -47,9 +47,19 @@ export interface BoardState {
   updatedAt: number;
 }
 
-/**
- * Calculates element bounding box
- */
+const MARKER_RADIUS = 14;
+
+function getTextDimensions(el: BoardElement): { width: number; height: number } {
+  const fontSize = Math.max(1, el.fontSize || 18);
+  const lines = (el.text || '').split('\n');
+  const longest = lines.reduce((max, line) => Math.max(max, line.length), 0);
+  return {
+    width: Math.max(fontSize * 0.6, longest * fontSize * 0.6),
+    height: Math.max(fontSize * 1.2, lines.length * fontSize * 1.2),
+  };
+}
+
+/** Returns the geometric element bounds without interaction padding. */
 export function getElementBoundingBox(el: BoardElement): {
   minX: number;
   minY: number;
@@ -64,41 +74,51 @@ export function getElementBoundingBox(el: BoardElement): {
     let maxX = -Infinity;
     let maxY = -Infinity;
 
-    for (const p of el.points) {
-      if (p.x < minX) minX = p.x;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.y > maxY) maxY = p.y;
+    for (const point of el.points) {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
     }
 
-    const pad = el.strokeWidth / 2 + 4;
+    return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+  }
+
+  if (el.type === 'text') {
+    const size = getTextDimensions(el);
     return {
-      minX: minX - pad,
-      minY: minY - pad,
-      maxX: maxX + pad,
-      maxY: maxY + pad,
-      width: maxX - minX + pad * 2,
-      height: maxY - minY + pad * 2,
+      minX: el.x,
+      minY: el.y,
+      maxX: el.x + size.width,
+      maxY: el.y + size.height,
+      width: size.width,
+      height: size.height,
     };
   }
 
-  const w = Math.abs(el.width || 0);
-  const h = Math.abs(el.height || 0);
-  const minX = Math.min(el.x, el.x + (el.width || 0));
-  const minY = Math.min(el.y, el.y + (el.height || 0));
+  if (el.type === 'marker') {
+    return {
+      minX: el.x - MARKER_RADIUS,
+      minY: el.y - MARKER_RADIUS,
+      maxX: el.x + MARKER_RADIUS,
+      maxY: el.y + MARKER_RADIUS,
+      width: MARKER_RADIUS * 2,
+      height: MARKER_RADIUS * 2,
+    };
+  }
 
-  return {
-    minX,
-    minY,
-    maxX: minX + w,
-    maxY: minY + h,
-    width: w,
-    height: h,
-  };
+  const rawWidth = el.width || 0;
+  const rawHeight = el.height || 0;
+  const minX = Math.min(el.x, el.x + rawWidth);
+  const minY = Math.min(el.y, el.y + rawHeight);
+  const maxX = Math.max(el.x, el.x + rawWidth);
+  const maxY = Math.max(el.y, el.y + rawHeight);
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
 }
 
 /**
- * Checks if a point (px, py) is inside or near a BoardElement
+ * Checks if a point is inside or near a BoardElement. Paths and line-like
+ * elements use segment distance; ellipses use the actual ellipse equation.
  */
 export function isPointInsideElement(
   px: number,
@@ -107,30 +127,61 @@ export function isPointInsideElement(
   hitThreshold = 8
 ): boolean {
   const box = getElementBoundingBox(el);
+  const coarsePadding = hitThreshold + Math.max(0, el.strokeWidth) / 2;
   if (
-    px < box.minX - hitThreshold ||
-    px > box.maxX + hitThreshold ||
-    py < box.minY - hitThreshold ||
-    py > box.maxY + hitThreshold
+    px < box.minX - coarsePadding ||
+    px > box.maxX + coarsePadding ||
+    py < box.minY - coarsePadding ||
+    py > box.maxY + coarsePadding
   ) {
     return false;
   }
 
-  if (el.type === 'rectangle' || el.type === 'text' || el.type === 'marker') {
-    return true;
+  if (el.type === 'marker') {
+    return Math.hypot(px - el.x, py - el.y) <= MARKER_RADIUS + hitThreshold;
+  }
+
+  if (el.type === 'text') {
+    return px >= box.minX - hitThreshold && px <= box.maxX + hitThreshold && py >= box.minY - hitThreshold && py <= box.maxY + hitThreshold;
+  }
+
+  if (el.type === 'line' || el.type === 'arrow') {
+    const x2 = el.x + (el.width || 0);
+    const y2 = el.y + (el.height || 0);
+    return distanceToSegment(px, py, el.x, el.y, x2, y2) <= el.strokeWidth / 2 + hitThreshold;
+  }
+
+  if (el.type === 'ellipse') {
+    const width = el.width || 0;
+    const height = el.height || 0;
+    const rx = Math.abs(width) / 2;
+    const ry = Math.abs(height) / 2;
+    if (rx < 1 || ry < 1) return Math.hypot(px - el.x, py - el.y) <= hitThreshold;
+    const cx = el.x + width / 2;
+    const cy = el.y + height / 2;
+    const nx = (px - cx) / (rx + hitThreshold);
+    const ny = (py - cy) / (ry + hitThreshold);
+    return nx * nx + ny * ny <= 1;
+  }
+
+  if (el.type === 'rectangle') return true;
+
+  if (el.points && el.points.length === 1) {
+    const point = el.points[0];
+    return Math.hypot(px - point.x, py - point.y) <= el.strokeWidth / 2 + hitThreshold;
   }
 
   if (el.points && el.points.length > 1) {
     for (let i = 0; i < el.points.length - 1; i++) {
-      const p1 = el.points[i];
-      const p2 = el.points[i + 1];
-      const dist = distanceToSegment(px, py, p1.x, p1.y, p2.x, p2.y);
-      if (dist <= (el.strokeWidth / 2 + hitThreshold)) return true;
+      const first = el.points[i];
+      const second = el.points[i + 1];
+      if (distanceToSegment(px, py, first.x, first.y, second.x, second.y) <= el.strokeWidth / 2 + hitThreshold) {
+        return true;
+      }
     }
-    return false;
   }
 
-  return true;
+  return false;
 }
 
 function distanceToSegment(
@@ -141,16 +192,13 @@ function distanceToSegment(
   x2: number,
   y2: number
 ): number {
-  const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
-  if (l2 === 0) return Math.hypot(px - x1, py - y1);
-  let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+  const lengthSquared = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+  if (lengthSquared === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / lengthSquared;
   t = Math.max(0, Math.min(1, t));
   return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
 }
 
-/**
- * Draws background pattern on canvas context
- */
 export function drawBoardBackground(
   ctx: CanvasRenderingContext2D,
   width: number,
