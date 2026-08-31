@@ -2,14 +2,13 @@ import { lazy } from 'react';
 import type { ToolCategory, ToolDefinition } from '../types';
 
 export const TOOLS_REGISTRY: ToolDefinition[] = [
-  // 1. Text Cleaner
   {
     id: 'text-cleaner',
     name: 'Text Cleaner & Normalizer',
     shortName: 'Text Cleaner',
-    description: 'Trim excess whitespace, normalize Unicode spaces, strip emoji/symbols/HTML, and clean line endings.',
+    description: 'Trim excess whitespace, normalize Unicode spaces, clean line endings, normalize punctuation, and remove duplicate lines.',
     category: 'text',
-    keywords: ['clean', 'trim', 'spaces', 'unicode', 'html', 'strip', 'emoji', 'quotes', 'normalize', 'format'],
+    keywords: ['clean', 'trim', 'spaces', 'unicode', 'duplicates', 'invisible characters', 'quotes', 'normalize', 'format'],
     iconName: 'Sparkles',
     route: '/text-cleaner',
     featured: true,
@@ -17,7 +16,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/text-cleaner/TextCleanerTool')),
   },
-  // 2. Case Converter
   {
     id: 'case-converter',
     name: 'Case Converter',
@@ -32,7 +30,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/case-converter/CaseConverterTool')),
   },
-  // 3. Word Counter
   {
     id: 'word-counter',
     name: 'Word & Character Counter',
@@ -47,7 +44,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/word-counter/WordCounterTool')),
   },
-  // 4. List Processor
   {
     id: 'list-processor',
     name: 'List Processor & Sorter',
@@ -62,7 +58,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/list-processor/ListProcessorTool')),
   },
-  // 5. JSON Formatter
   {
     id: 'json-formatter',
     name: 'JSON Formatter & Validator',
@@ -77,7 +72,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/json-formatter/JsonFormatterTool')),
   },
-  // 6. Regex Tester
   {
     id: 'regex-tester',
     name: 'Regex Tester & Debugger',
@@ -92,7 +86,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/regex-tester/RegexTesterTool')),
   },
-  // 7. URL & Base64 Tools
   {
     id: 'encoding-tools',
     name: 'URL & Base64 Tools',
@@ -107,7 +100,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/encoding-tools/EncodingTools')),
   },
-  // 8. Password & Passphrase Generator
   {
     id: 'secure-generator',
     name: 'Password & Passphrase Generator',
@@ -122,7 +114,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/secure-generator/SecureGeneratorTool')),
   },
-  // 9. Color Converter & Contrast
   {
     id: 'color-converter',
     name: 'Color Converter & Contrast',
@@ -137,7 +128,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/color-converter/ColorConverterTool')),
   },
-  // 10. Aspect Ratio Calculator
   {
     id: 'aspect-ratio-calculator',
     name: 'Aspect Ratio Calculator',
@@ -152,7 +142,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/aspect-ratio-calculator/AspectRatioCalculatorTool')),
   },
-  // 11. Percentage Calculator
   {
     id: 'percentage-calculator',
     name: 'Percentage Calculator',
@@ -167,7 +156,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/percentage-calculator/PercentageCalculatorTool')),
   },
-  // 12. Unit Converter
   {
     id: 'unit-converter',
     name: 'Unit Converter',
@@ -182,7 +170,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/unit-converter/UnitConverterTool')),
   },
-  // 13. Unit Price Comparator
   {
     id: 'unit-price-comparator',
     name: 'Unit Price Comparator',
@@ -197,7 +184,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/unit-price-comparator/UnitPriceComparatorTool')),
   },
-  // 14. Discount, VAT & Margin Calculator
   {
     id: 'discount-vat-calculator',
     name: 'Discount, VAT & Margin Calculator',
@@ -212,7 +198,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/discount-vat/DiscountVatTool')),
   },
-  // 15. Date Calculator
   {
     id: 'date-calculator',
     name: 'Date Calculator',
@@ -227,7 +212,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/date-calculator/DateCalculatorTool')),
   },
-  // 16. Time Zone & World Clock Converter
   {
     id: 'time-zone-converter',
     name: 'Time Zone & World Clock Converter',
@@ -242,7 +226,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/time-zone-converter/TimeZoneConverterTool')),
   },
-  // 17. Timer, Stopwatch & Pomodoro
   {
     id: 'timer-stopwatch',
     name: 'Timer, Stopwatch & Pomodoro',
@@ -257,7 +240,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/timer-stopwatch/TimerStopwatchTool')),
   },
-  // 18. QR Code Studio & Scanner
   {
     id: 'qr-studio',
     name: 'QR Code Studio & Scanner',
@@ -272,7 +254,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/qr-studio/QrStudioTool')),
   },
-  // 19. Image Optimizer & Converter
   {
     id: 'image-optimizer',
     name: 'Image Optimizer & Converter',
@@ -287,7 +268,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/image-optimizer/ImageOptimizerTool')),
   },
-  // 20. Screenshot & Image Annotator
   {
     id: 'image-annotator',
     name: 'Screenshot & Image Annotator',
@@ -302,7 +282,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/image-annotator/ImageAnnotatorTool')),
   },
-  // 21. Image Collage Maker
   {
     id: 'image-collage',
     name: 'Image Collage Maker',
@@ -317,7 +296,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/image-collage/ImageCollageTool')),
   },
-  // 22. Image Background Remover
   {
     id: 'background-remover',
     name: 'Image Background Remover',
@@ -332,7 +310,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/background-remover/BackgroundRemoverTool')),
   },
-  // 23. Image to Text (OCR)
   {
     id: 'image-to-text',
     name: 'Image to Text / OCR',
@@ -347,7 +324,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/image-to-text/ImageToTextTool')),
   },
-  // 24. Screen Recorder
   {
     id: 'screen-recorder',
     name: 'Screen Recorder',
@@ -362,7 +338,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/screen-recorder/ScreenRecorderTool')),
   },
-  // 25. Audio Recorder & Trimmer
   {
     id: 'audio-recorder',
     name: 'Audio Recorder & Trimmer',
@@ -377,7 +352,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/audio-recorder/AudioRecorderTool')),
   },
-  // 26. Text to Speech
   {
     id: 'text-to-speech',
     name: 'Text to Speech / Voice Synthesizer',
@@ -392,7 +366,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/text-to-speech/TextToSpeechTool')),
   },
-  // 27. Random Picker & Team Generator
   {
     id: 'random-picker',
     name: 'Random Picker & Team Generator',
@@ -407,7 +380,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/random-picker/RandomPickerTool')),
   },
-  // 28. Recipe Scaler & Converter
   {
     id: 'recipe-scaler',
     name: 'Recipe Scaler & Unit Converter',
@@ -422,7 +394,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/recipe-scaler/RecipeScalerTool')),
   },
-  // 29. Checklist & Packing List
   {
     id: 'checklist',
     name: 'Checklist & Packing List',
@@ -437,7 +408,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/checklist/ChecklistTool')),
   },
-  // 30. Quick Notepad / Scratchpad
   {
     id: 'notepad',
     name: 'Quick Notepad / Scratchpad',
@@ -452,7 +422,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/quick-notepad/QuickNotepadTool')),
   },
-  // 31. Video Toolkit & Editor
   {
     id: 'video-toolkit',
     name: 'Video Toolkit & Editor',
@@ -467,14 +436,13 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/video-toolkit/VideoToolkitTool')),
   },
-  // 32. Document & Receipt Scanner
   {
     id: 'document-scanner',
     name: 'Document & Receipt Scanner',
     shortName: 'Doc Scanner',
     description: 'Perspective warp correction, scan contrast enhancement, black & white thresholding, and camera capture.',
     category: 'productivity',
-    keywords: ['scanner', 'document', 'receipt', 'perspective', 'warp', 'deskew', 'pdf', 'crop', 'enhance', 'contrast'],
+    keywords: ['scanner', 'document', 'receipt', 'perspective', 'warp', 'deskew', 'crop', 'enhance', 'contrast'],
     iconName: 'ScanText',
     route: '/document-scanner',
     featured: true,
@@ -482,7 +450,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/document-scanner/DocumentScannerTool')),
   },
-  // 33. Speech to Text / Voice Transcriber
   {
     id: 'speech-to-text',
     name: 'Speech to Text / Voice Transcriber',
@@ -497,14 +464,13 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/speech-to-text/SpeechToTextTool')),
   },
-  // 34. ZIP File Pack & Unpack
   {
     id: 'zip-manager',
     name: 'ZIP File Pack & Unpack',
     shortName: 'ZIP Manager',
     description: 'Create compressed .ZIP archives from multiple files or inspect and extract existing ZIP files in-browser.',
     category: 'files',
-    keywords: ['zip', 'archive', 'unzip', 'compress', 'extract', 'files', 'tar', 'folder', 'deflate'],
+    keywords: ['zip', 'archive', 'unzip', 'compress', 'extract', 'files', 'folder', 'deflate'],
     iconName: 'FolderArchive',
     route: '/zip-manager',
     featured: true,
@@ -512,7 +478,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/zip-manager/ZipManagerTool')),
   },
-  // 35. Screenshot Stitcher
   {
     id: 'screenshot-stitcher',
     name: 'Screenshot Stitcher',
@@ -527,22 +492,20 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/screenshot-stitcher/ScreenshotStitcherTool')),
   },
-  // 36. Photo Metadata & EXIF Cleaner
   {
-    id: 'photo-metadata-cleaner',
-    name: 'Photo Metadata & EXIF Cleaner',
-    shortName: 'EXIF Cleaner',
-    description: 'Inspect and remove sensitive GPS locations, camera serials, timestamps, and EXIF tags from photos.',
-    category: 'image',
-    keywords: ['exif', 'metadata', 'privacy', 'gps', 'location', 'clean photo', 'strip exif', 'camera info'],
-    iconName: 'ShieldAlert',
-    route: '/photo-metadata-cleaner',
+    id: 'table-studio',
+    name: 'CSV & Table Studio',
+    shortName: 'Table Studio',
+    description: 'Parse, clean, sort, filter, deduplicate, transpose, edit, and convert CSV, TSV, JSON, Markdown, and HTML tables locally.',
+    category: 'productivity',
+    keywords: ['csv', 'tsv', 'table', 'spreadsheet', 'data', 'json', 'markdown table', 'html table', 'sort', 'filter', 'dedupe', 'transpose', 'convert'],
+    iconName: 'ListOrdered',
+    route: '/table-studio',
     featured: true,
-    acceptsTextTransfer: false,
-    producesTextTransfer: false,
-    component: lazy(() => import('../tools/photo-metadata-cleaner/PhotoMetadataCleanerTool')),
+    acceptsTextTransfer: true,
+    producesTextTransfer: true,
+    component: lazy(() => import('../tools/table-studio/TableStudioTool')),
   },
-  // 37. Animated GIF Maker
   {
     id: 'gif-maker',
     name: 'Animated GIF Maker',
@@ -557,7 +520,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/gif-maker/GifMakerTool')),
   },
-  // 38. Batch File Renamer
   {
     id: 'batch-file-renamer',
     name: 'Batch File Renamer',
@@ -572,7 +534,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/batch-file-renamer/BatchFileRenamerTool')),
   },
-  // 39. Text & Code Diff Checker
   {
     id: 'text-diff',
     name: 'Text & Code Diff Checker',
@@ -587,7 +548,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/text-diff/TextDiffCheckerTool')),
   },
-  // 40. Passport / ID Photo Maker
   {
     id: 'id-photo-maker',
     name: 'Passport & ID Photo Maker',
@@ -602,7 +562,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/id-photo-maker/IdPhotoMakerTool')),
   },
-  // 41. Barcode Studio & Scanner
   {
     id: 'barcode-studio',
     name: 'Barcode Studio & Scanner',
@@ -617,7 +576,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/barcode-studio/BarcodeStudioTool')),
   },
-  // 42. Watermark Maker
   {
     id: 'watermark-maker',
     name: 'Watermark & Stamp Maker',
@@ -632,7 +590,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/watermark-maker/WatermarkMakerTool')),
   },
-  // 43. Signature Maker & Cleaner
   {
     id: 'signature-maker',
     name: 'Signature Maker & Paper Cleaner',
@@ -647,7 +604,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/signature-maker/SignatureMakerTool')),
   },
-  // 44. Whiteboard & Sketchpad
   {
     id: 'whiteboard',
     name: 'Whiteboard & Sketchpad',
@@ -662,7 +618,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/whiteboard/WhiteboardTool')),
   },
-  // 45. Teleprompter
   {
     id: 'teleprompter',
     name: 'Teleprompter & Speech Timer',
@@ -677,7 +632,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/teleprompter/TeleprompterTool')),
   },
-  // 46. Color Palette Extractor
   {
     id: 'palette-extractor',
     name: 'Color Palette Extractor & Harmonies',
@@ -692,7 +646,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/palette-extractor/PaletteExtractorTool')),
   },
-  // 47. Calendar Event / ICS Maker
   {
     id: 'calendar-event-maker',
     name: 'Calendar Event & ICS Maker',
@@ -707,7 +660,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: true,
     component: lazy(() => import('../tools/calendar-event-maker/CalendarEventMakerTool')),
   },
-  // 48. Metronome & Tap Tempo
   {
     id: 'metronome',
     name: 'Metronome & Tap Tempo',
@@ -722,7 +674,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/metronome/MetronomeTool')),
   },
-  // 49. Duplicate File Finder
   {
     id: 'duplicate-finder',
     name: 'Duplicate File Finder',
@@ -737,7 +688,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
     producesTextTransfer: false,
     component: lazy(() => import('../tools/duplicate-finder/DuplicateFinderTool')),
   },
-  // 50. Meme & Caption Maker
   {
     id: 'meme-maker',
     name: 'Meme & Caption Maker',
@@ -758,30 +708,28 @@ export const CATEGORIES: { id: ToolCategory; label: string; description: string 
   { id: 'text', label: 'Text Tools', description: 'Clean, convert case, count words, and process lists' },
   { id: 'developer', label: 'Developer Utilities', description: 'Format JSON, test regex, diff text, encode URLs & Base64, and generate secure passwords' },
   { id: 'math', label: 'Math & Commercial', description: 'Percentages, unit conversion, unit pricing, discounts & margins' },
-  { id: 'time', label: 'Time & Dates', description: 'Date arithmetic, worldwide time zones, and stopwatch/timers' },
-  { id: 'design', label: 'Design & Visuals', description: 'Color converter, WCAG contrast, and aspect ratios' },
-  { id: 'everyday', label: 'Everyday Tools', description: 'QR Code Studio and grocery unit price comparator' },
-  { id: 'image', label: 'Image Tools', description: 'Client-side image optimizer, collage maker, stitcher, EXIF cleaner, and background remover' },
-  { id: 'media', label: 'Media & Audio', description: 'In-browser screen recorder, GIF maker, video toolkit, and audio trimmer' },
-  { id: 'productivity', label: 'Productivity & Office', description: 'OCR text extractor, speech recognition, speech synthesizer, random picker, recipe scaler, and checklists' },
-  { id: 'files', label: 'Files & Archives', description: 'Client-side ZIP pack/extract and batch file renamer' },
+  { id: 'time', label: 'Time & Dates', description: 'Date arithmetic, worldwide time zones, timers, and calendar files' },
+  { id: 'design', label: 'Design & Visuals', description: 'Color conversion, WCAG contrast, palettes, and aspect ratios' },
+  { id: 'everyday', label: 'Everyday Tools', description: 'QR and barcode studios plus grocery unit-price comparison' },
+  { id: 'image', label: 'Image Tools', description: 'Optimize, annotate, collage, stitch, watermark, crop, and remove image backgrounds' },
+  { id: 'media', label: 'Media & Audio', description: 'Record screens/audio, edit video, make GIFs and memes, and keep tempo' },
+  { id: 'productivity', label: 'Productivity & Office', description: 'OCR, transcription, tables/CSV, notes, checklists, signatures, scanning, and presentation helpers' },
+  { id: 'files', label: 'Files & Archives', description: 'ZIP pack/extract, batch renaming, and duplicate-file auditing' },
 ];
 
 export function getToolById(id: string): ToolDefinition | undefined {
-  return TOOLS_REGISTRY.find((t) => t.id === id);
+  return TOOLS_REGISTRY.find((tool) => tool.id === id);
 }
 
 export function searchTools(query: string, category?: ToolCategory | 'all'): ToolDefinition[] {
   const cleanQ = query.trim().toLowerCase();
   return TOOLS_REGISTRY.filter((tool) => {
-    if (category && category !== 'all' && tool.category !== category) {
-      return false;
-    }
+    if (category && category !== 'all' && tool.category !== category) return false;
     if (!cleanQ) return true;
-
-    const matchesName = tool.name.toLowerCase().includes(cleanQ);
-    const matchesDesc = tool.description.toLowerCase().includes(cleanQ);
-    const matchesKeywords = tool.keywords.some((k) => k.toLowerCase().includes(cleanQ));
-    return matchesName || matchesDesc || matchesKeywords;
+    return (
+      tool.name.toLowerCase().includes(cleanQ) ||
+      tool.description.toLowerCase().includes(cleanQ) ||
+      tool.keywords.some((keyword) => keyword.toLowerCase().includes(cleanQ))
+    );
   });
 }
