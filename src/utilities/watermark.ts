@@ -1,57 +1,13 @@
-/** Watermark Processing Utilities */
-export type WatermarkPosition = 'top-left'|'top-center'|'top-right'|'center-left'|'center'|'center-right'|'bottom-left'|'bottom-center'|'bottom-right'|'custom'|'tiled';
-export interface WatermarkConfig {
-  type: 'text'|'logo'; text: string; fontFamily: string; fontSizeRatio: number; fontWeight: 'normal'|'bold'|'900';
-  color: string; opacity: number; rotationDeg: number; position: WatermarkPosition; customXPercent: number; customYPercent: number;
-  paddingPx: number; tileSpacingPx: number; logoDataUrl?: string; logoScaleRatio: number;
-}
-export const DEFAULT_WATERMARK_CONFIG: WatermarkConfig = {
-  type:'text', text:'CONFIDENTIAL', fontFamily:'Inter, system-ui, sans-serif', fontSizeRatio:0.05, fontWeight:'bold', color:'#ffffff', opacity:0.7,
-  rotationDeg:0, position:'bottom-right', customXPercent:50, customYPercent:50, paddingPx:24, tileSpacingPx:120, logoScaleRatio:0.2,
-};
-
-export function calculateWatermarkCoordinates(canvasWidth:number, canvasHeight:number, elementWidth:number, elementHeight:number, position:WatermarkPosition, padding:number, customXPercent=50, customYPercent=50): {x:number;y:number} {
-  switch(position){
-    case'top-left':return{x:padding,y:padding}; case'top-center':return{x:(canvasWidth-elementWidth)/2,y:padding}; case'top-right':return{x:canvasWidth-elementWidth-padding,y:padding};
-    case'center-left':return{x:padding,y:(canvasHeight-elementHeight)/2}; case'center':return{x:(canvasWidth-elementWidth)/2,y:(canvasHeight-elementHeight)/2};
-    case'center-right':return{x:canvasWidth-elementWidth-padding,y:(canvasHeight-elementHeight)/2}; case'bottom-left':return{x:padding,y:canvasHeight-elementHeight-padding};
-    case'bottom-center':return{x:(canvasWidth-elementWidth)/2,y:canvasHeight-elementHeight-padding}; case'bottom-right':return{x:canvasWidth-elementWidth-padding,y:canvasHeight-elementHeight-padding};
-    case'custom':return{x:(canvasWidth*customXPercent)/100-elementWidth/2,y:(canvasHeight*customYPercent)/100-elementHeight/2}; default:return{x:padding,y:padding};
-  }
-}
-
-export function calculateRotatedBounds(width:number,height:number,rotationDeg:number):{width:number;height:number}{
-  const rad=(rotationDeg*Math.PI)/180; const cos=Math.abs(Math.cos(rad)); const sin=Math.abs(Math.sin(rad));
-  return{width:width*cos+height*sin,height:width*sin+height*cos};
-}
-
-export function clampRotatedWatermarkCenter(canvasWidth:number,canvasHeight:number,centerX:number,centerY:number,elementWidth:number,elementHeight:number,rotationDeg:number,padding=0):{x:number;y:number}{
-  const bounds=calculateRotatedBounds(elementWidth,elementHeight,rotationDeg); const pad=Math.max(0,padding);
-  const minX=pad+bounds.width/2; const maxX=canvasWidth-pad-bounds.width/2; const minY=pad+bounds.height/2; const maxY=canvasHeight-pad-bounds.height/2;
-  return{
-    x:minX>maxX?canvasWidth/2:Math.max(minX,Math.min(maxX,centerX)),
-    y:minY>maxY?canvasHeight/2:Math.max(minY,Math.min(maxY,centerY)),
-  };
-}
-
-export async function applyWatermarkToImage(imageSource:HTMLImageElement|ImageBitmap,config:WatermarkConfig,logoImg?:HTMLImageElement|null):Promise<HTMLCanvasElement>{
-  const canvas=document.createElement('canvas'); const width=imageSource.width; const height=imageSource.height; canvas.width=width; canvas.height=height;
-  const ctx=canvas.getContext('2d'); if(!ctx)throw new Error('Could not obtain canvas 2D rendering context.'); ctx.drawImage(imageSource,0,0,width,height);
-  ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,config.opacity));
-  if(config.position==='tiled'){
-    const fontSize=Math.max(14,Math.round(height*config.fontSizeRatio)); ctx.font=`${config.fontWeight} ${fontSize}px ${config.fontFamily}`; ctx.fillStyle=config.color; ctx.textAlign='center';ctx.textBaseline='middle';
-    const spacing=Math.max(60,config.tileSpacingPx); const rad=(config.rotationDeg*Math.PI)/180;
-    for(let y=-height;y<height*2;y+=spacing){for(let x=-width;x<width*2;x+=spacing*1.5){ctx.save();ctx.translate(x,y);ctx.rotate(rad);
-      if(config.type==='text')ctx.fillText(config.text,0,0); else if(config.type==='logo'&&logoImg){const logoW=Math.max(20,width*config.logoScaleRatio);const logoH=(logoW/logoImg.width)*logoImg.height;ctx.drawImage(logoImg,-logoW/2,-logoH/2,logoW,logoH);}ctx.restore();}}
-  }else if(config.type==='text'){
-    const fontSize=Math.max(14,Math.round(height*config.fontSizeRatio));ctx.font=`${config.fontWeight} ${fontSize}px ${config.fontFamily}`;const metrics=ctx.measureText(config.text);const textW=Math.max(1,metrics.width);const textH=Math.max(fontSize,(metrics.actualBoundingBoxAscent||fontSize)+(metrics.actualBoundingBoxDescent||0));
-    const coords=calculateWatermarkCoordinates(width,height,textW,textH,config.position,config.paddingPx,config.customXPercent,config.customYPercent);
-    const center=clampRotatedWatermarkCenter(width,height,coords.x+textW/2,coords.y+textH/2,textW,textH,config.rotationDeg,config.paddingPx);
-    ctx.translate(center.x,center.y);ctx.rotate((config.rotationDeg*Math.PI)/180);ctx.fillStyle=config.color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(config.text,0,0);
-  }else if(config.type==='logo'&&logoImg){
-    const logoW=Math.max(20,width*config.logoScaleRatio);const logoH=(logoW/logoImg.width)*logoImg.height;const coords=calculateWatermarkCoordinates(width,height,logoW,logoH,config.position,config.paddingPx,config.customXPercent,config.customYPercent);
-    const center=clampRotatedWatermarkCenter(width,height,coords.x+logoW/2,coords.y+logoH/2,logoW,logoH,config.rotationDeg,config.paddingPx);
-    ctx.translate(center.x,center.y);ctx.rotate((config.rotationDeg*Math.PI)/180);ctx.drawImage(logoImg,-logoW/2,-logoH/2,logoW,logoH);
-  }
-  ctx.restore();return canvas;
-}
+export type WatermarkPosition='top-left'|'top-center'|'top-right'|'center-left'|'center'|'center-right'|'bottom-left'|'bottom-center'|'bottom-right'|'custom'|'tiled';
+export interface WatermarkConfig{type:'text'|'logo';text:string;fontFamily:string;fontSizeRatio:number;fontWeight:'normal'|'bold'|'900';color:string;opacity:number;rotationDeg:number;position:WatermarkPosition;customXPercent:number;customYPercent:number;paddingPx:number;tileSpacingPx:number;logoDataUrl?:string;logoScaleRatio:number;strokeColor?:string;strokeWidthRatio?:number;blendMode?:GlobalCompositeOperation;staggerTiles?:boolean;}
+export const DEFAULT_WATERMARK_CONFIG:WatermarkConfig={type:'text',text:'CONFIDENTIAL',fontFamily:'Inter, system-ui, sans-serif',fontSizeRatio:.05,fontWeight:'bold',color:'#ffffff',opacity:.7,rotationDeg:0,position:'bottom-right',customXPercent:50,customYPercent:50,paddingPx:24,tileSpacingPx:120,logoScaleRatio:.2,strokeColor:'#000000',strokeWidthRatio:0,blendMode:'source-over',staggerTiles:true};
+export function normalizeWatermarkConfig(c:WatermarkConfig):WatermarkConfig{return{...DEFAULT_WATERMARK_CONFIG,...c,fontSizeRatio:Math.max(.005,Math.min(.5,c.fontSizeRatio||.05)),opacity:Math.max(0,Math.min(1,c.opacity)),rotationDeg:((c.rotationDeg%360)+360)%360,customXPercent:Math.max(0,Math.min(100,c.customXPercent)),customYPercent:Math.max(0,Math.min(100,c.customYPercent)),paddingPx:Math.max(0,c.paddingPx),tileSpacingPx:Math.max(20,c.tileSpacingPx),logoScaleRatio:Math.max(.01,Math.min(1,c.logoScaleRatio)),strokeWidthRatio:Math.max(0,Math.min(.2,c.strokeWidthRatio||0))};}
+export interface WatermarkTemplateContext{filename?:string;date?:Date;index?:number;total?:number;}
+export function resolveWatermarkTemplate(text:string,ctx:WatermarkTemplateContext={}):string{const date=ctx.date||new Date(),filename=ctx.filename||'';return text.replace(/\{filename\}/gi,filename).replace(/\{stem\}/gi,filename.replace(/\.[^.]+$/,'')).replace(/\{date\}/gi,date.toISOString().slice(0,10)).replace(/\{index\}/gi,String(ctx.index??1)).replace(/\{total\}/gi,String(ctx.total??1));}
+export function calculateWatermarkCoordinates(w:number,h:number,ew:number,eh:number,pos:WatermarkPosition,pad:number,cx=50,cy=50){switch(pos){case'top-left':return{x:pad,y:pad};case'top-center':return{x:(w-ew)/2,y:pad};case'top-right':return{x:w-ew-pad,y:pad};case'center-left':return{x:pad,y:(h-eh)/2};case'center':return{x:(w-ew)/2,y:(h-eh)/2};case'center-right':return{x:w-ew-pad,y:(h-eh)/2};case'bottom-left':return{x:pad,y:h-eh-pad};case'bottom-center':return{x:(w-ew)/2,y:h-eh-pad};case'bottom-right':return{x:w-ew-pad,y:h-eh-pad};case'custom':return{x:w*cx/100-ew/2,y:h*cy/100-eh/2};default:return{x:pad,y:pad};}}
+export function calculateRotatedBounds(width:number,height:number,deg:number){const r=deg*Math.PI/180,c=Math.abs(Math.cos(r)),s=Math.abs(Math.sin(r));return{width:width*c+height*s,height:width*s+height*c};}
+export function clampRotatedWatermarkCenter(w:number,h:number,x:number,y:number,ew:number,eh:number,deg:number,padding=0){const b=calculateRotatedBounds(ew,eh,deg),p=Math.max(0,padding),minX=p+b.width/2,maxX=w-p-b.width/2,minY=p+b.height/2,maxY=h-p-b.height/2;return{x:minX>maxX?w/2:Math.max(minX,Math.min(maxX,x)),y:minY>maxY?h/2:Math.max(minY,Math.min(maxY,y))};}
+export function calculateTileCenters(width:number,height:number,spacing:number,stagger=true):Array<{x:number;y:number}>{const s=Math.max(20,spacing),diag=Math.hypot(width,height),centers:Array<{x:number;y:number}>=[];let row=0;for(let y=-diag;y<=height+diag;y+=s,row++){const shift=stagger&&row%2?s*.55:0;for(let x=-diag+shift;x<=width+diag;x+=s*1.5)centers.push({x,y});}return centers;}
+function renderText(ctx:CanvasRenderingContext2D,text:string,fontSize:number,c:WatermarkConfig){ctx.font=`${c.fontWeight} ${fontSize}px ${c.fontFamily}`;ctx.textAlign='center';ctx.textBaseline='middle';if((c.strokeWidthRatio||0)>0){ctx.strokeStyle=c.strokeColor||'#000';ctx.lineWidth=Math.max(1,fontSize*(c.strokeWidthRatio||0));ctx.strokeText(text,0,0);}ctx.fillStyle=c.color;ctx.fillText(text,0,0);}
+export async function applyWatermarkToImage(image:HTMLImageElement|ImageBitmap,config:WatermarkConfig,logoImg?:HTMLImageElement|null,template:WatermarkTemplateContext={}):Promise<HTMLCanvasElement>{const c=normalizeWatermarkConfig(config),canvas=document.createElement('canvas'),width=image.width,height=image.height;canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Could not obtain canvas 2D rendering context.');ctx.drawImage(image,0,0,width,height);ctx.save();ctx.globalAlpha=c.opacity;ctx.globalCompositeOperation=c.blendMode||'source-over';const fontSize=Math.max(14,Math.round(height*c.fontSizeRatio)),text=resolveWatermarkTemplate(c.text,template),rad=c.rotationDeg*Math.PI/180;if(c.position==='tiled'){for(const center of calculateTileCenters(width,height,c.tileSpacingPx,c.staggerTiles!==false)){ctx.save();ctx.translate(center.x,center.y);ctx.rotate(rad);if(c.type==='text')renderText(ctx,text,fontSize,c);else if(logoImg){const lw=Math.max(20,width*c.logoScaleRatio),lh=lw/logoImg.width*logoImg.height;ctx.drawImage(logoImg,-lw/2,-lh/2,lw,lh);}ctx.restore();}}else if(c.type==='text'){ctx.font=`${c.fontWeight} ${fontSize}px ${c.fontFamily}`;const m=ctx.measureText(text),tw=Math.max(1,m.width),th=Math.max(fontSize,(m.actualBoundingBoxAscent||fontSize)+(m.actualBoundingBoxDescent||0)),pos=calculateWatermarkCoordinates(width,height,tw,th,c.position,c.paddingPx,c.customXPercent,c.customYPercent),center=clampRotatedWatermarkCenter(width,height,pos.x+tw/2,pos.y+th/2,tw,th,c.rotationDeg,c.paddingPx);ctx.translate(center.x,center.y);ctx.rotate(rad);renderText(ctx,text,fontSize,c);}else if(logoImg){const lw=Math.max(20,width*c.logoScaleRatio),lh=lw/logoImg.width*logoImg.height,pos=calculateWatermarkCoordinates(width,height,lw,lh,c.position,c.paddingPx,c.customXPercent,c.customYPercent),center=clampRotatedWatermarkCenter(width,height,pos.x+lw/2,pos.y+lh/2,lw,lh,c.rotationDeg,c.paddingPx);ctx.translate(center.x,center.y);ctx.rotate(rad);ctx.drawImage(logoImg,-lw/2,-lh/2,lw,lh);}ctx.restore();return canvas;}
+export async function applyWatermarkBatch(items:Array<{image:HTMLImageElement|ImageBitmap;filename:string}>,config:WatermarkConfig,logo?:HTMLImageElement|null):Promise<HTMLCanvasElement[]>{const total=items.length,results:HTMLCanvasElement[]=[];for(let i=0;i<items.length;i++)results.push(await applyWatermarkToImage(items[i].image,config,logo,{filename:items[i].filename,index:i+1,total}));return results;}
