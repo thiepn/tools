@@ -1,10 +1,10 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **150 task routes** for text, PDFs, device diagnostics, calculators, file conversion, images, media, productivity, math, time, and everyday tasks.
+Tiny Tools is a privacy-first public utility suite with **173 task routes** for text, PDFs, device diagnostics, calculators, file conversion, images, media, productivity, math, time, and everyday tasks.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
-> Some advanced tools download static runtime/model assets when first used, such as local Whisper transcription, OCR, background-removal assets, or the dedicated PDF runtime. Currency conversion is the only P3 calculator that intentionally fetches current external reference-rate data.
+> Some advanced tools download static runtime/model assets when first used, such as local Whisper transcription, OCR, background-removal assets, or the dedicated PDF runtime. Currency conversion is the only calculator family route that intentionally fetches current external reference-rate data.
 
 ## Principles
 
@@ -13,7 +13,7 @@ The application is a static React + TypeScript + Vite site. User files and conte
 - Client-side processing whenever technically possible.
 - No accounts, backend database, analytics, or advertising.
 - Route-level lazy loading so heavy tools do not bloat the homepage.
-- Shared engines behind task-specific routes instead of duplicating implementations.
+- Shared engines behind task-specific routes instead of duplicated implementations.
 - Static deployment compatible with GitHub Pages.
 
 ## Public completeness expansion
@@ -21,37 +21,33 @@ The application is a static React + TypeScript + Vite site. User files and conte
 The original 50-tool suite remains the hardened S-tier baseline. Public-completeness phases add general-purpose task families without weakening those existing release gates.
 
 ### P1 — PDF Suite
-
-P1 adds 20 public PDF task routes covering creation, merge, scan/images-to-PDF, edit, annotation, visual signatures, redaction, page organization, split, crop, watermark/page numbers, forms, password protection, sanitization, OCR, compression, metadata, export, comparison, and page operations. These routes share the dedicated **PDF Everything** local-first engine instead of duplicating a PDF stack.
+20 public PDF task routes use the dedicated local-first PDF Everything engine.
 
 ### P2 — Device Diagnostics Suite
-
-P2 adds 16 native browser diagnostic routes for microphone, webcam, speakers/headphones, keyboard, mouse, pixels/display patterns, refresh rate, screen/device information, touch, gamepad/stick drift, pointer-event rate, keyboard ghosting/NKRO, battery status, tone generation, and instrument tuning.
-
-Device diagnostics are capability-aware and avoid overstating what the browser can measure. Pointer rate is browser-delivered event cadence rather than raw USB polling; Battery Status does not invent health/cycle values; controller axes are browser-normalized observations rather than calibration certification.
+16 native browser diagnostics cover camera, microphone, audio output, displays, input devices, controllers, battery status, tone generation, and tuning with truthful browser capability boundaries.
 
 ### P3 — Everyday Calculator Suite
-
-P3 adds 46 config-driven calculator routes for school/math, money, household/travel/construction, and low-risk fitness estimates. The calculator family uses one shared typed UI and pure formula engine. Scientific expressions use a dedicated parser rather than `eval`. Forty-five routes are fully local; currency conversion is the sole network-dependent calculator and discloses that boundary.
-
-P3 intentionally excludes higher-stakes reproductive estimators and country-specific income-tax calculators from the timeless formula catalog.
+46 config-driven calculators cover school/math, money, household/travel/construction, and low-risk fitness estimates. Forty-five are fully local; live currency conversion explicitly discloses its reference-rate network request.
 
 ### P4 — File & Format Conversion Suite
+18 routes cover CSV/JSON/XML/XLSX interchange, CSV split/merge, signature-based file inspection, TAR/GZIP, and ZIP↔TAR. XLSX is deliberately value-oriented rather than a claim of full Excel fidelity.
 
-P4 adds 18 public routes for:
+### P5 — Image Micro-Tools Suite
+P5 adds 23 task-specific image routes while reusing the existing image optimizer and local background-removal engines:
 
-- CSV ↔ JSON
-- CSV ↔ XML
-- XML → JSON and JSON → XML
-- CSV → XLSX and XLSX → CSV
-- JSON → XLSX and XLSX → JSON
-- CSV splitting and merging
-- local file-type/signature inspection
-- TAR creation and extraction
-- GZIP compression and decompression when the browser exposes CompressionStream APIs
-- ZIP ↔ TAR conversion using the existing hardened ZIP preflight
+- crop and rotate/flip
+- HEIC/HEIF and AVIF conversion when the browser can decode the source
+- SVG → PNG/JPEG and JPEG/PNG/WebP conversion
+- target-KB compression and batch image conversion
+- profile/circle crop, headshot/portrait crop, and social-media presets
+- blur/pixelation and manual privacy-region redaction
+- JPEG EXIF privacy inspection plus metadata-stripping re-export
+- favicon/ICO generation
+- grid splitting, borders/frames, photo filters, and image comparison
+- background replacement and transparent-background output through the established local background-removal engine
+- contact sheets and high-quality non-AI upscaling
 
-The P4 implementation reuses the established table parser and JSZip dependency instead of shipping another spreadsheet/archive stack. XLSX handling intentionally focuses on cell values from the first worksheet. It does not claim to preserve formulas, macros, charts, styles, merged-cell layout, or other workbook features. P4 also does not claim 7Z or high-fidelity office-document conversion without a suitable local codec/conversion engine.
+P5 intentionally avoids pretending that browser support is universal. HEIC/HEIF conversion works only where the browser can decode the format; privacy blur is manual rather than universal face recognition; headshot cropping is guided rather than biometric; and upscaling is high-quality resampling rather than invented AI detail.
 
 ## Tech stack
 
@@ -60,11 +56,11 @@ The P4 implementation reuses the established table parser and JSZip dependency i
 - Vite
 - Tailwind CSS
 - Vitest
-- Browser APIs including Canvas, Web Audio, Web Crypto, MediaRecorder, MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
-- Local browser ML/OCR runtimes for tools that require them
-- A shared dedicated local-first PDF workspace for PDF routes
-- Config-driven pure TypeScript calculator formulas
-- Existing shared table parser and ZIP safety layer for file conversion
+- Canvas, Web Audio, Web Crypto, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
+- Local browser ML/OCR/background-removal runtimes for tools that require them
+- A shared dedicated local-first PDF workspace
+- Config-driven calculator formulas
+- Shared table/ZIP safety layers and shared image-processing engines
 
 ## Local development
 
@@ -75,8 +71,6 @@ npm ci
 npm run dev
 ```
 
-The development server runs on port 3000 by default.
-
 ## Validation
 
 ```bash
@@ -85,55 +79,35 @@ npm test
 npm run build
 ```
 
-The production build is emitted to `dist/`.
-
-The original R5–R10 hardening/release gates remain in place. The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper then appends the P1, P2, P3, and P4 catalogs and browser-tests the full runtime catalog at desktop and mobile widths.
-
-## GitHub Pages
-
-The repository includes a GitHub Actions workflow that validates the project and deploys `dist/` to GitHub Pages after successful pushes to `main`.
-
-Tiny Tools uses hash-based client routing and relative build assets, so repository-subpath hosting remains supported.
-
-PDF routes link to the sibling `/pdf/` application on deployed hosts. The currency converter uses `api.frankfurter.dev` only when the user requests a current exchange rate.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P5 catalogs and browser-tests the full runtime catalog at desktop and mobile widths before the later R6–R9 gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage.
-
-Examples of local processing include text transformations/calculations, image/canvas operations, ZIP/TAR/GZIP work, CSV/JSON/XML/XLSX conversion, duplicate hashing, audio/video capture/editing, OCR/Whisper, PDF work in the local-first sibling workspace, device diagnostic streams/events, and all non-currency calculator inputs.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image micro-tools operate on local Blob/Canvas data; background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; codecs and hardware APIs differ; browsers can coalesce input events or throttle animation; PDF tasks have document/runtime-specific limits; live currency conversion requires network access; GZIP conversion requires CompressionStream/DecompressionStream support; and P4 XLSX conversion is a value-oriented interchange workflow rather than a full Excel rendering engine.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media codecs differ; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine.
 
 ## Project structure
 
 ```text
 src/
-├── calculators/      P3 public calculator catalog and typed definitions
+├── calculators/      P3 calculator catalog
 ├── components/       Shared application UI
-├── device/           Public device-diagnostic task metadata
-├── files/            P4 public file-conversion task metadata
-├── pdf/              Public PDF task metadata and gateway routing
-├── registry/         Base 50-tool registry plus expansion-family registration
-├── storage/          Local preferences and in-memory transfer helpers
-├── tools/            Lazy-loaded tool UIs and shared family gateways
-├── utilities/        Pure calculation/transformation helpers
-└── __tests__/        Regression and utility tests
+├── device/           P2 device task metadata
+├── files/            P4 file-conversion metadata
+├── image/            P5 public image task metadata
+├── pdf/              P1 PDF metadata/gateway routing
+├── registry/         Base 50-tool registry plus expansion registration
+├── storage/          Local preferences/transfers
+├── tools/            Lazy-loaded tools/shared family shells
+├── utilities/        Pure/shared processing helpers
+└── __tests__/        Regression tests
 ```
-
-## Adding a tool or public task family
-
-1. Prefer a proven shared engine when multiple public intents use the same capability family.
-2. Create a focused UI or shared family shell.
-3. Put reusable logic in pure modules where possible.
-4. Register stable IDs, routes, categories, keywords, and lazy components.
-5. Add correctness, discovery, capability-claim, and regression tests.
-6. Run type checking, tests, build, browser gates, deployment, and live acceptance before merging.
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 expand the public catalog to 150 routes** while preserving the original release baseline and shared-engine architecture.
+The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 expand the public catalog to 173 routes** while preserving the original release baseline and shared-engine architecture.
