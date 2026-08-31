@@ -1,21 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import { TOOLS_REGISTRY, CATEGORIES, getToolById, searchTools } from '../registry/tools';
+import { registerPdfPublicTools } from '../registry/pdf-extension';
 
-describe('Tools Registry Verification (All 50 Tools)', () => {
-  it('contains exactly 50 tools in TOOLS_REGISTRY', () => {
-    expect(TOOLS_REGISTRY.length).toBe(50);
+registerPdfPublicTools();
+
+const EXPECTED_TOOL_COUNT = 70;
+
+describe('Tools Registry Verification', () => {
+  it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P1`, () => {
+    expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT);
   });
 
-  it('has 50 unique IDs with no duplicates', () => {
+  it('has unique IDs with no duplicates', () => {
     const ids = TOOLS_REGISTRY.map((t) => t.id);
     const uniqueIds = new Set(ids);
-    expect(uniqueIds.size).toBe(50);
+    expect(uniqueIds.size).toBe(EXPECTED_TOOL_COUNT);
   });
 
-  it('has 50 unique routes with no duplicates', () => {
+  it('has unique routes with no duplicates', () => {
     const routes = TOOLS_REGISTRY.map((t) => t.route);
     const uniqueRoutes = new Set(routes);
-    expect(uniqueRoutes.size).toBe(50);
+    expect(uniqueRoutes.size).toBe(EXPECTED_TOOL_COUNT);
   });
 
   it('ensures all tools belong to a registered category', () => {
@@ -25,7 +30,7 @@ describe('Tools Registry Verification (All 50 Tools)', () => {
     }
   });
 
-  it('ensures all tools have required metadata (name, shortName, description, keywords, iconName, component)', () => {
+  it('ensures all tools have required metadata', () => {
     for (const tool of TOOLS_REGISTRY) {
       expect(tool.id).toBeTruthy();
       expect(tool.name).toBeTruthy();
@@ -33,11 +38,11 @@ describe('Tools Registry Verification (All 50 Tools)', () => {
       expect(tool.description).toBeTruthy();
       expect(tool.keywords.length).toBeGreaterThan(0);
       expect(tool.iconName).toBeTruthy();
-      expect(typeof tool.component).toBe('object'); // React.lazy returns an object
+      expect(typeof tool.component).toBe('object');
     }
   });
 
-  it('finds tools using getToolById for all 50 tools', () => {
+  it('finds every registered tool using getToolById', () => {
     for (const tool of TOOLS_REGISTRY) {
       const found = getToolById(tool.id);
       expect(found).toBeDefined();
@@ -45,20 +50,14 @@ describe('Tools Registry Verification (All 50 Tools)', () => {
     }
   });
 
-  it('verifies search functionality returns matching tools', () => {
-    const diffMatches = searchTools('diff');
-    expect(diffMatches.some((t) => t.id === 'text-diff')).toBe(true);
-
-    const passportMatches = searchTools('passport');
-    expect(passportMatches.some((t) => t.id === 'id-photo-maker')).toBe(true);
-
-    const videoMatches = searchTools('video');
-    expect(videoMatches.some((t) => t.id === 'video-toolkit')).toBe(true);
-
-    const barcodeMatches = searchTools('barcode');
-    expect(barcodeMatches.some((t) => t.id === 'barcode-studio')).toBe(true);
-
-    const metronomeMatches = searchTools('metronome');
-    expect(metronomeMatches.some((t) => t.id === 'metronome')).toBe(true);
+  it('verifies established and new public search intents', () => {
+    expect(searchTools('diff').some((t) => t.id === 'text-diff')).toBe(true);
+    expect(searchTools('passport').some((t) => t.id === 'id-photo-maker')).toBe(true);
+    expect(searchTools('video').some((t) => t.id === 'video-toolkit')).toBe(true);
+    expect(searchTools('barcode').some((t) => t.id === 'barcode-studio')).toBe(true);
+    expect(searchTools('metronome').some((t) => t.id === 'metronome')).toBe(true);
+    expect(searchTools('merge pdf').some((t) => t.id === 'merge-pdf')).toBe(true);
+    expect(searchTools('pdf to text').some((t) => t.id === 'export-pdf')).toBe(true);
+    expect(searchTools('jpg to pdf').some((t) => t.id === 'scan-to-pdf')).toBe(true);
   });
 });
