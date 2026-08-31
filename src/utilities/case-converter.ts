@@ -19,8 +19,8 @@ export interface CaseConversionResult {
 
 /**
  * Splits identifiers/prose into semantic words using Unicode letter/number
- * classes. Handles acronym boundaries and digit transitions such as
- * XMLHTTPRequest2 -> XML HTTP Request 2 without discarding non-Latin text.
+ * classes. Acronym and lower→upper boundaries are recognized without changing
+ * stable letter+digit tokens such as word0, IPv6, or version2.
  */
 export function splitIntoWords(text: string): string[] {
   if (!text.trim()) return [];
@@ -29,8 +29,6 @@ export function splitIntoWords(text: string): string[] {
     .normalize('NFC')
     .replace(/([\p{Ll}\p{N}])([\p{Lu}])/gu, '$1 $2')
     .replace(/([\p{Lu}]+)([\p{Lu}][\p{Ll}])/gu, '$1 $2')
-    .replace(/([\p{L}])(\p{N})/gu, '$1 $2')
-    .replace(/(\p{N})([\p{L}])/gu, '$1 $2')
     .replace(/[_\-./\\~|:,;!?"'()[\]{}<>@#$%^&*+=]+/g, ' ')
     .trim();
 
@@ -77,14 +75,17 @@ export function toTitleCase(text: string): string {
       return tokens
         .map((token, index) => {
           if (/^\s+$/u.test(token) || !/\p{L}/u.test(token)) return token;
-          // Apply title casing independently to hyphenated lexical pieces.
-          return token
-            .split(/(-)/)
-            .map((part, partIndex, parts) => {
+          const tokenIsBoundary = index === firstIndex || index === lastIndex;
+          const parts = token.split(/(-)/);
+          return parts
+            .map((part, partIndex) => {
               if (part === '-') return part;
               const bare = part.replace(/^[^\p{L}]*/u, '').replace(/[^\p{L}]*$/u, '').toLocaleLowerCase();
-              const isBoundary = index === firstIndex || index === lastIndex || partIndex === 0 || partIndex === parts.length - 1;
-              return !isBoundary && TITLE_MINOR_WORDS.has(bare) ? part.toLocaleLowerCase() : capitalizeToken(part);
+              const lexicalParts = parts.filter((value) => value !== '-');
+              const lexicalIndex = parts.slice(0, partIndex).filter((value) => value !== '-').length;
+              const hyphenBoundary = parts.length > 1 && (lexicalIndex === 0 || lexicalIndex === lexicalParts.length - 1);
+              const shouldLowerMinor = TITLE_MINOR_WORDS.has(bare) && !tokenIsBoundary && !hyphenBoundary;
+              return shouldLowerMinor ? part.toLocaleLowerCase() : capitalizeToken(part);
             })
             .join('');
         })
