@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Layers,
   Upload,
@@ -36,6 +36,21 @@ export const ScreenshotStitcherTool: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const itemsRef = useRef<StitchItem[]>([]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  // Revoke only the URLs that are still owned by this tool when it finally
+  // unmounts. Removed images are revoked immediately in removeItem().
+  useEffect(() => {
+    return () => {
+      for (const item of itemsRef.current) {
+        if (item.img.src.startsWith('blob:')) URL.revokeObjectURL(item.img.src);
+      }
+    };
+  }, []);
 
   const handleAddFiles = (files: File[] | FileList) => {
     const fileArray = Array.from(files).filter((file) => file.type.startsWith('image/'));
@@ -102,16 +117,6 @@ export const ScreenshotStitcherTool: React.FC = () => {
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
   }, [direction]);
-
-  // Revoke uploaded object URLs on final unmount. Image objects keep their
-  // decoded pixels for canvas rendering while the tool is mounted.
-  useEffect(() => {
-    return () => {
-      for (const item of items) {
-        if (item.img.src.startsWith('blob:')) URL.revokeObjectURL(item.img.src);
-      }
-    };
-  }, [items]);
 
   const moveItem = (idx: number, delta: number) => {
     setItems((previous) => {
