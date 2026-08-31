@@ -1,6 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from 'react';
 
-export type ToolCategory = 'text' | 'developer' | 'math' | 'time' | 'design' | 'everyday' | 'image' | 'media' | 'productivity' | 'files' | 'pdf';
+export type ToolCategory = 'text' | 'developer' | 'math' | 'time' | 'design' | 'everyday' | 'image' | 'media' | 'productivity' | 'files' | 'pdf' | 'device';
 
 export interface ToolDefinition {
   id: string;
