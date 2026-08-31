@@ -59,11 +59,7 @@ function getTextDimensions(el: BoardElement): { width: number; height: number } 
   };
 }
 
-/**
- * Calculates element bounding box.
- * The box includes stroke padding so selection/eraser hit testing remains usable
- * for thin lines and freehand paths.
- */
+/** Returns the geometric element bounds without interaction padding. */
 export function getElementBoundingBox(el: BoardElement): {
   minX: number;
   minY: number;
@@ -78,22 +74,14 @@ export function getElementBoundingBox(el: BoardElement): {
     let maxX = -Infinity;
     let maxY = -Infinity;
 
-    for (const p of el.points) {
-      if (p.x < minX) minX = p.x;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.y > maxY) maxY = p.y;
+    for (const point of el.points) {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
     }
 
-    const pad = el.strokeWidth / 2 + 4;
-    return {
-      minX: minX - pad,
-      minY: minY - pad,
-      maxX: maxX + pad,
-      maxY: maxY + pad,
-      width: maxX - minX + pad * 2,
-      height: maxY - minY + pad * 2,
-    };
+    return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
   }
 
   if (el.type === 'text') {
@@ -121,27 +109,16 @@ export function getElementBoundingBox(el: BoardElement): {
 
   const rawWidth = el.width || 0;
   const rawHeight = el.height || 0;
-  const pad = el.strokeWidth / 2;
-  const minX = Math.min(el.x, el.x + rawWidth) - pad;
-  const minY = Math.min(el.y, el.y + rawHeight) - pad;
-  const maxX = Math.max(el.x, el.x + rawWidth) + pad;
-  const maxY = Math.max(el.y, el.y + rawHeight) + pad;
-
-  return {
-    minX,
-    minY,
-    maxX,
-    maxY,
-    width: maxX - minX,
-    height: maxY - minY,
-  };
+  const minX = Math.min(el.x, el.x + rawWidth);
+  const minY = Math.min(el.y, el.y + rawHeight);
+  const maxX = Math.max(el.x, el.x + rawWidth);
+  const maxY = Math.max(el.y, el.y + rawHeight);
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
 }
 
 /**
- * Checks if a point (px, py) is inside or near a BoardElement.
- * Paths and line-like elements use segment distance instead of a broad bounding
- * rectangle. Ellipses use the actual ellipse equation so corner clicks outside
- * the shape no longer erase/select it accidentally.
+ * Checks if a point is inside or near a BoardElement. Paths and line-like
+ * elements use segment distance; ellipses use the actual ellipse equation.
  */
 export function isPointInsideElement(
   px: number,
@@ -150,11 +127,12 @@ export function isPointInsideElement(
   hitThreshold = 8
 ): boolean {
   const box = getElementBoundingBox(el);
+  const coarsePadding = hitThreshold + Math.max(0, el.strokeWidth) / 2;
   if (
-    px < box.minX - hitThreshold ||
-    px > box.maxX + hitThreshold ||
-    py < box.minY - hitThreshold ||
-    py > box.maxY + hitThreshold
+    px < box.minX - coarsePadding ||
+    px > box.maxX + coarsePadding ||
+    py < box.minY - coarsePadding ||
+    py > box.maxY + coarsePadding
   ) {
     return false;
   }
@@ -186,9 +164,7 @@ export function isPointInsideElement(
     return nx * nx + ny * ny <= 1;
   }
 
-  if (el.type === 'rectangle') {
-    return true;
-  }
+  if (el.type === 'rectangle') return true;
 
   if (el.points && el.points.length === 1) {
     const point = el.points[0];
@@ -197,12 +173,12 @@ export function isPointInsideElement(
 
   if (el.points && el.points.length > 1) {
     for (let i = 0; i < el.points.length - 1; i++) {
-      const p1 = el.points[i];
-      const p2 = el.points[i + 1];
-      const dist = distanceToSegment(px, py, p1.x, p1.y, p2.x, p2.y);
-      if (dist <= el.strokeWidth / 2 + hitThreshold) return true;
+      const first = el.points[i];
+      const second = el.points[i + 1];
+      if (distanceToSegment(px, py, first.x, first.y, second.x, second.y) <= el.strokeWidth / 2 + hitThreshold) {
+        return true;
+      }
     }
-    return false;
   }
 
   return false;
@@ -216,16 +192,13 @@ function distanceToSegment(
   x2: number,
   y2: number
 ): number {
-  const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
-  if (l2 === 0) return Math.hypot(px - x1, py - y1);
-  let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+  const lengthSquared = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+  if (lengthSquared === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / lengthSquared;
   t = Math.max(0, Math.min(1, t));
   return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
 }
 
-/**
- * Draws background pattern on canvas context
- */
 export function drawBoardBackground(
   ctx: CanvasRenderingContext2D,
   width: number,
