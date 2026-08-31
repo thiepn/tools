@@ -89,7 +89,18 @@ async function imageSourceToCanvas(imageSource: string | HTMLCanvasElement | Blo
     const clone = document.createElement('canvas'); clone.width = imageSource.width; clone.height = imageSource.height;
     clone.getContext('2d')?.drawImage(imageSource, 0, 0); return clone;
   }
-  const url = typeof imageSource === 'string' ? imageSource : URL.createObjectURL(imageSource);
+
+  let url: string;
+  let revokeAfterUse = false;
+  if (typeof imageSource === 'string') {
+    url = imageSource;
+  } else if (imageSource instanceof Blob) {
+    url = URL.createObjectURL(imageSource);
+    revokeAfterUse = true;
+  } else {
+    throw new Error('Unsupported OCR image source.');
+  }
+
   try {
     const image = new Image();
     await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not decode the OCR image.')); image.src = url; });
@@ -102,7 +113,7 @@ async function imageSourceToCanvas(imageSource: string | HTMLCanvasElement | Blo
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height); data.data.set(preprocessOcrRgba(data.data, canvas.width, canvas.height)); ctx.putImageData(data, 0, 0);
     return canvas;
-  } finally { if (typeof imageSource !== 'string') URL.revokeObjectURL(url); }
+  } finally { if (revokeAfterUse) URL.revokeObjectURL(url); }
 }
 
 export async function performLocalOcr(
