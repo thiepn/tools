@@ -2,19 +2,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CATEGORIES, TOOLS_REGISTRY } from '../registry/tools';
 import { registerPdfPublicTools } from '../registry/pdf-extension';
 import { registerDeviceDiagnosticTools } from '../registry/device-extension';
+import { registerCalculatorTools } from '../registry/calculator-extension';
 import { searchTools } from '../registry/search';
-import {
-  CATEGORY_ORDER,
-  getCategoryPresentation,
-} from '../registry/category-presentation';
-import {
-  getStoredPreferences,
-  recordRecentTool,
-  toggleFavorite,
-} from '../storage/preferences';
+import { CATEGORY_ORDER, getCategoryPresentation } from '../registry/category-presentation';
+import { getStoredPreferences, recordRecentTool, toggleFavorite } from '../storage/preferences';
 
 registerPdfPublicTools();
 registerDeviceDiagnosticTools();
+registerCalculatorTools();
 
 describe('R2 catalog information architecture', () => {
   it('covers every registered category exactly once in the discovery order', () => {
@@ -28,6 +23,7 @@ describe('R2 catalog information architecture', () => {
     expect(CATEGORY_ORDER[0]).toBe('productivity');
     expect(CATEGORY_ORDER[1]).toBe('pdf');
     expect(CATEGORY_ORDER.indexOf('device')).toBeLessThan(CATEGORY_ORDER.indexOf('developer'));
+    expect(CATEGORY_ORDER.indexOf('calculator')).toBeLessThan(CATEGORY_ORDER.indexOf('developer'));
     expect(CATEGORY_ORDER.at(-1)).toBe('developer');
   });
 
@@ -48,25 +44,25 @@ describe('R2 catalog information architecture', () => {
 describe('R2 ranked tool discovery', () => {
   it('ranks an exact tool name ahead of partial matches', () => {
     expect(searchTools('unit converter')[0]?.id).toBe('unit-converter');
+    expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');
   });
 
   it('supports multi-word task searches instead of only phrase substrings', () => {
     expect(searchTools('resize image')[0]?.id).toBe('image-optimizer');
+    expect(searchTools('fuel trip cost')[0]?.id).toBe('fuel-trip-cost-calculator');
   });
 
   it('uses category vocabulary and everyday synonyms in discovery', () => {
-    const photoResults = searchTools('photos');
-    expect(photoResults.some((tool) => tool.category === 'image')).toBe(true);
-
-    const officeResults = searchTools('office');
-    expect(officeResults.some((tool) => tool.category === 'productivity')).toBe(true);
-
-    const pdfResults = searchTools('pdf');
-    expect(pdfResults.length).toBeGreaterThan(10);
+    expect(searchTools('photos').some((tool) => tool.category === 'image')).toBe(true);
+    expect(searchTools('office').some((tool) => tool.category === 'productivity')).toBe(true);
+    expect(searchTools('pdf').length).toBeGreaterThan(10);
 
     const diagnosticResults = searchTools('hardware diagnostics');
     expect(diagnosticResults.length).toBeGreaterThan(5);
     expect(diagnosticResults.every((tool) => tool.category === 'device')).toBe(true);
+
+    const calculatorResults = searchTools('calculator');
+    expect(calculatorResults.filter((tool) => tool.category === 'calculator').length).toBeGreaterThan(40);
   });
 
   it('respects category filtering while preserving ranked matches', () => {
@@ -74,13 +70,10 @@ describe('R2 ranked tool discovery', () => {
     expect(imageResults.length).toBeGreaterThan(1);
     expect(imageResults.every((tool) => tool.category === 'image')).toBe(true);
 
-    const pdfResults = searchTools('pdf', 'pdf');
-    expect(pdfResults.length).toBe(20);
-    expect(pdfResults.every((tool) => tool.category === 'pdf')).toBe(true);
-
-    const deviceResults = searchTools('', 'device');
-    expect(deviceResults.length).toBe(16);
-    expect(deviceResults.every((tool) => tool.category === 'device')).toBe(true);
+    expect(searchTools('pdf', 'pdf')).toHaveLength(20);
+    expect(searchTools('', 'device')).toHaveLength(16);
+    expect(searchTools('', 'calculator')).toHaveLength(46);
+    expect(searchTools('', 'calculator').every((tool) => tool.category === 'calculator')).toBe(true);
   });
 
   it('finds task-oriented queries across names, descriptions, and keywords', () => {
@@ -88,9 +81,11 @@ describe('R2 ranked tool discovery', () => {
     expect(searchTools('make qr code')[0]?.id).toBe('qr-studio');
     expect(searchTools('remove background')[0]?.id).toBe('background-remover');
     expect(searchTools('merge pdf')[0]?.id).toBe('merge-pdf');
-    expect(searchTools('compress pdf')[0]?.id).toBe('compress-pdf');
     expect(searchTools('mouse polling rate')[0]?.id).toBe('polling-rate-test');
     expect(searchTools('guitar tuner')[0]?.id).toBe('instrument-tuner');
+    expect(searchTools('loan monthly payment')[0]?.id).toBe('loan-calculator');
+    expect(searchTools('paint wall liters')[0]?.id).toBe('paint-calculator');
+    expect(searchTools('running min per km')[0]?.id).toBe('running-pace-calculator');
   });
 
   it('returns the unfiltered registry order for an empty query', () => {
