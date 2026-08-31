@@ -50,8 +50,8 @@ export function calculateWarpDimensions(corners: [Point2D, Point2D, Point2D, Poi
 }
 
 export function detectDefaultCorners(imgWidth: number, imgHeight: number): [Point2D, Point2D, Point2D, Point2D] {
-  const marginX = Math.max(8, imgWidth * 0.06);
-  const marginY = Math.max(8, imgHeight * 0.06);
+  const marginX = Math.max(8, imgWidth * 0.08);
+  const marginY = Math.max(8, imgHeight * 0.08);
   return [
     { x: marginX, y: marginY },
     { x: imgWidth - marginX, y: marginY },
