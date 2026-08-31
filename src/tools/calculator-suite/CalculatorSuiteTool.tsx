@@ -8,6 +8,10 @@ import {
   type CalculatorInput,
   type CalculatorResult,
 } from '../../calculators/calculatorDefinitions';
+import {
+  salaryEquivalentsFromAnnual,
+  salaryEquivalentsFromHourly,
+} from '../../utilities/salary-converter';
 
 function readTaskId(hash: string): string | null {
   const clean = hash.replace(/^#\/?/, '').split('?')[0];
@@ -16,14 +20,48 @@ function readTaskId(hash: string): string | null {
 }
 
 const CURRENCIES = ['EUR','USD','GBP','CHF','JPY','KRW','CAD','AUD','NZD','CNY','HKD','SGD','SEK','NOK','DKK','PLN','CZK','HUF','RON','TRY'];
+const MONEY_SYMBOLS = [
+  { value: '€', label: '€ — Euro-style' },
+  { value: '$', label: '$ — Dollar-style' },
+  { value: '£', label: '£ — Pound-style' },
+  { value: 'CHF ', label: 'CHF' },
+  { value: '¥', label: '¥ — Yen/Yuan-style' },
+  { value: '₩', label: '₩ — Won' },
+  { value: '₹', label: '₹ — Rupee' },
+  { value: 'kr ', label: 'kr' },
+  { value: 'zł ', label: 'zł — Złoty' },
+  { value: '', label: 'No currency symbol' },
+];
 
-function InputControl({ input, value, onChange }: { input: CalculatorInput; value: string; onChange: (value: string) => void }) {
+function parseLocalNumber(value: string): number {
+  return Number(value.replace(',', '.'));
+}
+
+function replaceMoneySymbol(value: string, symbol: string): string {
+  return value.replaceAll('€', symbol);
+}
+
+function displayUnit(unit: string | undefined, symbol: string): string | undefined {
+  return unit?.includes('€') ? unit.replaceAll('€', symbol || 'currency') : unit;
+}
+
+function formatSalaryMoney(value: number): string {
+  return `€${new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+}
+
+function InputControl({ input, value, onChange, unitOverride }: {
+  input: CalculatorInput;
+  value: string;
+  onChange: (value: string) => void;
+  unitOverride?: string;
+}) {
   const base = 'w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 outline-none focus:ring-2 focus:ring-blue-500/40';
+  const shownUnit = unitOverride ?? input.unit;
   return (
     <label className="block">
       <span className="mb-1.5 flex items-baseline justify-between gap-3 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
         <span>{input.label}</span>
-        {input.unit && <span className="font-normal text-neutral-400">{input.unit}</span>}
+        {shownUnit && <span className="font-normal text-neutral-400">{shownUnit}</span>}
       </span>
       {input.type === 'select' ? (
         <select className={base} value={value} onChange={(event) => onChange(event.target.value)}>
@@ -71,7 +109,7 @@ function CurrencyPanel() {
   const [loading, setLoading] = useState(false);
 
   const convert = async () => {
-    const numericAmount = Number(amount.replace(',', '.'));
+    const numericAmount = parseLocalNumber(amount);
     if (!Number.isFinite(numericAmount)) { setError('Enter a valid amount.'); return; }
     if (from === to) { setRate(1); setDate('Same currency'); setError(''); return; }
     setLoading(true); setError('');
@@ -91,7 +129,7 @@ function CurrencyPanel() {
   };
 
   useEffect(() => { void convert(); }, []);
-  const converted = rate === null ? null : Number(amount.replace(',', '.')) * rate;
+  const converted = rate === null ? null : parseLocalNumber(amount) * rate;
 
   return (
     <div className="space-y-4">
@@ -125,6 +163,9 @@ export const CalculatorSuiteTool: React.FC = () => {
   }, []);
   const definition = useMemo(() => getCalculatorDefinition(task.id), [task.id]);
   const [values, setValues] = useState<Record<string, string>>(() => definition ? createDefaultCalculatorValues(definition) : {});
+  const [moneySymbol, setMoneySymbol] = useState('€');
+  const [salaryDirection, setSalaryDirection] = useState<'annual-to-hourly' | 'hourly-to-annual'>('annual-to-hourly');
+  const [hourlyWage, setHourlyWage] = useState('25');
 
   useEffect(() => {
     if (definition) setValues(createDefaultCalculatorValues(definition));
@@ -132,11 +173,94 @@ export const CalculatorSuiteTool: React.FC = () => {
 
   const calculation = useMemo(() => {
     if (!definition || definition.externalData) return { results: [] as CalculatorResult[], error: '' };
-    try { return { results: definition.calculate(values), error: '' }; }
-    catch (reason) { return { results: [] as CalculatorResult[], error: reason instanceof Error ? reason.message : 'Unable to calculate.' }; }
-  }, [definition, values]);
+    try {
+      if (task.id === 'salary-hourly-calculator') {
+        const hours = parseLocalNumber(values.hours ?? '40');
+        const weeks = parseLocalNumber(values.weeks ?? '52');
+        const equivalents = salaryDirection === 'annual-to-hourly'
+          ? salaryEquivalentsFromAnnual(parseLocalNumber(values.salary ?? '0'), hours, weeks)
+          : salaryEquivalentsFromHourly(parseLocalNumber(hourlyWage), hours, weeks);
+        const results: CalculatorResult[] = salaryDirection === 'annual-to-hourly'
+          ? [
+              { label: 'Hourly equivalent', value: formatSalaryMoney(equivalents.hourly) },
+              { label: 'Monthly equivalent', value: formatSalaryMoney(equivalents.monthly) },
+              { label: 'Weekly equivalent', value: formatSalaryMoney(equivalents.weekly) },
+              { label: 'Daily equivalent (5-day week)', value: formatSalaryMoney(equivalents.dailyFiveDayWeek) },
+            ]
+          : [
+              { label: 'Annual equivalent', value: formatSalaryMoney(equivalents.annual) },
+              { label: 'Monthly equivalent', value: formatSalaryMoney(equivalents.monthly) },
+              { label: 'Weekly equivalent', value: formatSalaryMoney(equivalents.weekly) },
+              { label: 'Daily equivalent (5-day week)', value: formatSalaryMoney(equivalents.dailyFiveDayWeek) },
+            ];
+        return { results, error: '' };
+      }
+      return { results: definition.calculate(values), error: '' };
+    } catch (reason) {
+      return { results: [] as CalculatorResult[], error: reason instanceof Error ? reason.message : 'Unable to calculate.' };
+    }
+  }, [definition, hourlyWage, salaryDirection, task.id, values]);
 
+  const usesMoneyDisplay = Boolean(
+    definition && !definition.externalData && (
+      task.group === 'money' || definition.inputs.some((input) => input.unit?.includes('€'))
+    )
+  );
+  const displayedResults = useMemo(
+    () => calculation.results.map((item) => ({ ...item, value: replaceMoneySymbol(item.value, moneySymbol) })),
+    [calculation.results, moneySymbol]
+  );
   const related = task.group === 'money' ? ['percentage-calculator', 'discount-vat', 'unit-price-comparator'] : task.group === 'fitness' ? ['unit-converter', 'timer-stopwatch', 'word-counter'] : ['percentage-calculator', 'unit-converter', 'date-calculator'];
+
+  const renderInputs = () => {
+    if (!definition) return null;
+    if (task.id !== 'salary-hourly-calculator') {
+      return definition.inputs.map((input) => (
+        <InputControl
+          key={input.id}
+          input={input}
+          value={values[input.id] ?? ''}
+          unitOverride={displayUnit(input.unit, moneySymbol)}
+          onChange={(value)=>setValues((current)=>({...current,[input.id]:value}))}
+        />
+      ));
+    }
+
+    const scheduleInputs = definition.inputs.filter((input) => input.id === 'hours' || input.id === 'weeks');
+    return (
+      <>
+        <InputControl
+          input={{
+            id: 'direction', label: 'Conversion direction', type: 'select', defaultValue: 'annual-to-hourly',
+            options: [
+              { value: 'annual-to-hourly', label: 'Annual salary → hourly wage' },
+              { value: 'hourly-to-annual', label: 'Hourly wage → annual salary' },
+            ],
+          }}
+          value={salaryDirection}
+          onChange={(value) => setSalaryDirection(value === 'hourly-to-annual' ? 'hourly-to-annual' : 'annual-to-hourly')}
+        />
+        {salaryDirection === 'annual-to-hourly' ? (
+          <InputControl
+            input={definition.inputs.find((input) => input.id === 'salary')!}
+            value={values.salary ?? ''}
+            unitOverride={moneySymbol || 'currency'}
+            onChange={(value) => setValues((current) => ({ ...current, salary: value }))}
+          />
+        ) : (
+          <InputControl
+            input={{ id: 'hourly', label: 'Hourly wage', type: 'number', defaultValue: '25', min: 0, unit: '€' }}
+            value={hourlyWage}
+            unitOverride={moneySymbol || 'currency'}
+            onChange={setHourlyWage}
+          />
+        )}
+        {scheduleInputs.map((input) => (
+          <InputControl key={input.id} input={input} value={values[input.id] ?? ''} onChange={(value)=>setValues((current)=>({...current,[input.id]:value}))} />
+        ))}
+      </>
+    );
+  };
 
   return (
     <ToolShell toolId={task.id} title={task.name} description={task.description} category="calculator" relatedToolIds={related}>
@@ -150,12 +274,23 @@ export const CalculatorSuiteTool: React.FC = () => {
 
         {definition?.externalData === 'currency' ? <CurrencyPanel /> : definition ? (
           <>
+            {usesMoneyDisplay && (
+              <section className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-950">
+                <label className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    <span className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">Display currency symbol</span>
+                    <span className="block text-[11px] leading-4 text-neutral-500">This changes labels only. It does not perform exchange-rate conversion.</span>
+                  </span>
+                  <select className="mt-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-950 sm:mt-0" value={moneySymbol} onChange={(event) => setMoneySymbol(event.target.value)}>
+                    {MONEY_SYMBOLS.map((option) => <option key={option.label} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+              </section>
+            )}
             <section className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {definition.inputs.map((input) => <InputControl key={input.id} input={input} value={values[input.id] ?? ''} onChange={(value)=>setValues((current)=>({...current,[input.id]:value}))} />)}
-              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{renderInputs()}</div>
             </section>
-            {calculation.error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{calculation.error}</div> : <ResultGrid results={calculation.results} />}
+            {calculation.error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{calculation.error}</div> : <ResultGrid results={displayedResults} />}
             {(definition.formula || definition.notice) && (
               <section className="space-y-2 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs leading-5 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
                 {definition.formula && <p><strong className="text-neutral-800 dark:text-neutral-200">Method:</strong> {definition.formula}</p>}
