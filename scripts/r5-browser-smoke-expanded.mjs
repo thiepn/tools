@@ -8,13 +8,14 @@ const TEMP_SCRIPT = path.resolve(ROOT, 'scripts/.r5-browser-smoke-expanded.tmp.m
 const EXTENSION_CATALOGS = [
   { phase: 'P1 PDF', path: path.resolve(ROOT, 'src/pdf/publicPdfTasks.ts'), expected: 20 },
   { phase: 'P2 device diagnostics', path: path.resolve(ROOT, 'src/device/publicDeviceTasks.ts'), expected: 16 },
+  { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46 },
 ];
 
 const baselineSource = readFileSync(BASELINE_SCRIPT, 'utf8');
 const extensionIds = [];
 for (const catalog of EXTENSION_CATALOGS) {
   const source = readFileSync(catalog.path, 'utf8');
-  const ids = [...source.matchAll(/^\s{4}id:\s*'([^']+)'/gm)].map((match) => match[1]);
+  const ids = [...source.matchAll(/^\s{2,4}(?:\{ )?id:\s*'([^']+)'/gm)].map((match) => match[1]);
   if (ids.length !== catalog.expected || new Set(ids).size !== catalog.expected) {
     throw new Error(`Expected ${catalog.expected} unique ${catalog.phase} task IDs; found ${ids.length}.`);
   }
