@@ -22,7 +22,7 @@ registerPdfPublicTools();registerDeviceDiagnosticTools();registerCalculatorTools
 
 describe('P5 public image catalog',()=>{
   it('contains exactly 23 unique image micro-routes',()=>{expect(PUBLIC_IMAGE_TASKS).toHaveLength(23);expect(new Set(PUBLIC_IMAGE_TASKS.map(t=>t.id)).size).toBe(23);for(const task of PUBLIC_IMAGE_TASKS)expect(TOOLS_REGISTRY.some(t=>t.id===task.id&&t.category==='image')).toBe(true);});
-  it('keeps browser capability claims truthful',()=>{const heic=PUBLIC_IMAGE_TASKS.find(t=>t.id==='heic-image-converter')!;expect(heic.description).toContain('when the current browser can decode');const upscale=PUBLIC_IMAGE_TASKS.find(t=>t.id==='image-upscaler')!;expect(upscale.description).not.toMatch(/AI|enhance detail/i);const privacy=PUBLIC_IMAGE_TASKS.find(t=>t.id==='privacy-blur-image')!;expect(privacy.description).toContain('Manually');});
+  it('keeps browser capability claims truthful',()=>{const heic=PUBLIC_IMAGE_TASKS.find(t=>t.id==='heic-image-converter')!;expect(heic.description).toContain('when the current browser can decode');const upscale=PUBLIC_IMAGE_TASKS.find(t=>t.id==='image-upscaler')!;expect(upscale.description).toContain('high-quality browser resampling');expect(upscale.description).toContain('without claiming AI-generated detail');const privacy=PUBLIC_IMAGE_TASKS.find(t=>t.id==='privacy-blur-image')!;expect(privacy.description).toContain('Manually');});
   it('provides broad social output presets',()=>{expect(SOCIAL_IMAGE_PRESETS.length).toBeGreaterThanOrEqual(8);expect(SOCIAL_IMAGE_PRESETS.some(p=>p.width===1080&&p.height===1920)).toBe(true);expect(SOCIAL_IMAGE_PRESETS.some(p=>p.width===1280&&p.height===720)).toBe(true);});
 });
 
