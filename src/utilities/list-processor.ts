@@ -1,175 +1,20 @@
-export interface ListProcessorOptions {
-  caseSensitiveDuplicates: boolean;
-  prefixText: string;
-  suffixText: string;
-  numberingFormat: '1. ' | '1) ' | '[1] ' | '1 - ' | '01. ';
-}
-
-export function parseListItems(text: string): string[] {
-  if (!text) return [];
-  return text.split(/\r\n|\r|\n/);
-}
-
-export function trimItems(items: string[]): string[] {
-  return items.map((item) => item.trim());
-}
-
-export function removeEmptyItems(items: string[]): string[] {
-  return items.filter((item) => item.trim().length > 0);
-}
-
-export function removeDuplicateItems(items: string[], caseSensitive = true): { items: string[]; duplicatesRemoved: number } {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  let duplicatesRemoved = 0;
-
-  for (const item of items) {
-    const key = caseSensitive ? item : item.toLowerCase();
-    if (seen.has(key)) {
-      duplicatesRemoved++;
-    } else {
-      seen.add(key);
-      result.push(item);
-    }
-  }
-
-  return { items: result, duplicatesRemoved };
-}
-
-export function sortAZ(items: string[]): string[] {
-  return [...items].sort((a, b) => a.localeCompare(b));
-}
-
-export function sortZA(items: string[]): string[] {
-  return [...items].sort((a, b) => b.localeCompare(a));
-}
-
-export function naturalSort(items: string[]): string[] {
-  return [...items].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
-}
-
-export function numericSort(items: string[], ascending = true): { items: string[]; nonNumericCount: number } {
-  const numericEntries: Array<{ original: string; value: number }> = [];
-  const nonNumericEntries: string[] = [];
-
-  for (const item of items) {
-    // Extract first valid numeric match or parse whole string
-    const trimmed = item.trim();
-    const parsed = Number(trimmed.replace(/,/g, ''));
-    if (!isNaN(parsed) && trimmed.length > 0) {
-      numericEntries.push({ original: item, value: parsed });
-    } else {
-      nonNumericEntries.push(item);
-    }
-  }
-
-  numericEntries.sort((a, b) => (ascending ? a.value - b.value : b.value - a.value));
-
-  const sortedNumerics = numericEntries.map((e) => e.original);
-  return {
-    items: [...sortedNumerics, ...nonNumericEntries],
-    nonNumericCount: nonNumericEntries.length,
-  };
-}
-
-export function reverseItems(items: string[]): string[] {
-  return [...items].reverse();
-}
-
-export function shuffleItems(items: string[]): string[] {
-  const arr = [...items];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-export function addLineNumbers(items: string[], format: string = '1. '): string[] {
-  const total = items.length;
-  const padLength = total >= 10 ? String(total).length : 2;
-
-  return items.map((item, idx) => {
-    const num = idx + 1;
-    let prefix = `${num}. `;
-    if (format === '1) ') prefix = `${num}) `;
-    else if (format === '[1] ') prefix = `[${num}] `;
-    else if (format === '1 - ') prefix = `${num} - `;
-    else if (format === '01. ') prefix = `${String(num).padStart(padLength, '0')}. `;
-
-    return `${prefix}${item}`;
-  });
-}
-
-export function removeLineNumbers(items: string[]): string[] {
-  // Regex to remove common prefixes like "1. ", "1) ", "[1] ", "4 - ", "01. ", "1: ", "#1 "
-  const numberPrefixRegex = /^\s*(?:#|\[)?\d+(?:\]|[.)\-:]|\s+-\s*|\s+)?\s*/;
-  return items.map((item) => {
-    // Specifically match full leading number sequences like "1. ", "1) ", "[1] ", "1 - ", "1: "
-    return item.replace(/^\s*(?:#\s*\d+|\d+\s*[-.)\]:]|\[\d+\])\s*/, '');
-  });
-}
-
-export function addPrefixSuffix(items: string[], prefix: string, suffix: string): string[] {
-  return items.map((item) => `${prefix}${item}${suffix}`);
-}
-
-export interface ProcessListConfig {
-  removeDuplicates?: boolean;
-  trimItems?: boolean;
-  removeEmpty?: boolean;
-  removeNumbering?: boolean;
-  sort?: 'alpha-asc' | 'alpha-desc' | 'natural' | 'numeric-asc' | 'numeric-desc' | 'reverse' | 'shuffle' | 'none';
-  caseSensitiveDuplicates?: boolean;
-  duplicateMode?: 'case-sensitive' | 'case-insensitive';
-  reverse?: boolean;
-  shuffle?: boolean;
-  joinWith?: string;
-  prefix?: string;
-  suffix?: string;
-  numbering?: string;
-}
-
-export function processList(
-  items: string[],
-  config: ProcessListConfig
-): { items: string[]; duplicatesRemoved: number } {
-  let result = [...items];
-  let duplicatesRemoved = 0;
-
-  if (config.removeNumbering) {
-    result = removeLineNumbers(result);
-  }
-  if (config.trimItems) {
-    result = trimItems(result);
-  }
-  if (config.removeEmpty) {
-    result = removeEmptyItems(result);
-  }
-  if (config.removeDuplicates) {
-    const isCaseSensitive =
-      config.duplicateMode !== undefined
-        ? config.duplicateMode === 'case-sensitive'
-        : config.caseSensitiveDuplicates ?? true;
-    const dedupe = removeDuplicateItems(result, isCaseSensitive);
-    result = dedupe.items;
-    duplicatesRemoved = dedupe.duplicatesRemoved;
-  }
-  if (config.sort) {
-    if (config.sort === 'alpha-asc') result = sortAZ(result);
-    else if (config.sort === 'alpha-desc') result = sortZA(result);
-    else if (config.sort === 'natural' || config.sort === 'numeric-asc') result = naturalSort(result);
-    else if (config.sort === 'numeric-desc') result = naturalSort(result).reverse();
-    else if (config.sort === 'reverse') result = reverseItems(result);
-    else if (config.sort === 'shuffle') result = shuffleItems(result);
-  }
-  if (config.prefix || config.suffix) {
-    result = addPrefixSuffix(result, config.prefix || '', config.suffix || '');
-  }
-  if (config.numbering) {
-    result = addLineNumbers(result, config.numbering);
-  }
-
-  return { items: result, duplicatesRemoved };
-}
-
+import{parseHumanNumber}from'./human-number';
+export interface ListProcessorOptions{caseSensitiveDuplicates:boolean;prefixText:string;suffixText:string;numberingFormat:'1. '|'1) '|'[1] '|'1 - '|'01. ';}
+export function parseListItems(text:string):string[]{return text?text.split(/\r\n|\r|\n/):[];}export const trimItems=(items:string[])=>items.map(i=>i.trim());export const removeEmptyItems=(items:string[])=>items.filter(i=>i.trim());
+export function removeDuplicateItems(items:string[],caseSensitive=true){const seen=new Set<string>(),result:string[]=[];let duplicatesRemoved=0;for(const item of items){const key=caseSensitive?item:item.toLocaleLowerCase();if(seen.has(key))duplicatesRemoved++;else{seen.add(key);result.push(item);}}return{items:result,duplicatesRemoved};}
+function collator(locale?:string,options:Intl.CollatorOptions={}){return new Intl.Collator(locale,{numeric:false,sensitivity:'variant',...options});}
+export function sortAZ(items:string[],locale?:string):string[]{const c=collator(locale);return items.map((value,index)=>({value,index})).sort((a,b)=>c.compare(a.value,b.value)||a.index-b.index).map(x=>x.value);}export function sortZA(items:string[],locale?:string):string[]{return sortAZ(items,locale).reverse();}export function naturalSort(items:string[],locale?:string):string[]{const c=collator(locale,{numeric:true,sensitivity:'base'});return items.map((value,index)=>({value,index})).sort((a,b)=>c.compare(a.value,b.value)||a.index-b.index).map(x=>x.value);}
+export function numericSort(items:string[],ascending=true){const numeric:{original:string;value:number;index:number}[]=[],nonNumeric:string[]=[];items.forEach((item,index)=>{const value=parseHumanNumber(item.trim());if(value!==null&&Number.isFinite(value))numeric.push({original:item,value,index});else nonNumeric.push(item);});numeric.sort((a,b)=>(ascending?a.value-b.value:b.value-a.value)||a.index-b.index);return{items:[...numeric.map(x=>x.original),...nonNumeric],nonNumericCount:nonNumeric.length};}
+export const reverseItems=(items:string[])=>[...items].reverse();
+function secureInt(max:number):number{if(max<=1)return 0;const c=globalThis.crypto;if(!c?.getRandomValues)return Math.floor(Math.random()*max);const limit=0x100000000-(0x100000000%max),buf=new Uint32Array(1);do{c.getRandomValues(buf);}while(buf[0]>=limit);return buf[0]%max;}
+/** Fisher-Yates using Web Crypto when available, avoiding biased/random-sort shuffles. */
+export function shuffleItems(items:string[]):string[]{const out=[...items];for(let i=out.length-1;i>0;i--){const j=secureInt(i+1);[out[i],out[j]]=[out[j],out[i]];}return out;}
+export function addLineNumbers(items:string[],format='1. '):string[]{const pad=Math.max(2,String(items.length).length);return items.map((item,i)=>{const n=i+1,prefix=format==='1) '?`${n}) `:format==='[1] '?`[${n}] `:format==='1 - '?`${n} - `:format==='01. '?`${String(n).padStart(pad,'0')}. `:`${n}. `;return prefix+item;});}
+export function removeLineNumbers(items:string[]):string[]{return items.map(item=>item.replace(/^\s*(?:#\s*\d+|\d+\s*[-.)\]:]|\[\d+\])\s*/,''));}export const addPrefixSuffix=(items:string[],prefix:string,suffix:string)=>items.map(i=>`${prefix}${i}${suffix}`);
+export type SetOperation='union'|'intersection'|'difference'|'symmetric-difference';
+export function setOperation(left:string[],right:string[],operation:SetOperation,caseSensitive=true):string[]{const key=(x:string)=>caseSensitive?x:x.toLocaleLowerCase(),rightKeys=new Set(right.map(key)),leftKeys=new Set(left.map(key));if(operation==='intersection')return removeDuplicateItems(left.filter(x=>rightKeys.has(key(x))),caseSensitive).items;if(operation==='difference')return removeDuplicateItems(left.filter(x=>!rightKeys.has(key(x))),caseSensitive).items;if(operation==='symmetric-difference')return removeDuplicateItems([...left.filter(x=>!rightKeys.has(key(x))),...right.filter(x=>!leftKeys.has(key(x)))],caseSensitive).items;return removeDuplicateItems([...left,...right],caseSensitive).items;}
+/** Minimal CSV/TSV-aware column sorting, preserving quoted delimiters. */
+export function splitDelimitedRow(row:string,delimiter=','):string[]{const out:string[]=[],d=delimiter||',';let current='',quoted=false;for(let i=0;i<row.length;i++){const ch=row[i];if(ch==='"'){if(quoted&&row[i+1]==='"'){current+='"';i++;}else quoted=!quoted;}else if(ch===d&&!quoted){out.push(current);current='';}else current+=ch;}out.push(current);return out;}
+export function sortByDelimitedColumn(items:string[],columnIndex:number,delimiter=',',ascending=true,locale?:string):string[]{const c=collator(locale,{numeric:true,sensitivity:'base'}),index=Math.max(0,Math.floor(columnIndex));return items.map((value,i)=>({value,key:splitDelimitedRow(value,delimiter)[index]??'',i})).sort((a,b)=>(ascending?c.compare(a.key,b.key):c.compare(b.key,a.key))||a.i-b.i).map(x=>x.value);}
+export interface ProcessListConfig{removeDuplicates?:boolean;trimItems?:boolean;removeEmpty?:boolean;removeNumbering?:boolean;sort?:'alpha-asc'|'alpha-desc'|'natural'|'numeric-asc'|'numeric-desc'|'reverse'|'shuffle'|'none';caseSensitiveDuplicates?:boolean;duplicateMode?:'case-sensitive'|'case-insensitive';reverse?:boolean;shuffle?:boolean;joinWith?:string;prefix?:string;suffix?:string;numbering?:string;locale?:string;}
+export function processList(items:string[],config:ProcessListConfig){let result=[...items],duplicatesRemoved=0;if(config.removeNumbering)result=removeLineNumbers(result);if(config.trimItems)result=trimItems(result);if(config.removeEmpty)result=removeEmptyItems(result);if(config.removeDuplicates){const cs=config.duplicateMode?config.duplicateMode==='case-sensitive':config.caseSensitiveDuplicates??true,d=removeDuplicateItems(result,cs);result=d.items;duplicatesRemoved=d.duplicatesRemoved;}if(config.sort==='alpha-asc')result=sortAZ(result,config.locale);else if(config.sort==='alpha-desc')result=sortZA(result,config.locale);else if(config.sort==='natural')result=naturalSort(result,config.locale);else if(config.sort==='numeric-asc')result=numericSort(result,true).items;else if(config.sort==='numeric-desc')result=numericSort(result,false).items;else if(config.sort==='reverse')result=reverseItems(result);else if(config.sort==='shuffle')result=shuffleItems(result);if(config.prefix||config.suffix)result=addPrefixSuffix(result,config.prefix||'',config.suffix||'');if(config.numbering)result=addLineNumbers(result,config.numbering);return{items:result,duplicatesRemoved};}
