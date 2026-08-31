@@ -24,9 +24,13 @@ export function registerCalculatorTools(): void {
       id: task.id,
       name: task.name,
       shortName: task.shortName,
-      description: task.description,
+      description: task.id === 'salary-hourly-calculator'
+        ? 'Convert annual salary to hourly wage or hourly wage to annual, monthly, weekly, and daily equivalents in either direction.'
+        : task.description,
       category: 'calculator',
-      keywords: [...task.keywords, task.group, 'calculator'],
+      keywords: task.id === 'salary-hourly-calculator'
+        ? [...task.keywords, 'annual to hourly', 'hourly to annual', 'hourly wage to salary', task.group, 'calculator']
+        : [...task.keywords, task.group, 'calculator'],
       iconName: 'Percent',
       route: `/${task.id}`,
       featured: task.featured,
