@@ -13,8 +13,8 @@ export interface CategoryPresentation {
 }
 
 // General-purpose categories come first so the catalog reads like an everyday
-// utility suite rather than a developer toolbox. PDF is a first-class public
-// family because document tasks are among the most common utility-site intents.
+// utility suite rather than a developer toolbox. PDF and device diagnostics are
+// first-class public families because both map directly to common utility-site intents.
 export const CATEGORY_ORDER: ToolCategory[] = [
   'productivity',
   'pdf',
@@ -22,6 +22,7 @@ export const CATEGORY_ORDER: ToolCategory[] = [
   'text',
   'files',
   'media',
+  'device',
   'time',
   'everyday',
   'math',
@@ -94,6 +95,17 @@ export const CATEGORY_PRESENTATION: Record<ToolCategory, CategoryPresentation> =
       bg: 'bg-pink-50 dark:bg-pink-950/40',
       text: 'text-pink-700 dark:text-pink-300',
       border: 'border-pink-200 dark:border-pink-800',
+    },
+  },
+  device: {
+    label: 'Device Diagnostics',
+    shortLabel: 'Diagnostics',
+    description: 'Test cameras, microphones, speakers, displays, keyboards, mice, touchscreens, controllers, and browser-exposed hardware status.',
+    searchTerms: ['device', 'hardware', 'diagnostic', 'diagnostics', 'test hardware', 'microphone test', 'webcam test', 'keyboard test', 'mouse test', 'monitor test', 'controller test'],
+    badge: {
+      bg: 'bg-sky-50 dark:bg-sky-950/40',
+      text: 'text-sky-700 dark:text-sky-300',
+      border: 'border-sky-200 dark:border-sky-800',
     },
   },
   time: {
