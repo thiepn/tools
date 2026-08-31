@@ -10,6 +10,7 @@ import {
   monthlyLoanPayment,
   navyBodyFatPercent,
   oneRepMax,
+  parseNumberList,
   simplifyFraction,
 } from '../utilities/everyday-calculators-core';
 import {
@@ -72,6 +73,11 @@ describe('P3 calculator core correctness', () => {
     expect(evaluateMathExpression('sqrt(144) + sin(pi / 2)')).toBeCloseTo(13, 10);
     expect(() => evaluateMathExpression('globalThis.process')).toThrow();
     expect(() => evaluateMathExpression('1 / 0')).toThrow('Division by zero');
+  });
+
+  it('accepts both ordinary comma lists and decimal-comma lists separated by semicolons', () => {
+    expect(parseNumberList('1, 2, 3')).toEqual([1, 2, 3]);
+    expect(parseNumberList('1,5; 2,5; 10')).toEqual([1.5, 2.5, 10]);
   });
 
   it('reduces fractions with normalized denominator signs', () => {
