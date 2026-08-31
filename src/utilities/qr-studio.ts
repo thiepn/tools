@@ -1,269 +1,34 @@
 import QRCode from 'qrcode';
-
-export type QrDataType = 'text' | 'url' | 'wifi' | 'email' | 'phone' | 'sms' | 'vcard';
-export type QrErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
-
-export interface WifiQrConfig {
-  ssid: string;
-  password?: string;
-  security: 'WPA' | 'WEP' | 'nopass';
-  hidden: boolean;
-}
-
-export interface EmailQrConfig {
-  recipient: string;
-  subject?: string;
-  body?: string;
-}
-
-export interface SmsQrConfig {
-  phoneNumber: string;
-  message?: string;
-}
-
-export interface VCardQrConfig {
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  email?: string;
-  organization?: string;
-  website?: string;
-}
-
-// Escape special characters in Wi-Fi SSID / password
-function escapeWifiString(str: string): string {
-  return str.replace(/([\\;,":])/g, '\\$1');
-}
-
-export function formatWifiPayload(config: WifiQrConfig): string {
-  const t = config.security || 'WPA';
-  const s = escapeWifiString(config.ssid || '');
-  const p = config.password ? escapeWifiString(config.password) : '';
-  const h = config.hidden ? 'true' : 'false';
-  return `WIFI:T:${t};S:${s};P:${p};H:${h};;`;
-}
-
-export function formatEmailPayload(config: EmailQrConfig): string {
-  const params: string[] = [];
-  if (config.subject) params.push(`subject=${encodeURIComponent(config.subject)}`);
-  if (config.body) params.push(`body=${encodeURIComponent(config.body)}`);
-  const query = params.length > 0 ? `?${params.join('&')}` : '';
-  return `mailto:${config.recipient}${query}`;
-}
-
-export function formatPhonePayload(phoneNumber: string): string {
-  return `tel:${phoneNumber.trim()}`;
-}
-
-export function formatSmsPayload(config: SmsQrConfig): string {
-  const cleanPhone = config.phoneNumber.trim();
-  const body = config.message ? `?body=${encodeURIComponent(config.message)}` : '';
-  return `sms:${cleanPhone}${body}`;
-}
-
-export function formatVCardPayload(config: VCardQrConfig): string {
-  const lines: string[] = [
-    'BEGIN:VCARD',
-    'VERSION:3.0',
-    `N:${config.lastName || ''};${config.firstName || ''};;;`,
-    `FN:${`${config.firstName || ''} ${config.lastName || ''}`.trim()}`,
-  ];
-  if (config.organization) lines.push(`ORG:${config.organization}`);
-  if (config.phone) lines.push(`TEL;TYPE=CELL:${config.phone}`);
-  if (config.email) lines.push(`EMAIL:${config.email}`);
-  if (config.website) lines.push(`URL:${config.website}`);
-  lines.push('END:VCARD');
-  return lines.join('\n');
-}
-
-// Calculate color contrast ratio (WCAG formula)
-export function getLuminance(hex: string): number {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return 0.5;
-  const r = parseInt(clean.substring(0, 2), 16) / 255;
-  const g = parseInt(clean.substring(2, 4), 16) / 255;
-  const b = parseInt(clean.substring(4, 6), 16) / 255;
-
-  const a = [r, g, b].map((v) => {
-    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  });
-  return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-}
-
-export function checkContrast(fgHex: string, bgHex: string): number {
-  const l1 = getLuminance(fgHex);
-  const l2 = getLuminance(bgHex);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-// Generate QR Code as Data URL
-export async function generateQrDataUrl(
-  text: string,
-  options: {
-    width?: number;
-    margin?: number;
-    errorCorrectionLevel?: QrErrorCorrectionLevel;
-    color?: {
-      dark?: string;
-      light?: string;
-    };
-  }
-): Promise<string> {
-  return QRCode.toDataURL(text, {
-    width: options.width || 320,
-    margin: options.margin !== undefined ? options.margin : 2,
-    errorCorrectionLevel: options.errorCorrectionLevel || 'M',
-    color: {
-      dark: options.color?.dark || '#000000',
-      light: options.color?.light || '#FFFFFF',
-    },
-  });
-}
-
-// Generate QR Code as SVG string
-export async function generateQrSvgString(
-  text: string,
-  options: {
-    width?: number;
-    margin?: number;
-    errorCorrectionLevel?: QrErrorCorrectionLevel;
-    color?: {
-      dark?: string;
-      light?: string;
-    };
-  }
-): Promise<string> {
-  return QRCode.toString(text, {
-    type: 'svg',
-    width: options.width || 320,
-    margin: options.margin !== undefined ? options.margin : 2,
-    errorCorrectionLevel: options.errorCorrectionLevel || 'M',
-    color: {
-      dark: options.color?.dark || '#000000',
-      light: options.color?.light || '#FFFFFF',
-    },
-  });
-}
-
-export interface ParsedQrResult {
-  raw: string;
-  type: 'url' | 'wifi' | 'email' | 'phone' | 'sms' | 'vcard' | 'text';
-  parsedData?: {
-    url?: string;
-    wifi?: { ssid: string; password?: string; security: string; hidden: boolean };
-    email?: { recipient: string; subject?: string; body?: string };
-    phone?: string;
-    sms?: { phone: string; message?: string };
-    vcard?: { name: string; phone?: string; email?: string; org?: string };
-  };
-}
-
-export function parseScannedQr(raw: string): ParsedQrResult {
-  const trimmed = raw.trim();
-
-  // 1. Wi-Fi: WIFI:T:WPA;S:ssid;P:pass;H:false;;
-  if (/^WIFI:/i.test(trimmed)) {
-    const tMatch = trimmed.match(/T:([^;]*)/i);
-    const sMatch = trimmed.match(/S:([^;]*)/i);
-    const pMatch = trimmed.match(/P:([^;]*)/i);
-    const hMatch = trimmed.match(/H:([^;]*)/i);
-
-    const unescape = (s?: string) => (s ? s.replace(/\\([\\;,":])/g, '$1') : '');
-
-    return {
-      raw,
-      type: 'wifi',
-      parsedData: {
-        wifi: {
-          ssid: unescape(sMatch?.[1]) || 'Unknown Network',
-          password: unescape(pMatch?.[1]),
-          security: tMatch?.[1] || 'WPA',
-          hidden: hMatch?.[1]?.toLowerCase() === 'true',
-        },
-      },
-    };
-  }
-
-  // 2. URL: https:// or http:// or www.
-  if (/^(https?:\/\/|www\.)[^\s/$.?#].[^\s]*$/i.test(trimmed)) {
-    const fullUrl = trimmed.startsWith('www.') ? `https://${trimmed}` : trimmed;
-    return {
-      raw,
-      type: 'url',
-      parsedData: { url: fullUrl },
-    };
-  }
-
-  // 3. Mailto
-  if (/^mailto:/i.test(trimmed)) {
-    const mailtoBody = trimmed.substring(7);
-    const [recipient, query] = mailtoBody.split('?');
-    const params = new URLSearchParams(query || '');
-    return {
-      raw,
-      type: 'email',
-      parsedData: {
-        email: {
-          recipient,
-          subject: params.get('subject') || undefined,
-          body: params.get('body') || undefined,
-        },
-      },
-    };
-  }
-
-  // 4. Tel
-  if (/^tel:/i.test(trimmed)) {
-    return {
-      raw,
-      type: 'phone',
-      parsedData: { phone: trimmed.substring(4) },
-    };
-  }
-
-  // 5. SMS
-  if (/^sms:/i.test(trimmed)) {
-    const smsBody = trimmed.substring(4);
-    const [phone, query] = smsBody.split('?');
-    const params = new URLSearchParams(query || '');
-    return {
-      raw,
-      type: 'sms',
-      parsedData: {
-        sms: {
-          phone,
-          message: params.get('body') || undefined,
-        },
-      },
-    };
-  }
-
-  // 6. vCard
-  if (/^BEGIN:VCARD/i.test(trimmed)) {
-    const fnMatch = trimmed.match(/FN:(.*)/i);
-    const telMatch = trimmed.match(/TEL(?:;[^:]+)?:(.*)/i);
-    const emailMatch = trimmed.match(/EMAIL(?:;[^:]+)?:(.*)/i);
-    const orgMatch = trimmed.match(/ORG:(.*)/i);
-
-    return {
-      raw,
-      type: 'vcard',
-      parsedData: {
-        vcard: {
-          name: fnMatch?.[1]?.trim() || 'Contact',
-          phone: telMatch?.[1]?.trim(),
-          email: emailMatch?.[1]?.trim(),
-          org: orgMatch?.[1]?.trim(),
-        },
-      },
-    };
-  }
-
-  // 7. Plain text
-  return {
-    raw,
-    type: 'text',
-  };
+export type QrDataType='text'|'url'|'wifi'|'email'|'phone'|'sms'|'vcard';export type QrErrorCorrectionLevel='L'|'M'|'Q'|'H';
+export interface WifiQrConfig{ssid:string;password?:string;security:'WPA'|'WEP'|'nopass';hidden:boolean;}export interface EmailQrConfig{recipient:string;subject?:string;body?:string;}export interface SmsQrConfig{phoneNumber:string;message?:string;}export interface VCardQrConfig{firstName:string;lastName:string;phone?:string;email?:string;organization?:string;website?:string;}
+const escapeWifi=(s:string)=>s.replace(/([\\;,":])/g,'\\$1');
+const unescapeWifi=(s:string)=>s.replace(/\\([\\;,":])/g,'$1');
+const escapeVCard=(s:string)=>s.replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,');
+const unescapeVCard=(s:string)=>s.replace(/\\n/gi,'\n').replace(/\\([\\;,])/g,'$1');
+export function formatWifiPayload(c:WifiQrConfig):string{return`WIFI:T:${c.security||'WPA'};S:${escapeWifi(c.ssid||'')};P:${c.password?escapeWifi(c.password):''};H:${c.hidden?'true':'false'};;`;}
+export function formatEmailPayload(c:EmailQrConfig):string{const q=new URLSearchParams();if(c.subject)q.set('subject',c.subject);if(c.body)q.set('body',c.body);return`mailto:${c.recipient}${q.toString()?`?${q.toString()}`:''}`;}
+export const formatPhonePayload=(p:string)=>`tel:${p.trim()}`;
+export function formatSmsPayload(c:SmsQrConfig):string{const q=new URLSearchParams();if(c.message)q.set('body',c.message);return`sms:${c.phoneNumber.trim()}${q.toString()?`?${q.toString()}`:''}`;}
+export function formatVCardPayload(c:VCardQrConfig):string{const lines=['BEGIN:VCARD','VERSION:3.0',`N:${escapeVCard(c.lastName||'')};${escapeVCard(c.firstName||'')};;;`,`FN:${escapeVCard(`${c.firstName||''} ${c.lastName||''}`.trim())}`];if(c.organization)lines.push(`ORG:${escapeVCard(c.organization)}`);if(c.phone)lines.push(`TEL;TYPE=CELL:${escapeVCard(c.phone)}`);if(c.email)lines.push(`EMAIL:${escapeVCard(c.email)}`);if(c.website)lines.push(`URL:${escapeVCard(c.website)}`);lines.push('END:VCARD');return lines.join('\r\n');}
+export function getLuminance(hex:string):number{const clean=hex.trim().replace('#','');if(!/^[0-9a-f]{6}$/i.test(clean))return .5;const values=[0,2,4].map(i=>parseInt(clean.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return values[0]*.2126+values[1]*.7152+values[2]*.0722;}
+export function checkContrast(a:string,b:string):number{const l1=getLuminance(a),l2=getLuminance(b);return(Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);}
+export interface QrPayloadAssessment{byteLength:number;capacityBytes:number;usagePercent:number;quietZoneModules:number;contrastRatio:number;isWithinCapacity:boolean;warnings:string[];}
+const CAPACITY:Record<QrErrorCorrectionLevel,number>={L:2953,M:2331,Q:1663,H:1273};
+export function assessQrPayload(text:string,level:QrErrorCorrectionLevel='M',dark='#000000',light='#FFFFFF',margin=4):QrPayloadAssessment{const bytes=new TextEncoder().encode(text).length,capacity=CAPACITY[level],contrast=checkContrast(dark,light),warnings:string[]=[];if(bytes>capacity)warnings.push(`Payload exceeds the conservative byte capacity for error correction ${level}.`);if(margin<4)warnings.push('QR quiet zone should be at least 4 modules.');if(contrast<4.5)warnings.push('Foreground/background contrast is low for robust scanning.');return{byteLength:bytes,capacityBytes:capacity,usagePercent:Number((bytes/capacity*100).toFixed(1)),quietZoneModules:margin,contrastRatio:Number(contrast.toFixed(2)),isWithinCapacity:bytes<=capacity,warnings};}
+function normalizedOptions(options:{width?:number;margin?:number;errorCorrectionLevel?:QrErrorCorrectionLevel;color?:{dark?:string;light?:string}}){return{width:Math.max(96,Math.min(4096,Math.round(options.width||320))),margin:Math.max(0,Math.min(32,Math.round(options.margin??4))),errorCorrectionLevel:(options.errorCorrectionLevel||'M') as QrErrorCorrectionLevel,color:{dark:options.color?.dark||'#000000',light:options.color?.light||'#FFFFFF'}};}
+export async function generateQrDataUrl(text:string,options:{width?:number;margin?:number;errorCorrectionLevel?:QrErrorCorrectionLevel;color?:{dark?:string;light?:string}}):Promise<string>{const o=normalizedOptions(options);const a=assessQrPayload(text,o.errorCorrectionLevel,o.color.dark,o.color.light,o.margin);if(!a.isWithinCapacity)throw new Error(a.warnings[0]);return QRCode.toDataURL(text,o);}
+export async function generateQrSvgString(text:string,options:{width?:number;margin?:number;errorCorrectionLevel?:QrErrorCorrectionLevel;color?:{dark?:string;light?:string}}):Promise<string>{const o=normalizedOptions(options);const a=assessQrPayload(text,o.errorCorrectionLevel,o.color.dark,o.color.light,o.margin);if(!a.isWithinCapacity)throw new Error(a.warnings[0]);return QRCode.toString(text,{...o,type:'svg'});}
+export interface ParsedQrResult{raw:string;type:'url'|'wifi'|'email'|'phone'|'sms'|'vcard'|'text';parsedData?:{url?:string;wifi?:{ssid:string;password?:string;security:string;hidden:boolean};email?:{recipient:string;subject?:string;body?:string};phone?:string;sms?:{phone:string;message?:string};vcard?:{name:string;phone?:string;email?:string;org?:string}};warnings?:string[];}
+function parseEscapedFields(body:string):Record<string,string>{const fields:string[]=[];let current='';let escaped=false;for(const ch of body){if(escaped){current+=`\\${ch}`;escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch===';'){fields.push(current);current='';}else current+=ch;}if(current)fields.push(current);const out:Record<string,string>={};for(const field of fields){let split=-1,esc=false;for(let i=0;i<field.length;i++){if(esc){esc=false;continue;}if(field[i]==='\\'){esc=true;continue;}if(field[i]===':'){split=i;break;}}if(split>0)out[field.slice(0,split).toUpperCase()]=unescapeWifi(field.slice(split+1));}return out;}
+function parseVCard(raw:string){const unfolded=raw.replace(/\r?\n[ \t]/g,'');const lines=unfolded.split(/\r?\n/);const get=(name:string)=>lines.find(l=>l.toUpperCase().startsWith(name))?.split(':').slice(1).join(':');return{name:unescapeVCard(get('FN:')||'Contact'),phone:get('TEL')?unescapeVCard(get('TEL')!):undefined,email:get('EMAIL')?unescapeVCard(get('EMAIL')!):undefined,org:get('ORG:')?unescapeVCard(get('ORG:')!):undefined};}
+export function assessScannedUrl(url:string):string[]{const warnings:string[]=[];try{const parsed=new URL(url);if(!['http:','https:'].includes(parsed.protocol))warnings.push(`Non-web URL scheme: ${parsed.protocol}`);if(parsed.username||parsed.password)warnings.push('URL contains embedded credentials.');if(/(?:xn--)/i.test(parsed.hostname))warnings.push('Internationalized hostname uses punycode; verify the destination carefully.');if(/\d+\.\d+\.\d+\.\d+/.test(parsed.hostname))warnings.push('URL points directly to an IP address.');}catch{warnings.push('Malformed URL.');}return warnings;}
+export function parseScannedQr(raw:string):ParsedQrResult{
+  const t=raw.trim();
+  if(/^WIFI:/i.test(t)){const f=parseEscapedFields(t.slice(5));return{raw,type:'wifi',parsedData:{wifi:{ssid:f.S||'Unknown Network',password:f.P||undefined,security:f.T||'WPA',hidden:(f.H||'').toLowerCase()==='true'}}};}
+  if(/^(https?:\/\/|www\.)/i.test(t)){const url=t.startsWith('www.')?`https://${t}`:t;return{raw,type:'url',parsedData:{url},warnings:assessScannedUrl(url)};}
+  if(/^mailto:/i.test(t)){const q=t.indexOf('?'),recipient=decodeURIComponent(t.slice(7,q<0?undefined:q)),p=new URLSearchParams(q<0?'':t.slice(q+1));return{raw,type:'email',parsedData:{email:{recipient,subject:p.get('subject')||undefined,body:p.get('body')||undefined}}};}
+  if(/^tel:/i.test(t))return{raw,type:'phone',parsedData:{phone:t.slice(4)}};
+  if(/^sms:/i.test(t)){const q=t.indexOf('?'),phone=t.slice(4,q<0?undefined:q),p=new URLSearchParams(q<0?'':t.slice(q+1));return{raw,type:'sms',parsedData:{sms:{phone,message:p.get('body')||undefined}}};}
+  if(/^BEGIN:VCARD/i.test(t))return{raw,type:'vcard',parsedData:{vcard:parseVCard(t)}};
+  return{raw,type:'text'};
 }

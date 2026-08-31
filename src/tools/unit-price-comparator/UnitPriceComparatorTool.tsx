@@ -1,416 +1,61 @@
-import React, { useState, useMemo } from 'react';
-import {
-  Scale,
-  Plus,
-  Trash2,
-  Copy,
-  Check,
-  Award,
-  AlertTriangle,
-  RotateCcw,
-  Sparkles,
-  DollarSign,
-  TrendingDown,
-  Layers,
-} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
 import { copyToClipboard } from '../../utilities/clipboard';
 import {
-  ProductItem,
   SUPPORTED_UNITS,
-  NormalizationBasis,
-  parseFlexibleNumber,
   evaluateProducts,
+  rankProductsForNeed,
+  type NormalizationBasis,
+  type ProductItem,
 } from '../../utilities/unit-price';
 
-interface UnitPriceComparatorToolProps {
-  initialText?: string;
-}
+const INITIAL: ProductItem[] = [
+  { id:'a', name:'Standard Box', price:4.5, packCount:1, unitSize:500, unitId:'g' },
+  { id:'b', name:'Family Pack', price:9.8, packCount:2, unitSize:650, unitId:'g' },
+  { id:'c', name:'Bulk Bag', price:13.5, packCount:1, unitSize:2, unitId:'kg' },
+];
+const baseLabel = (category: string | null) => category === 'weight' ? 'g' : category === 'volume' ? 'mL' : category === 'length' ? 'm' : category === 'area' ? 'm²' : 'items';
 
-export const UnitPriceComparatorTool: React.FC<UnitPriceComparatorToolProps> = () => {
-  const [currency, setCurrency] = useState<string>('$');
-  const [basis, setBasis] = useState<NormalizationBasis>('standard');
+export const UnitPriceComparatorTool: React.FC = () => {
+  const [products, setProducts] = useState<ProductItem[]>(INITIAL); const [basis, setBasis] = useState<NormalizationBasis>('standard'); const [currency, setCurrency] = useState('€');
+  const [needed, setNeeded] = useState(0); const [waste, setWaste] = useState(0); const [includeTax, setIncludeTax] = useState(true);
+  const evaluation = useMemo(() => evaluateProducts(products,basis,{neededQuantityInBase:needed>0?needed:undefined,wastePercent:waste,includeTax}),[products,basis,needed,waste,includeTax]);
+  const rankedNeed = useMemo(() => needed>0 ? rankProductsForNeed(products,needed,basis,waste,includeTax) : [],[products,needed,basis,waste,includeTax]);
+  const update = (id:string, patch:Partial<ProductItem>) => setProducts((current)=>current.map((p)=>p.id===id?{...p,...patch}:p));
+  const add = () => setProducts((current)=>[...current,{id:`item-${Date.now()}`,name:`Option ${current.length+1}`,price:1,packCount:1,unitSize:1,unitId:current[0]?.unitId||'item'}].slice(0,10));
+  const summary = evaluation.hasMismatchedCategories ? 'Cannot rank items from different measurement categories.' : evaluation.items.map((item)=>`${item.name}: ${currency}${item.pricePerStandardUnit.toFixed(4)}/${item.standardUnitLabel}${item.isBestValue?' — best value':''}${item.purchaseCostForNeed!==undefined?`; need ${item.packagesForNeed} package(s), ${currency}${item.purchaseCostForNeed.toFixed(2)}`:''}`).join('\n');
 
-  const [products, setProducts] = useState<ProductItem[]>([
-    {
-      id: 'item-1',
-      name: 'Standard Box',
-      price: 4.5,
-      packCount: 1,
-      unitSize: 500,
-      unitId: 'g',
-    },
-    {
-      id: 'item-2',
-      name: 'Family Value Pack (2-Pack)',
-      price: 9.8,
-      packCount: 2,
-      unitSize: 650,
-      unitId: 'g',
-    },
-    {
-      id: 'item-3',
-      name: 'Bulk Bag',
-      price: 13.5,
-      packCount: 1,
-      unitSize: 2,
-      unitId: 'kg',
-    },
-  ]);
-
-  const [copied, setCopied] = useState<boolean>(false);
-
-  // Evaluate comparison
-  const evaluation = useMemo(() => {
-    return evaluateProducts(products, basis);
-  }, [products, basis]);
-
-  // Add new item (2 to 6 product limit)
-  const handleAddItem = () => {
-    if (products.length >= 6) return;
-    const nextIdx = products.length + 1;
-    const defaultUnit = products[0]?.unitId || 'g';
-    const newItem: ProductItem = {
-      id: `item-${Date.now()}`,
-      name: `Option ${String.fromCharCode(64 + nextIdx)}`,
-      price: 5.0,
-      packCount: 1,
-      unitSize: 100,
-      unitId: defaultUnit,
-    };
-    setProducts([...products, newItem]);
-  };
-
-  // Remove item (must have at least 2 items)
-  const handleRemoveItem = (id: string) => {
-    if (products.length <= 2) return;
-    setProducts(products.filter((p) => p.id !== id));
-  };
-
-  // Update item field
-  const handleUpdateItem = (id: string, updates: Partial<ProductItem>) => {
-    setProducts(
-      products.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
-  };
-
-  // Reset to default
-  const handleReset = () => {
-    setProducts([
-      {
-        id: 'item-1',
-        name: 'Standard Pack',
-        price: 4.5,
-        packCount: 1,
-        unitSize: 500,
-        unitId: 'g',
-      },
-      {
-        id: 'item-2',
-        name: 'Family Pack',
-        price: 9.8,
-        packCount: 2,
-        unitSize: 650,
-        unitId: 'g',
-      },
-    ]);
-  };
-
-  // Copy Summary
-  const handleCopySummary = () => {
-    const lines = evaluation.items.map((item) => {
-      const bestTag = item.isBestValue ? (item.isTie ? ' [TIED BEST VALUE]' : ' [BEST VALUE 🏆]') : '';
-      return `${item.name}: ${currency}${item.totalPrice.toFixed(2)} total -> ${currency}${item.pricePerStandardUnit.toFixed(3)} / ${item.standardUnitLabel}${bestTag}`;
-    });
-    copyToClipboard(lines.join('\n'));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Find winner item
-  const bestItem = evaluation.items.find((i) => i.isBestValue);
-
-  return (
-    <ToolShell
-      toolId="unit-price-comparator"
-      title="Unit Price Comparator"
-      description="Compare groceries, packaging sizes, and bulk items across mixed units to find the true lowest cost."
-      category="everyday"
-      relatedToolIds={['discount-vat-calculator', 'percentage-calculator', 'aspect-ratio-calculator']}
-      outputToTransfer={evaluation.items
-        .map(
-          (i) =>
-            `${i.name}: ${currency}${i.pricePerStandardUnit.toFixed(3)} / ${i.standardUnitLabel}`
-        )
-        .join('\n')}
-    >
-      <div className="space-y-6">
-        {/* Top Action, Currency & Normalization Basis Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-                Currency:
-              </span>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="px-2 py-1 text-xs bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-mono font-bold"
-              >
-                <option value="$">$ (USD / CAD / AUD)</option>
-                <option value="€">€ (EUR)</option>
-                <option value="£">£ (GBP)</option>
-                <option value="¥">¥ (JPY / CNY)</option>
-                <option value="₩">₩ (KRW)</option>
-                <option value="₹">₹ (INR)</option>
-                <option value="CHF">CHF (Swiss Franc)</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-                Display Basis:
-              </span>
-              <select
-                value={basis}
-                onChange={(e) => setBasis(e.target.value as NormalizationBasis)}
-                className="px-2 py-1 text-xs bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded font-medium"
-              >
-                <option value="standard">Standard (per kg, L, m, item)</option>
-                <option value="hundred">Per 100g / 100ml / item</option>
-                <option value="base">Per Base Unit (g, ml, m, item)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleAddItem}
-              disabled={products.length >= 6}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-xs inline-flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Option ({products.length}/6)</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 text-neutral-700 dark:text-neutral-300 inline-flex items-center gap-1"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Warning if comparing incompatible unit types */}
-        {evaluation.hasMismatchedCategories && (
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
-            <span>
-              Note: You are comparing different unit dimensions (e.g. weight with volume or count). Ensure all products use compatible unit categories for an accurate cost comparison.
-            </span>
-          </div>
-        )}
-
-        {/* Best Value Winner Banner */}
-        {bestItem && !evaluation.hasMismatchedCategories && (
-          <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-full bg-emerald-600 text-white">
-                <Award className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-[11px] uppercase font-bold text-emerald-800 dark:text-emerald-300 tracking-wider">
-                  {bestItem.isTie ? 'Tied Best Value' : 'Best Value Winner'}
-                </div>
-                <div className="text-base font-bold text-emerald-900 dark:text-emerald-100">
-                  {bestItem.name}
-                </div>
-                <div className="text-xs text-emerald-700 dark:text-emerald-400 font-mono">
-                  {currency}{bestItem.pricePerStandardUnit.toFixed(3)} / {bestItem.standardUnitLabel}
-                  {bestItem.savingsPercentageVsWorst > 0 && (
-                    <span className="ml-2 font-bold bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded text-[10px]">
-                      Saves {bestItem.savingsPercentageVsWorst}% vs most expensive
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCopySummary}
-              className="px-3 py-1.5 bg-white dark:bg-neutral-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 self-stretch sm:self-auto justify-center"
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied Summary' : 'Copy Comparison'}</span>
-            </button>
-          </div>
-        )}
-
-        {/* Input Items Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((item, index) => {
-            const evalItem = evaluation.items.find((e) => e.id === item.id);
-            const isBest = evalItem?.isBestValue && !evaluation.hasMismatchedCategories;
-
-            return (
-              <div
-                key={item.id}
-                className={`p-4 rounded-xl border transition-all space-y-3 relative ${
-                  isBest
-                    ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-400 dark:border-emerald-700 shadow-xs'
-                    : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800'
-                }`}
-              >
-                {/* Header & Delete Button */}
-                <div className="flex items-center justify-between gap-2">
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) => handleUpdateItem(item.id, { name: e.target.value })}
-                    className="font-bold text-xs bg-transparent border-b border-dashed border-neutral-300 dark:border-neutral-700 focus:border-blue-500 pb-0.5 w-full text-neutral-900 dark:text-neutral-100"
-                    placeholder="Product name / option"
-                  />
-                  {products.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(item.id)}
-                      className="p-1 text-neutral-400 hover:text-rose-600 rounded transition-colors"
-                      title="Remove option"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Price Input */}
-                <div>
-                  <label className="block text-[11px] font-medium text-neutral-500 mb-1">
-                    Total Price ({currency})
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1.5 text-xs text-neutral-400 font-bold">
-                      {currency}
-                    </span>
-                    <input
-                      type="text"
-                      value={item.price || ''}
-                      onChange={(e) =>
-                        handleUpdateItem(item.id, { price: parseFlexibleNumber(e.target.value) })
-                      }
-                      placeholder="0.00"
-                      className="w-full pl-6 pr-2.5 py-1.5 text-xs font-mono font-bold bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Quantity & Pack Inputs */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-medium text-neutral-500 mb-1">
-                      Pack Count (Qty)
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={item.packCount}
-                      onChange={(e) =>
-                        handleUpdateItem(item.id, {
-                          packCount: Math.max(1, parseInt(e.target.value, 10) || 1),
-                        })
-                      }
-                      className="w-full px-2 py-1.5 text-xs font-mono bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-neutral-500 mb-1">
-                      Size per Item
-                    </label>
-                    <input
-                      type="text"
-                      value={item.unitSize || ''}
-                      onChange={(e) =>
-                        handleUpdateItem(item.id, {
-                          unitSize: parseFlexibleNumber(e.target.value),
-                        })
-                      }
-                      placeholder="e.g. 500"
-                      className="w-full px-2 py-1.5 text-xs font-mono bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded"
-                    />
-                  </div>
-                </div>
-
-                {/* Unit Selector */}
-                <div>
-                  <label className="block text-[11px] font-medium text-neutral-500 mb-1">
-                    Measurement Unit
-                  </label>
-                  <select
-                    value={item.unitId}
-                    onChange={(e) => handleUpdateItem(item.id, { unitId: e.target.value })}
-                    className="w-full px-2 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-700 rounded font-medium"
-                  >
-                    <optgroup label="Weight">
-                      {SUPPORTED_UNITS.filter((u) => u.category === 'weight').map((u) => (
-                        <option key={u.id} value={u.id}>{u.label}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Volume">
-                      {SUPPORTED_UNITS.filter((u) => u.category === 'volume').map((u) => (
-                        <option key={u.id} value={u.id}>{u.label}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Count & Pieces">
-                      {SUPPORTED_UNITS.filter((u) => u.category === 'count').map((u) => (
-                        <option key={u.id} value={u.id}>{u.label}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Length & Area">
-                      {SUPPORTED_UNITS.filter((u) => u.category === 'length' || u.category === 'area').map((u) => (
-                        <option key={u.id} value={u.id}>{u.label}</option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </div>
-
-                {/* Calculated Normalized Result Box */}
-                {evalItem && (
-                  <div
-                    className={`p-3 rounded-lg border text-xs space-y-1 ${
-                      isBest
-                        ? 'bg-emerald-100/50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800'
-                        : 'bg-neutral-100 dark:bg-neutral-800/60 border-neutral-200 dark:border-neutral-700'
-                    }`}
-                  >
-                    <div className="text-[10px] uppercase font-bold text-neutral-500 flex items-center justify-between">
-                      <span>Normalized Unit Price</span>
-                      {isBest && (
-                        <span className="text-emerald-700 dark:text-emerald-300 font-bold">
-                          {evalItem.isTie ? 'TIED BEST' : 'BEST VALUE'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="font-mono text-base font-bold text-neutral-900 dark:text-neutral-100">
-                      {currency}{evalItem.pricePerStandardUnit.toFixed(3)}{' '}
-                      <span className="text-xs text-neutral-500 font-normal">/ {evalItem.standardUnitLabel}</span>
-                    </div>
-                    {!isBest && evalItem.priceDifferenceVsBest > 0 && (
-                      <div className="text-[11px] text-neutral-500 font-mono">
-                        +{currency}{evalItem.priceDifferenceVsBest.toFixed(3)} / {evalItem.standardUnitLabel} vs best
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+  return <ToolShell toolId="unit-price-comparator" title="Unit Price Comparator" description="Compare normalized and effective prices across units, discounts, fees, deposits and tax, then rank whole-package purchase cost for the quantity you actually need." category="math" relatedToolIds={['discount-vat-calculator','unit-converter','percentage-calculator']} outputToTransfer={summary}>
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-2 items-end p-3 border rounded-xl bg-neutral-50 dark:bg-neutral-950">
+        <label className="text-xs">Currency<input value={currency} onChange={(e)=>setCurrency(e.target.value.slice(0,4))} className="block mt-1 w-16 p-2 border rounded bg-white dark:bg-neutral-900"/></label>
+        <label className="text-xs">Normalize<select value={basis} onChange={(e)=>setBasis(e.target.value as NormalizationBasis)} className="block mt-1 p-2 border rounded bg-white dark:bg-neutral-900"><option value="standard">standard unit</option><option value="hundred">per 100 g/mL</option><option value="base">base unit</option></select></label>
+        <label className="text-xs">Need ({baseLabel(evaluation.primaryCategory)})<input type="number" min={0} value={needed||''} onChange={(e)=>setNeeded(Math.max(0,Number(e.target.value)))} placeholder="optional" className="block mt-1 w-28 p-2 border rounded bg-white dark:bg-neutral-900"/></label>
+        <label className="text-xs">Waste buffer %<input type="number" min={0} value={waste} onChange={(e)=>setWaste(Math.max(0,Number(e.target.value)))} className="block mt-1 w-24 p-2 border rounded bg-white dark:bg-neutral-900"/></label>
+        <label className="text-xs pb-2 inline-flex gap-1"><input type="checkbox" checked={includeTax} onChange={(e)=>setIncludeTax(e.target.checked)}/>include entered tax</label>
+        <button onClick={add} className="px-3 py-2 border rounded text-xs inline-flex gap-1"><Plus className="w-3.5 h-3.5"/>Add option</button>
+        <button onClick={()=>void copyToClipboard(summary)} className="px-3 py-2 border rounded text-xs inline-flex gap-1"><Copy className="w-3.5 h-3.5"/>Copy comparison</button>
       </div>
-    </ToolShell>
-  );
-};
 
+      {evaluation.hasMismatchedCategories && <div role="alert" className="p-3 border border-amber-300 rounded text-xs text-amber-700">Weight, volume, count, length and area are different dimensions and cannot be ranked against each other. Align the units first.</div>}
+      {evaluation.hasIncompleteData && <div className="p-3 border rounded text-xs text-neutral-500">One or more rows have incomplete/unknown quantity or effective-price data and are excluded from best-value ranking.</div>}
+
+      <div className="space-y-3">{products.map((p,index)=>{
+        const result=evaluation.items.find((item)=>item.id===p.id); const needRank=rankedNeed.findIndex((item)=>item.id===p.id);
+        return <div key={p.id} className={`p-4 border rounded-xl space-y-3 ${result?.isBestValue&&!evaluation.hasMismatchedCategories?'border-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20':''}`}>
+          <div className="flex items-center gap-2"><input value={p.name} onChange={(e)=>update(p.id,{name:e.target.value})} className="font-semibold bg-transparent border-b flex-1 min-w-0"/><span className="text-[11px] text-neutral-500">#{index+1}{result?.isBestValue?' · best unit price':''}{needRank===0&&needed>0?' · best purchase cost':''}</span>{products.length>2&&<button onClick={()=>setProducts(v=>v.filter(x=>x.id!==p.id))}><Trash2 className="w-4 h-4 text-red-500"/></button>}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+            <Field label="Shelf price" value={p.price} set={(v)=>update(p.id,{price:v})}/><Field label="Packs" value={p.packCount} set={(v)=>update(p.id,{packCount:v})}/><Field label="Size / pack" value={p.unitSize} set={(v)=>update(p.id,{unitSize:v})}/>
+            <label className="text-[10px]">Unit<select value={p.unitId} onChange={(e)=>update(p.id,{unitId:e.target.value})} className="block mt-1 w-full p-1.5 border rounded bg-white dark:bg-neutral-900 text-xs">{SUPPORTED_UNITS.map((u)=><option key={u.id} value={u.id}>{u.label}</option>)}</select></label>
+            <Field label="Discount" value={p.discountAmount||0} set={(v)=>update(p.id,{discountAmount:v})}/><Field label="Fees" value={p.feeAmount||0} set={(v)=>update(p.id,{feeAmount:v})}/><Field label="Deposit" value={p.depositAmount||0} set={(v)=>update(p.id,{depositAmount:v})}/><Field label="Tax %" value={p.taxPercent||0} set={(v)=>update(p.id,{taxPercent:v})}/>
+          </div>
+          {result&&<div className="grid sm:grid-cols-4 gap-2 text-xs"><Metric label="Effective item price" value={`${currency}${(result.effectivePrice||0).toFixed(2)}`}/><Metric label={`Price / ${result.standardUnitLabel}`} value={`${currency}${result.pricePerStandardUnit.toFixed(4)}`}/><Metric label="Difference vs best" value={`${currency}${result.priceDifferenceVsBest.toFixed(4)}`}/><Metric label={needed>0?'Purchase for need':'Savings vs worst'} value={needed>0&&result.purchaseCostForNeed!==undefined?`${result.packagesForNeed} pkg · ${currency}${result.purchaseCostForNeed.toFixed(2)} · leftover ${result.leftoverInBase?.toFixed(1)} ${baseLabel(result.unitCategory)}`:`${result.savingsPercentageVsWorst.toFixed(2)}%`}/></div>}
+        </div>;
+      })}</div>
+    </div>
+  </ToolShell>;
+};
+const Field=({label,value,set}:{label:string;value:number;set:(value:number)=>void})=><label className="text-[10px]">{label}<input type="number" min={0} step="any" value={value} onChange={(e)=>set(Math.max(0,Number(e.target.value)))} className="block mt-1 w-full p-1.5 border rounded bg-white dark:bg-neutral-900 text-xs"/></label>;
+const Metric=({label,value}:{label:string;value:string})=><div className="p-2 bg-neutral-50 dark:bg-neutral-950 rounded"><div className="text-[10px] text-neutral-500">{label}</div><div className="font-mono font-semibold mt-0.5">{value}</div></div>;
 export default UnitPriceComparatorTool;

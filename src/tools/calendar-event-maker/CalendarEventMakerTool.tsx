@@ -1,370 +1,66 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { CalendarDays, Copy, Download, ExternalLink } from 'lucide-react';
 import {
-  CalendarDays,
-  Clock,
-  MapPin,
-  Globe,
-  Bell,
-  Repeat,
-  Download,
-  Copy,
-  Check,
-  Sparkles,
-  AlertCircle,
-  CheckCircle2,
-  Trash2,
-} from 'lucide-react';
-import {
-  CalendarEventData,
   COMMON_TIMEZONES,
-  validateCalendarEvent,
+  generateGoogleCalendarUrl,
   generateIcsFile,
-  EventReminder,
-  EventRecurrence,
+  generateOutlookCalendarUrl,
+  validateCalendarEvent,
+  type CalendarEventData,
+  type EventRecurrence,
+  type EventReminder,
 } from '../../utilities/calendar-event';
 
-const SAMPLE_EVENT: CalendarEventData = {
-  title: 'Project Kickoff & Architecture Review',
-  description: 'Discuss technical milestones, repository setup, and Phase 5 deliverables.',
-  location: 'Design Studio / Virtual Meet',
-  url: 'https://meet.google.com/abc-defg-hij',
-  startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-  startTime: '10:00',
-  endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-  endTime: '11:00',
-  isAllDay: false,
-  timezone: 'UTC',
-  reminderMinutes: 15,
-  recurrence: 'WEEKLY',
-  repeatCount: 4,
+const tomorrow = () => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+const SAMPLE: CalendarEventData = {
+  title: 'Project Kickoff & Architecture Review', description: 'Discuss milestones and next actions.', location: 'Design Studio / Virtual Meet', url: '',
+  startDate: tomorrow(), startTime: '10:00', endDate: tomorrow(), endTime: '11:00', isAllDay: false, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  reminderMinutes: 15, recurrence: 'WEEKLY', repeatCount: 4, recurrenceInterval: 1, status: 'CONFIRMED', transparency: 'OPAQUE', attendees: [], additionalReminders: [],
 };
+const WEEKDAYS = ['MO','TU','WE','TH','FR','SA','SU'];
 
 export const CalendarEventMakerTool: React.FC = () => {
-  const [event, setEvent] = useState<CalendarEventData>(SAMPLE_EVENT);
+  const [event, setEvent] = useState<CalendarEventData>(SAMPLE);
+  const [attendeeText, setAttendeeText] = useState('');
   const [copied, setCopied] = useState(false);
+  const validation = useMemo(() => validateCalendarEvent(event), [event]);
+  const ics = useMemo(() => validation.isValid ? generateIcsFile(event) : '', [event, validation.isValid]);
+  const patch = <K extends keyof CalendarEventData>(key: K, value: CalendarEventData[K]) => setEvent((current) => ({ ...current, [key]: value }));
+  const syncAttendees = (value: string) => { setAttendeeText(value); patch('attendees', value.split(/[;,\n]/).map((v) => v.trim()).filter(Boolean)); };
+  const download = () => { if (!ics) return; const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `${event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'event'}.ics`; a.click(); URL.revokeObjectURL(url); };
+  const copy = async () => { if (!ics) return; await navigator.clipboard.writeText(ics); setCopied(true); window.setTimeout(() => setCopied(false), 1500); };
+  const open = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
-  const validation = validateCalendarEvent(event);
-
-  const handleDownloadIcs = () => {
-    if (!validation.isValid) return;
-    const icsContent = generateIcsFile(event);
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const slug = event.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'calendar-event';
-    a.href = url;
-    a.download = `${slug}.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleCopyIcs = () => {
-    if (!validation.isValid) return;
-    const icsContent = generateIcsFile(event);
-    navigator.clipboard.writeText(icsContent);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleClear = () => {
-    const today = new Date().toISOString().split('T')[0];
-    setEvent({
-      title: '',
-      description: '',
-      location: '',
-      url: '',
-      startDate: today,
-      startTime: '09:00',
-      endDate: today,
-      endTime: '10:00',
-      isAllDay: false,
-      timezone: 'UTC',
-      reminderMinutes: 0,
-      recurrence: 'NONE',
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Form Column */}
-        <div className="lg:col-span-7 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-              Event Title *
-            </label>
-            <input
-              type="text"
-              value={event.title}
-              onChange={(e) => setEvent({ ...event, title: e.target.value })}
-              placeholder="e.g. Quarterly Team Strategy Review"
-              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-medium"
-            />
-          </div>
-
-          {/* Date & Time Settings */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <CalendarDays className="w-3.5 h-3.5" />
-                Schedule & Timezone
-              </span>
-              <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={event.isAllDay}
-                  onChange={(e) => setEvent({ ...event, isAllDay: e.target.checked })}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                />
-                All-Day Event
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Starts On</label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={event.startDate}
-                    onChange={(e) => setEvent({ ...event, startDate: e.target.value })}
-                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-                  />
-                  {!event.isAllDay && (
-                    <input
-                      type="time"
-                      value={event.startTime}
-                      onChange={(e) => setEvent({ ...event, startTime: e.target.value })}
-                      className="w-24 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Ends On</label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={event.endDate}
-                    onChange={(e) => setEvent({ ...event, endDate: e.target.value })}
-                    className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-                  />
-                  {!event.isAllDay && (
-                    <input
-                      type="time"
-                      value={event.endTime}
-                      onChange={(e) => setEvent({ ...event, endTime: e.target.value })}
-                      className="w-24 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs text-slate-600 dark:text-slate-400 mb-1">Timezone</label>
-              <select
-                value={event.timezone}
-                onChange={(e) => setEvent({ ...event, timezone: e.target.value })}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-              >
-                {COMMON_TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Location & URL */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5" />
-                Location
-              </label>
-              <input
-                type="text"
-                value={event.location}
-                onChange={(e) => setEvent({ ...event, location: e.target.value })}
-                placeholder="e.g. Conference Room 3 or Address"
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Globe className="w-3.5 h-3.5" />
-                Meeting URL
-              </label>
-              <input
-                type="url"
-                value={event.url}
-                onChange={(e) => setEvent({ ...event, url: e.target.value })}
-                placeholder="https://..."
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-              />
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-              Description / Agenda
-            </label>
-            <textarea
-              value={event.description}
-              onChange={(e) => setEvent({ ...event, description: e.target.value })}
-              rows={3}
-              placeholder="Notes, agenda items, or dial-in instructions..."
-              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-xs text-slate-900 dark:text-slate-100"
-            />
-          </div>
-
-          {/* Recurrence & Reminders */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Repeat className="w-3.5 h-3.5" />
-                Recurrence
-              </label>
-              <select
-                value={event.recurrence}
-                onChange={(e) => setEvent({ ...event, recurrence: e.target.value as EventRecurrence })}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-              >
-                <option value="NONE">Does Not Repeat</option>
-                <option value="DAILY">Daily</option>
-                <option value="WEEKLY">Weekly</option>
-                <option value="MONTHLY">Monthly</option>
-                <option value="YEARLY">Yearly</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Bell className="w-3.5 h-3.5" />
-                Alarm / Notification
-              </label>
-              <select
-                value={event.reminderMinutes}
-                onChange={(e) => setEvent({ ...event, reminderMinutes: Number(e.target.value) as EventReminder })}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-              >
-                <option value={0}>No Alarm</option>
-                <option value={5}>5 Minutes Before</option>
-                <option value={10}>10 Minutes Before</option>
-                <option value={15}>15 Minutes Before</option>
-                <option value={30}>30 Minutes Before</option>
-                <option value={60}>1 Hour Before</option>
-                <option value={1440}>1 Day Before</option>
-              </select>
-            </div>
-          </div>
+  return <div className="space-y-5">
+    <div className="grid lg:grid-cols-2 gap-5">
+      <div className="space-y-3">
+        <label className="text-xs font-semibold block">Event title<input value={event.title} onChange={(e) => patch('title', e.target.value)} className="mt-1 block w-full p-2.5 border rounded-lg bg-white dark:bg-neutral-900" /></label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs">Start date<input type="date" value={event.startDate} onChange={(e) => patch('startDate', e.target.value)} className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900" /></label>
+          <label className="text-xs">End date<input type="date" value={event.endDate} onChange={(e) => patch('endDate', e.target.value)} className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900" /></label>
+          {!event.isAllDay && <><label className="text-xs">Start time<input type="time" value={event.startTime} onChange={(e) => patch('startTime', e.target.value)} className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900" /></label><label className="text-xs">End time<input type="time" value={event.endTime} onChange={(e) => patch('endTime', e.target.value)} className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900" /></label></>}
         </div>
+        <label className="text-xs inline-flex gap-2 items-center"><input type="checkbox" checked={event.isAllDay} onChange={(e) => patch('isAllDay', e.target.checked)} />All-day event</label>
+        <label className="text-xs block">IANA timezone<select value={event.timezone} onChange={(e) => patch('timezone', e.target.value)} className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900">{COMMON_TIMEZONES.map((zone) => <option key={zone}>{zone}</option>)}</select></label>
+        <label className="text-xs block">Location<input value={event.location} onChange={(e) => patch('location', e.target.value)} className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900" /></label>
+        <label className="text-xs block">Description<textarea value={event.description} onChange={(e) => patch('description', e.target.value)} rows={4} className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900" /></label>
+        <label className="text-xs block">Attendees (email, comma/semicolon separated)<textarea value={attendeeText} onChange={(e) => syncAttendees(e.target.value)} rows={2} placeholder="alice@example.com, bob@example.com" className="mt-1 block w-full p-2 border rounded bg-white dark:bg-neutral-900" /></label>
+      </div>
 
-        {/* Live Preview & Actions Column */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="p-5 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-300 uppercase tracking-wider">
-              <CalendarDays className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Event Card Preview</span>
-            </div>
-
-            <div className="p-4 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900 shadow-xs space-y-2.5">
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                {event.title || 'Untitled Event'}
-              </h3>
-
-              <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>
-                    {event.startDate} {event.isAllDay ? '(All day)' : `${event.startTime} - ${event.endTime}`}
-                  </span>
-                </div>
-
-                {event.location && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{event.location}</span>
-                  </div>
-                )}
-
-                {event.url && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-3.5 h-3.5 text-slate-400" />
-                    <span className="truncate">{event.url}</span>
-                  </div>
-                )}
-              </div>
-
-              {event.description && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 line-clamp-3">
-                  {event.description}
-                </p>
-              )}
-            </div>
-
-            {!validation.isValid ? (
-              <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg text-xs text-red-700 dark:text-red-300 space-y-1">
-                {validation.errors.map((err, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>{err}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Ready to download standard .ics calendar file</span>
-              </div>
-            )}
-
-            <div className="space-y-2 pt-2">
-              <button
-                onClick={handleDownloadIcs}
-                disabled={!validation.isValid}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
-              >
-                <Download className="w-4 h-4" />
-                Download .ICS Event File
-              </button>
-
-              <button
-                onClick={handleCopyIcs}
-                disabled={!validation.isValid}
-                className="w-full py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'ICS Code Copied' : 'Copy Raw ICS File Content'}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => setEvent(SAMPLE_EVENT)}
-              className="flex-1 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Load Sample Event
-            </button>
-            <button
-              onClick={handleClear}
-              className="py-1.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear
-            </button>
-          </div>
+      <div className="space-y-3">
+        <div className="p-4 border rounded-xl space-y-3">
+          <div className="font-semibold text-xs flex items-center gap-1"><CalendarDays className="w-4 h-4" />Recurrence</div>
+          <div className="grid grid-cols-2 gap-2"><select value={event.recurrence} onChange={(e) => patch('recurrence', e.target.value as EventRecurrence)} className="p-2 border rounded bg-white dark:bg-neutral-900 text-xs"><option>NONE</option><option>DAILY</option><option>WEEKLY</option><option>MONTHLY</option><option>YEARLY</option></select><label className="text-xs">Interval<input type="number" min={1} value={event.recurrenceInterval || 1} onChange={(e) => patch('recurrenceInterval', Math.max(1, Number(e.target.value)))} className="mt-1 w-full p-1.5 border rounded bg-white dark:bg-neutral-900" /></label></div>
+          {event.recurrence === 'WEEKLY' && <div className="flex flex-wrap gap-1">{WEEKDAYS.map((day) => { const active = event.recurrenceByWeekday?.includes(day) || false; return <button type="button" key={day} onClick={() => patch('recurrenceByWeekday', active ? (event.recurrenceByWeekday || []).filter((v) => v !== day) : [...(event.recurrenceByWeekday || []), day])} className={`px-2 py-1 text-[11px] border rounded ${active ? 'bg-indigo-600 text-white' : ''}`}>{day}</button>; })}</div>}
+          {event.recurrence !== 'NONE' && <div className="grid grid-cols-2 gap-2"><label className="text-xs">Repeat count<input type="number" min={1} value={event.repeatCount || ''} onChange={(e) => setEvent((c) => ({ ...c, repeatCount: e.target.value ? Number(e.target.value) : undefined, repeatUntil: e.target.value ? undefined : c.repeatUntil }))} className="mt-1 w-full p-1.5 border rounded bg-white dark:bg-neutral-900" /></label><label className="text-xs">Or until<input type="date" value={event.repeatUntil || ''} onChange={(e) => setEvent((c) => ({ ...c, repeatUntil: e.target.value || undefined, repeatCount: e.target.value ? undefined : c.repeatCount }))} className="mt-1 w-full p-1.5 border rounded bg-white dark:bg-neutral-900" /></label></div>}
         </div>
+        <div className="p-4 border rounded-xl space-y-3"><div className="font-semibold text-xs">Delivery & metadata</div><div className="grid grid-cols-2 gap-2"><label className="text-xs">Primary reminder<select value={event.reminderMinutes} onChange={(e) => patch('reminderMinutes', Number(e.target.value) as EventReminder)} className="block mt-1 w-full p-2 border rounded bg-white dark:bg-neutral-900"><option value={0}>none</option><option value={5}>5 min</option><option value={15}>15 min</option><option value={30}>30 min</option><option value={60}>1 hour</option><option value={1440}>1 day</option></select></label><label className="text-xs">Extra reminder<select value={event.additionalReminders?.[0] || 0} onChange={(e) => patch('additionalReminders', Number(e.target.value) ? [Number(e.target.value)] : [])} className="block mt-1 w-full p-2 border rounded bg-white dark:bg-neutral-900"><option value={0}>none</option><option value={30}>30 min</option><option value={60}>1 hour</option><option value={1440}>1 day</option></select></label><label className="text-xs">Status<select value={event.status || 'CONFIRMED'} onChange={(e) => patch('status', e.target.value as CalendarEventData['status'])} className="block mt-1 w-full p-2 border rounded bg-white dark:bg-neutral-900"><option>CONFIRMED</option><option>TENTATIVE</option><option>CANCELLED</option></select></label><label className="text-xs">Calendar visibility<select value={event.transparency || 'OPAQUE'} onChange={(e) => patch('transparency', e.target.value as CalendarEventData['transparency'])} className="block mt-1 w-full p-2 border rounded bg-white dark:bg-neutral-900"><option value="OPAQUE">Busy</option><option value="TRANSPARENT">Free</option></select></label></div></div>
+        {!validation.isValid && <div role="alert" className="p-3 border border-red-300 rounded text-xs text-red-700">{validation.errors.join(' ')}</div>}
+        {validation.isValid && <div className="p-3 border border-emerald-300 rounded text-xs text-emerald-700">Portable event is valid. Timed recurrence UNTIL values are normalized to UTC while DTSTART/DTEND preserve the selected IANA zone.</div>}
+        <div className="flex flex-wrap gap-2"><button onClick={download} disabled={!validation.isValid} className="px-3 py-2 text-xs rounded bg-emerald-600 text-white disabled:opacity-40 inline-flex gap-1"><Download className="w-3.5 h-3.5" />Download .ics</button><button onClick={copy} disabled={!validation.isValid} className="px-3 py-2 text-xs border rounded inline-flex gap-1"><Copy className="w-3.5 h-3.5" />{copied ? 'Copied' : 'Copy ICS'}</button><button onClick={() => open(generateGoogleCalendarUrl(event))} disabled={!validation.isValid} className="px-3 py-2 text-xs border rounded inline-flex gap-1"><ExternalLink className="w-3.5 h-3.5" />Google Calendar</button><button onClick={() => open(generateOutlookCalendarUrl(event))} disabled={!validation.isValid} className="px-3 py-2 text-xs border rounded inline-flex gap-1"><ExternalLink className="w-3.5 h-3.5" />Outlook</button></div>
       </div>
     </div>
-  );
+  </div>;
 };
 
 export default CalendarEventMakerTool;

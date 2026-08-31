@@ -1,153 +1,26 @@
-export type UnitCategory =
-  | 'length'
-  | 'mass'
-  | 'temperature'
-  | 'area'
-  | 'volume'
-  | 'speed'
-  | 'digital';
-
-export interface UnitDefinition {
-  id: string;
-  name: string;
-  symbol: string;
-  toBase: (val: number) => number;
-  fromBase: (val: number) => number;
-}
-
-export interface UnitCategoryDefinition {
-  id: UnitCategory;
-  name: string;
-  baseUnit: string;
-  units: UnitDefinition[];
-}
-
-export const UNIT_CATEGORIES: UnitCategoryDefinition[] = [
-  {
-    id: 'length',
-    name: 'Length',
-    baseUnit: 'm',
-    units: [
-      { id: 'mm', name: 'Millimetres', symbol: 'mm', toBase: (v) => v / 1000, fromBase: (v) => v * 1000 },
-      { id: 'cm', name: 'Centimetres', symbol: 'cm', toBase: (v) => v / 100, fromBase: (v) => v * 100 },
-      { id: 'm', name: 'Metres', symbol: 'm', toBase: (v) => v, fromBase: (v) => v },
-      { id: 'km', name: 'Kilometres', symbol: 'km', toBase: (v) => v * 1000, fromBase: (v) => v / 1000 },
-      { id: 'in', name: 'Inches', symbol: 'in', toBase: (v) => v * 0.0254, fromBase: (v) => v / 0.0254 },
-      { id: 'ft', name: 'Feet', symbol: 'ft', toBase: (v) => v * 0.3048, fromBase: (v) => v / 0.3048 },
-      { id: 'yd', name: 'Yards', symbol: 'yd', toBase: (v) => v * 0.9144, fromBase: (v) => v / 0.9144 },
-      { id: 'mi', name: 'Miles', symbol: 'mi', toBase: (v) => v * 1609.344, fromBase: (v) => v / 1609.344 },
-    ],
-  },
-  {
-    id: 'mass',
-    name: 'Mass & Weight',
-    baseUnit: 'kg',
-    units: [
-      { id: 'mg', name: 'Milligrams', symbol: 'mg', toBase: (v) => v / 1000000, fromBase: (v) => v * 1000000 },
-      { id: 'g', name: 'Grams', symbol: 'g', toBase: (v) => v / 1000, fromBase: (v) => v * 1000 },
-      { id: 'kg', name: 'Kilograms', symbol: 'kg', toBase: (v) => v, fromBase: (v) => v },
-      { id: 'oz', name: 'Ounces', symbol: 'oz', toBase: (v) => v * 0.028349523125, fromBase: (v) => v / 0.028349523125 },
-      { id: 'lb', name: 'Pounds', symbol: 'lb', toBase: (v) => v * 0.45359237, fromBase: (v) => v / 0.45359237 },
-      { id: 't', name: 'Metric Tonnes', symbol: 't', toBase: (v) => v * 1000, fromBase: (v) => v / 1000 },
-    ],
-  },
-  {
-    id: 'temperature',
-    name: 'Temperature',
-    baseUnit: 'C',
-    units: [
-      { id: 'c', name: 'Celsius', symbol: '°C', toBase: (v) => v, fromBase: (v) => v },
-      { id: 'f', name: 'Fahrenheit', symbol: '°F', toBase: (v) => ((v - 32) * 5) / 9, fromBase: (v) => (v * 9) / 5 + 32 },
-      { id: 'k', name: 'Kelvin', symbol: 'K', toBase: (v) => v - 273.15, fromBase: (v) => v + 273.15 },
-    ],
-  },
-  {
-    id: 'area',
-    name: 'Area',
-    baseUnit: 'm²',
-    units: [
-      { id: 'sq_m', name: 'Square Metres', symbol: 'm²', toBase: (v) => v, fromBase: (v) => v },
-      { id: 'sq_km', name: 'Square Kilometres', symbol: 'km²', toBase: (v) => v * 1000000, fromBase: (v) => v / 1000000 },
-      { id: 'sq_ft', name: 'Square Feet', symbol: 'sq ft', toBase: (v) => v * 0.09290304, fromBase: (v) => v / 0.09290304 },
-      { id: 'acre', name: 'Acres', symbol: 'ac', toBase: (v) => v * 4046.8564224, fromBase: (v) => v / 4046.8564224 },
-      { id: 'ha', name: 'Hectares', symbol: 'ha', toBase: (v) => v * 10000, fromBase: (v) => v / 10000 },
-    ],
-  },
-  {
-    id: 'volume',
-    name: 'Volume (US Customary & Metric)',
-    baseUnit: 'l',
-    units: [
-      { id: 'ml', name: 'Millilitres', symbol: 'mL', toBase: (v) => v / 1000, fromBase: (v) => v * 1000 },
-      { id: 'l', name: 'Litres', symbol: 'L', toBase: (v) => v, fromBase: (v) => v },
-      { id: 'cu_m', name: 'Cubic Metres', symbol: 'm³', toBase: (v) => v * 1000, fromBase: (v) => v / 1000 },
-      { id: 'fl_oz', name: 'Fluid Ounces (US)', symbol: 'fl oz (US)', toBase: (v) => v * 0.0295735295625, fromBase: (v) => v / 0.0295735295625 },
-      { id: 'cup', name: 'Cups (US)', symbol: 'cup (US)', toBase: (v) => v * 0.2365882365, fromBase: (v) => v / 0.2365882365 },
-      { id: 'pt', name: 'Pints (US)', symbol: 'pt (US)', toBase: (v) => v * 0.473176473, fromBase: (v) => v / 0.473176473 },
-      { id: 'gal', name: 'Gallons (US)', symbol: 'gal (US)', toBase: (v) => v * 3.785411784, fromBase: (v) => v / 3.785411784 },
-    ],
-  },
-  {
-    id: 'speed',
-    name: 'Speed',
-    baseUnit: 'm/s',
-    units: [
-      { id: 'mps', name: 'Metres per second', symbol: 'm/s', toBase: (v) => v, fromBase: (v) => v },
-      { id: 'kmh', name: 'Kilometres per hour', symbol: 'km/h', toBase: (v) => v / 3.6, fromBase: (v) => v * 3.6 },
-      { id: 'mph', name: 'Miles per hour', symbol: 'mph', toBase: (v) => v * 0.44704, fromBase: (v) => v / 0.44704 },
-      { id: 'knot', name: 'Knots', symbol: 'kn', toBase: (v) => v * 0.514444444444, fromBase: (v) => v / 0.514444444444 },
-    ],
-  },
-  {
-    id: 'digital',
-    name: 'Digital Storage (SI & IEC)',
-    baseUnit: 'B',
-    units: [
-      { id: 'b', name: 'Bytes', symbol: 'B', toBase: (v) => v, fromBase: (v) => v },
-      { id: 'kb', name: 'Kilobytes (10³)', symbol: 'kB', toBase: (v) => v * 1e3, fromBase: (v) => v / 1e3 },
-      { id: 'mb', name: 'Megabytes (10⁶)', symbol: 'MB', toBase: (v) => v * 1e6, fromBase: (v) => v / 1e6 },
-      { id: 'gb', name: 'Gigabytes (10⁹)', symbol: 'GB', toBase: (v) => v * 1e9, fromBase: (v) => v / 1e9 },
-      { id: 'tb', name: 'Terabytes (10¹²)', symbol: 'TB', toBase: (v) => v * 1e12, fromBase: (v) => v / 1e12 },
-      { id: 'kib', name: 'Kibibytes (2¹⁰)', symbol: 'KiB', toBase: (v) => v * 1024, fromBase: (v) => v / 1024 },
-      { id: 'mib', name: 'Mebibytes (2²⁰)', symbol: 'MiB', toBase: (v) => v * Math.pow(1024, 2), fromBase: (v) => v / Math.pow(1024, 2) },
-      { id: 'gib', name: 'Gibibytes (2³⁰)', symbol: 'GiB', toBase: (v) => v * Math.pow(1024, 3), fromBase: (v) => v / Math.pow(1024, 3) },
-      { id: 'tib', name: 'Tebibytes (2⁴⁰)', symbol: 'TiB', toBase: (v) => v * Math.pow(1024, 4), fromBase: (v) => v / Math.pow(1024, 4) },
-    ],
-  },
-];
-
-export function convertUnits(
-  categoryId: UnitCategory,
-  fromUnitId: string,
-  toUnitId: string,
-  value: number
-): { result: number; formatted: string; formula: string } | null {
-  const category = UNIT_CATEGORIES.find((c) => c.id === categoryId);
-  if (!category) return null;
-
-  const fromUnit = category.units.find((u) => u.id === fromUnitId);
-  const toUnit = category.units.find((u) => u.id === toUnitId);
-  if (!fromUnit || !toUnit) return null;
-
-  if (isNaN(value)) {
-    return { result: NaN, formatted: 'Invalid number', formula: '' };
-  }
-
-  const baseVal = fromUnit.toBase(value);
-  const targetVal = toUnit.fromBase(baseVal);
-
-  let formatted = '';
-  if (Math.abs(targetVal) > 1e12 || (Math.abs(targetVal) < 1e-6 && targetVal !== 0)) {
-    formatted = targetVal.toExponential(6);
-  } else {
-    // Avoid floating point inaccuracies like 0.0000000000000001
-    const rounded = Number(targetVal.toFixed(8));
-    formatted = rounded.toString();
-  }
-
-  return {
-    result: targetVal,
-    formatted,
-    formula: `${value} ${fromUnit.symbol} = ${formatted} ${toUnit.symbol}`,
-  };
-}
+export type UnitCategory='length'|'mass'|'temperature'|'area'|'volume'|'speed'|'digital'|'time'|'pressure'|'energy'|'power'|'angle'|'data-rate'|'acceleration'|'force';
+export interface UnitDefinition{id:string;name:string;symbol:string;toBase:(v:number)=>number;fromBase:(v:number)=>number;aliases?:string[];}
+export interface UnitCategoryDefinition{id:UnitCategory;name:string;baseUnit:string;units:UnitDefinition[];}
+const linear=(id:string,name:string,symbol:string,factor:number,aliases:string[]=[]):UnitDefinition=>({id,name,symbol,aliases,toBase:v=>v*factor,fromBase:v=>v/factor});
+export const UNIT_CATEGORIES:UnitCategoryDefinition[]=[
+{id:'length',name:'Length',baseUnit:'m',units:[linear('nm','Nanometres','nm',1e-9),linear('um','Micrometres','µm',1e-6,['micron']),linear('mm','Millimetres','mm',.001),linear('cm','Centimetres','cm',.01),linear('m','Metres','m',1,['meter','metre']),linear('km','Kilometres','km',1000),linear('in','Inches','in',.0254,['inch']),linear('ft','Feet','ft',.3048,['foot']),linear('yd','Yards','yd',.9144),linear('mi','Miles','mi',1609.344),linear('nmi','Nautical miles','nmi',1852)]},
+{id:'mass',name:'Mass & Weight',baseUnit:'kg',units:[linear('ug','Micrograms','µg',1e-9),linear('mg','Milligrams','mg',1e-6),linear('g','Grams','g',.001),linear('kg','Kilograms','kg',1),linear('oz','Ounces','oz',.028349523125),linear('lb','Pounds','lb',.45359237),linear('stone','Stone','st',6.35029318),linear('t','Metric tonnes','t',1000)]},
+{id:'temperature',name:'Temperature',baseUnit:'C',units:[{id:'c',name:'Celsius',symbol:'°C',aliases:['celsius'],toBase:v=>v,fromBase:v=>v},{id:'f',name:'Fahrenheit',symbol:'°F',aliases:['fahrenheit'],toBase:v=>(v-32)*5/9,fromBase:v=>v*9/5+32},{id:'k',name:'Kelvin',symbol:'K',aliases:['kelvin'],toBase:v=>v-273.15,fromBase:v=>v+273.15}]},
+{id:'area',name:'Area',baseUnit:'m²',units:[linear('sq_mm','Square millimetres','mm²',1e-6),linear('sq_cm','Square centimetres','cm²',1e-4),linear('sq_m','Square metres','m²',1),linear('sq_km','Square kilometres','km²',1e6),linear('sq_in','Square inches','in²',.00064516),linear('sq_ft','Square feet','sq ft',.09290304),linear('acre','Acres','ac',4046.8564224),linear('ha','Hectares','ha',10000)]},
+{id:'volume',name:'Volume',baseUnit:'L',units:[linear('ul','Microlitres','µL',1e-6),linear('ml','Millilitres','mL',.001),linear('cl','Centilitres','cL',.01),linear('dl','Decilitres','dL',.1),linear('l','Litres','L',1),linear('cu_m','Cubic metres','m³',1000),linear('tsp','Teaspoons (US)','tsp',.00492892159375),linear('tbsp','Tablespoons (US)','tbsp',.01478676478125),linear('fl_oz','Fluid ounces (US)','fl oz',.0295735295625),linear('cup','Cups (US)','cup',.2365882365),linear('pt','Pints (US)','pt',.473176473),linear('qt','Quarts (US)','qt',.946352946),linear('gal','Gallons (US)','gal',3.785411784),linear('imp_gal','Gallons (UK)','imp gal',4.54609)]},
+{id:'speed',name:'Speed',baseUnit:'m/s',units:[linear('mps','Metres per second','m/s',1),linear('kmh','Kilometres per hour','km/h',1/3.6),linear('mph','Miles per hour','mph',.44704),linear('knot','Knots','kn',.514444444444)]},
+{id:'digital',name:'Digital Storage (SI & IEC)',baseUnit:'B',units:[linear('bit','Bits','bit',.125),linear('b','Bytes','B',1),linear('kb','Kilobytes (10³)','kB',1e3),linear('mb','Megabytes (10⁶)','MB',1e6),linear('gb','Gigabytes (10⁹)','GB',1e9),linear('tb','Terabytes (10¹²)','TB',1e12),linear('kib','Kibibytes (2¹⁰)','KiB',1024),linear('mib','Mebibytes (2²⁰)','MiB',1024**2),linear('gib','Gibibytes (2³⁰)','GiB',1024**3),linear('tib','Tebibytes (2⁴⁰)','TiB',1024**4)]},
+{id:'time',name:'Time',baseUnit:'s',units:[linear('ns','Nanoseconds','ns',1e-9),linear('ms','Milliseconds','ms',.001),linear('s','Seconds','s',1),linear('min','Minutes','min',60),linear('h','Hours','h',3600),linear('day','Days','d',86400),linear('week','Weeks','wk',604800)]},
+{id:'pressure',name:'Pressure',baseUnit:'Pa',units:[linear('pa','Pascals','Pa',1),linear('kpa','Kilopascals','kPa',1000),linear('bar','Bar','bar',100000),linear('mbar','Millibar','mbar',100),linear('psi','Pounds per square inch','psi',6894.757293168),linear('atm','Standard atmospheres','atm',101325),linear('mmhg','Millimetres of mercury','mmHg',133.322387415)]},
+{id:'energy',name:'Energy',baseUnit:'J',units:[linear('j','Joules','J',1),linear('kj','Kilojoules','kJ',1000),linear('cal','Calories','cal',4.184),linear('kcal','Kilocalories','kcal',4184),linear('wh','Watt-hours','Wh',3600),linear('kwh','Kilowatt-hours','kWh',3.6e6),linear('btu','BTU','BTU',1055.05585262)]},
+{id:'power',name:'Power',baseUnit:'W',units:[linear('w','Watts','W',1),linear('kw','Kilowatts','kW',1000),linear('mw_power','Megawatts','MW',1e6),linear('hp','Mechanical horsepower','hp',745.699871582)]},
+{id:'angle',name:'Angle',baseUnit:'rad',units:[linear('rad','Radians','rad',1),linear('deg','Degrees','°',Math.PI/180),linear('grad','Gradians','gon',Math.PI/200),linear('turn','Turns','turn',2*Math.PI)]},
+{id:'data-rate',name:'Data Rate',baseUnit:'bit/s',units:[linear('bps','Bits/s','bit/s',1),linear('kbps','Kilobits/s','kb/s',1e3),linear('mbps','Megabits/s','Mb/s',1e6),linear('gbps','Gigabits/s','Gb/s',1e9),linear('kBps','Kilobytes/s','kB/s',8e3),linear('MBps','Megabytes/s','MB/s',8e6)]},
+{id:'acceleration',name:'Acceleration',baseUnit:'m/s²',units:[linear('mps2','Metres/s²','m/s²',1),linear('g0','Standard gravity','g',9.80665),linear('ftps2','Feet/s²','ft/s²',.3048)]},
+{id:'force',name:'Force',baseUnit:'N',units:[linear('n','Newtons','N',1),linear('kn_force','Kilonewtons','kN',1000),linear('lbf','Pound-force','lbf',4.4482216152605)]}];
+export function formatConvertedValue(v:number):string{if(!Number.isFinite(v))return'Invalid number';if(Math.abs(v)>1e12||(Math.abs(v)<1e-6&&v!==0))return v.toExponential(8).replace(/0+e/,'e');return Number(v.toFixed(8)).toString();}
+export function convertUnits(categoryId:UnitCategory,fromUnitId:string,toUnitId:string,value:number):{result:number;formatted:string;formula:string}|null{const c=UNIT_CATEGORIES.find(x=>x.id===categoryId),from=c?.units.find(u=>u.id===fromUnitId),to=c?.units.find(u=>u.id===toUnitId);if(!c||!from||!to)return null;if(Number.isNaN(value))return{result:NaN,formatted:'Invalid number',formula:''};const target=to.fromBase(from.toBase(value)),formatted=formatConvertedValue(target);return{result:target,formatted,formula:`${value} ${from.symbol} = ${formatted} ${to.symbol}`};}
+export function validateUnitValue(category:UnitCategory,unitId:string,value:number):{valid:boolean;error?:string}{if(!Number.isFinite(value))return{valid:false,error:'Value must be finite.'};if(category==='temperature'){const c=convertUnits('temperature',unitId,'k',value);if(c&&c.result<0)return{valid:false,error:'Temperature is below absolute zero.'};}return{valid:true};}
+export function findUnitByAlias(token:string):{category:UnitCategory;unit:UnitDefinition}|null{const q=token.trim().toLocaleLowerCase();for(const category of UNIT_CATEGORIES)for(const unit of category.units)if([unit.id,unit.symbol,unit.name,...(unit.aliases||[])].some(v=>v.toLocaleLowerCase()===q))return{category:category.id,unit};return null;}
+export function parseMeasurement(input:string):{value:number;category:UnitCategory;unitId:string}|null{const m=input.trim().match(/^([+-]?(?:\d+(?:[.,]\d+)?|[.,]\d+))\s*(.+)$/u);if(!m)return null;const value=Number(m[1].replace(',','.')),found=findUnitByAlias(m[2]);return Number.isFinite(value)&&found?{value,category:found.category,unitId:found.unit.id}:null;}
+export function convertToAllUnits(category:UnitCategory,fromUnitId:string,value:number):Array<{unitId:string;symbol:string;result:number;formatted:string}>{const c=UNIT_CATEGORIES.find(x=>x.id===category);if(!c)return[];return c.units.map(unit=>{const r=convertUnits(category,fromUnitId,unit.id,value)!;return{unitId:unit.id,symbol:unit.symbol,result:r.result,formatted:r.formatted};});}
