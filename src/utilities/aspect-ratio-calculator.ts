@@ -35,7 +35,7 @@ export function simplifyRatio(width: number, height: number): {
   const ratioW = integerW / gcd;
   const ratioH = integerH / gcd;
   const orientation = width > height ? 'Landscape' : height > width ? 'Portrait' : 'Square';
-  return { ratioW, ratioH, ratioString: `${ratioW}:${ratioH}`, decimal: Number((width / height).toFixed(6)), orientation, gcd };
+  return { ratioW, ratioH, ratioString: `${ratioW}:${ratioH}`, decimal: Number((width / height).toFixed(4)), orientation, gcd };
 }
 
 export function calculateMissingDimension(ratioW: number, ratioH: number, knownValue: number, knownDimension: 'width' | 'height', roundToInteger = true): number | null {
