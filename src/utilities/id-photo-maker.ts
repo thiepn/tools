@@ -41,6 +41,12 @@ export interface CoverPlacement {
   isUpscaled: boolean;
 }
 
+function clampPan(value: number, maximum: number): number {
+  if (!Number.isFinite(value) || maximum <= 0) return 0;
+  const clamped = Math.max(-maximum, Math.min(maximum, value));
+  return Object.is(clamped, -0) ? 0 : clamped;
+}
+
 /**
  * Computes a cover transform that can never expose empty canvas edges.
  * Rotation is normalized to right angles because ID-photo framing should remain axis-aligned.
@@ -70,8 +76,8 @@ export function calculateCoverPlacement(
   const maxPanY = Math.max(0, (renderedHeight - targetHeight) / 2);
   return {
     scale,
-    panX: Math.max(-maxPanX, Math.min(maxPanX, Number.isFinite(panX) ? panX : 0)),
-    panY: Math.max(-maxPanY, Math.min(maxPanY, Number.isFinite(panY) ? panY : 0)),
+    panX: clampPan(panX, maxPanX),
+    panY: clampPan(panY, maxPanY),
     renderedWidth,
     renderedHeight,
     isUpscaled: scale > 1.0001,
