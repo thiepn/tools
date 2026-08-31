@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **132 task routes** for text, PDFs, device diagnostics, calculators, files, images, media, productivity, math, time, and everyday tasks.
+Tiny Tools is a privacy-first public utility suite with **150 task routes** for text, PDFs, device diagnostics, calculators, file conversion, images, media, productivity, math, time, and everyday tasks.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -32,16 +32,26 @@ Device diagnostics are capability-aware and avoid overstating what the browser c
 
 ### P3 — Everyday Calculator Suite
 
-P3 adds 46 config-driven calculator routes grouped into:
+P3 adds 46 config-driven calculator routes for school/math, money, household/travel/construction, and low-risk fitness estimates. The calculator family uses one shared typed UI and pure formula engine. Scientific expressions use a dedicated parser rather than `eval`. Forty-five routes are fully local; currency conversion is the sole network-dependent calculator and discloses that boundary.
 
-- school/math: basic and scientific expressions, fractions, averages, ratios, grades/GPA, statistics, geometry, and probability
-- money: tips, bill splitting, currency, loans/mortgages/amortization, savings/interest/ROI/retirement, debt payoff, salary conversion, car loans, rent-vs-buy, inflation, and debt-to-income
-- household/travel/construction: fuel/trip costs, fuel economy, electricity/appliance costs, room area, paint, flooring, tiles, box volume, and concrete
-- general fitness estimates: BMI, BMR, TDEE, running pace, circumference-based body-fat estimate, and 1RM
+P3 intentionally excludes higher-stakes reproductive estimators and country-specific income-tax calculators from the timeless formula catalog.
 
-The calculator family uses one shared typed UI and pure formula engine. Scientific expressions use a dedicated parser rather than `eval`. Forty-five routes are fully local. Currency conversion is the sole P3 network-dependent route and requests only the selected pair from Frankfurter using ECB reference-rate data; the UI labels the rate as informational and discloses the network boundary.
+### P4 — File & Format Conversion Suite
 
-P3 intentionally does not include pregnancy/ovulation estimators or country-specific income-tax calculators. Those are higher-stakes or time-sensitive enough that they should not be presented as timeless general-purpose formulas.
+P4 adds 18 public routes for:
+
+- CSV ↔ JSON
+- CSV ↔ XML
+- XML → JSON and JSON → XML
+- CSV → XLSX and XLSX → CSV
+- JSON → XLSX and XLSX → JSON
+- CSV splitting and merging
+- local file-type/signature inspection
+- TAR creation and extraction
+- GZIP compression and decompression when the browser exposes CompressionStream APIs
+- ZIP ↔ TAR conversion using the existing hardened ZIP preflight
+
+The P4 implementation reuses the established table parser and JSZip dependency instead of shipping another spreadsheet/archive stack. XLSX handling intentionally focuses on cell values from the first worksheet. It does not claim to preserve formulas, macros, charts, styles, merged-cell layout, or other workbook features. P4 also does not claim 7Z or high-fidelity office-document conversion without a suitable local codec/conversion engine.
 
 ## Tech stack
 
@@ -50,10 +60,11 @@ P3 intentionally does not include pregnancy/ovulation estimators or country-spec
 - Vite
 - Tailwind CSS
 - Vitest
-- Browser APIs including Canvas, Web Audio, Web Crypto, MediaRecorder, MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, and Battery Status when available
+- Browser APIs including Canvas, Web Audio, Web Crypto, MediaRecorder, MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
 - Local browser ML/OCR runtimes for tools that require them
 - A shared dedicated local-first PDF workspace for PDF routes
 - Config-driven pure TypeScript calculator formulas
+- Existing shared table parser and ZIP safety layer for file conversion
 
 ## Local development
 
@@ -76,7 +87,7 @@ npm run build
 
 The production build is emitted to `dist/`.
 
-The original R5–R10 hardening/release gates remain in place. The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper then appends the P1, P2, and P3 catalogs and browser-tests the full runtime catalog at desktop and mobile widths.
+The original R5–R10 hardening/release gates remain in place. The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper then appends the P1, P2, P3, and P4 catalogs and browser-tests the full runtime catalog at desktop and mobile widths.
 
 ## GitHub Pages
 
@@ -90,13 +101,13 @@ PDF routes link to the sibling `/pdf/` application on deployed hosts. The curren
 
 Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage.
 
-Examples of local processing include text transformations/calculations, image/canvas operations, ZIP work, duplicate hashing, audio/video capture/editing, OCR/Whisper, PDF work in the local-first sibling workspace, device diagnostic streams/events, and all non-currency P3 calculator inputs.
+Examples of local processing include text transformations/calculations, image/canvas operations, ZIP/TAR/GZIP work, CSV/JSON/XML/XLSX conversion, duplicate hashing, audio/video capture/editing, OCR/Whisper, PDF work in the local-first sibling workspace, device diagnostic streams/events, and all non-currency calculator inputs.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; codecs and hardware APIs differ; browsers can coalesce input events or throttle animation; PDF tasks have document/runtime-specific limits; and live currency conversion requires network access.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; codecs and hardware APIs differ; browsers can coalesce input events or throttle animation; PDF tasks have document/runtime-specific limits; live currency conversion requires network access; GZIP conversion requires CompressionStream/DecompressionStream support; and P4 XLSX conversion is a value-oriented interchange workflow rather than a full Excel rendering engine.
 
 ## Project structure
 
@@ -105,6 +116,7 @@ src/
 ├── calculators/      P3 public calculator catalog and typed definitions
 ├── components/       Shared application UI
 ├── device/           Public device-diagnostic task metadata
+├── files/            P4 public file-conversion task metadata
 ├── pdf/              Public PDF task metadata and gateway routing
 ├── registry/         Base 50-tool registry plus expansion-family registration
 ├── storage/          Local preferences and in-memory transfer helpers
@@ -124,4 +136,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 expand the public catalog to 132 routes** while keeping one implementation per capability family and preserving the original release baseline.
+The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 expand the public catalog to 150 routes** while preserving the original release baseline and shared-engine architecture.
