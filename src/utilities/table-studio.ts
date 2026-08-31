@@ -346,17 +346,17 @@ export function filterTableRows(
   target: TableColumnTarget = 'all',
   caseSensitive = false
 ): string[][] {
-  if (!query) return rows.map((row) => [...row]);
+  // Preserve row identity so filtered preview edits can resolve back to the
+  // exact source row, including duplicate rows with identical values.
+  if (!query) return [...rows];
   const needle = caseSensitive ? query : query.toLocaleLowerCase();
-  return rows
-    .filter((row) => {
-      const cells = target === 'all' ? row : [row[target] ?? ''];
-      return cells.some((cell) => {
-        const value = caseSensitive ? cell : cell.toLocaleLowerCase();
-        return value.includes(needle);
-      });
-    })
-    .map((row) => [...row]);
+  return rows.filter((row) => {
+    const cells = target === 'all' ? row : [row[target] ?? ''];
+    return cells.some((cell) => {
+      const value = caseSensitive ? cell : cell.toLocaleLowerCase();
+      return value.includes(needle);
+    });
+  });
 }
 
 export function deduplicateTableRows(
