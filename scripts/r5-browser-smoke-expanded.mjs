@@ -9,6 +9,7 @@ const EXTENSION_CATALOGS = [
   { phase: 'P1 PDF', path: path.resolve(ROOT, 'src/pdf/publicPdfTasks.ts'), expected: 20 },
   { phase: 'P2 device diagnostics', path: path.resolve(ROOT, 'src/device/publicDeviceTasks.ts'), expected: 16 },
   { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46 },
+  { phase: 'P4 file conversion', path: path.resolve(ROOT, 'src/files/publicFileConversionTasks.ts'), expected: 18 },
 ];
 
 const baselineSource = readFileSync(BASELINE_SCRIPT, 'utf8');
@@ -23,10 +24,6 @@ for (const catalog of EXTENSION_CATALOGS) {
 }
 if (new Set(extensionIds).size !== extensionIds.length) throw new Error('Public-completeness extension catalogs contain duplicate IDs.');
 
-// The historical R5 source still owns and validates the frozen 50-tool base
-// registry. Public-completeness families are appended only after that exact
-// baseline check succeeds, so expansion cannot silently mutate the original
-// S-tier catalog while every runtime route still receives the browser sweep.
 const expectedRuntimeTools = 50 + extensionIds.length;
 const oldAssertion = "if (state.uniqueTools !== 50) findings.push(`dashboard exposes ${state.uniqueTools}/50 tool links`);";
 const newAssertion = `if (state.uniqueTools !== ${expectedRuntimeTools}) findings.push(\`dashboard exposes \${state.uniqueTools}/${expectedRuntimeTools} tool links\`);`;
