@@ -1,8 +1,8 @@
 {
   "name": "tiny-tools",
   "private": true,
-  "version": "0.9.0",
-  "description": "A privacy-first collection of 50 browser utilities for text, files, images, media, productivity, math, time, and everyday tasks.",
+  "version": "0.10.0",
+  "description": "A privacy-first collection of 70 public browser utility routes for text, PDFs, files, images, media, productivity, math, time, and everyday tasks.",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "browser:smoke": "node scripts/r5-browser-smoke.mjs",
+    "browser:smoke": "node scripts/r5-browser-smoke-expanded.mjs",
     "browser:functional": "node scripts/r6-functional-smoke.mjs",
     "browser:capabilities": "node scripts/r7-capability-ci.mjs",
     "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs"

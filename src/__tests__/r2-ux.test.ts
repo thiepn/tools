@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CATEGORIES, TOOLS_REGISTRY } from '../registry/tools';
+import { registerPdfPublicTools } from '../registry/pdf-extension';
 import { searchTools } from '../registry/search';
 import {
   CATEGORY_ORDER,
@@ -10,6 +11,8 @@ import {
   recordRecentTool,
   toggleFavorite,
 } from '../storage/preferences';
+
+registerPdfPublicTools();
 
 describe('R2 catalog information architecture', () => {
   it('covers every registered category exactly once in the discovery order', () => {
@@ -24,6 +27,7 @@ describe('R2 catalog information architecture', () => {
 
   it('keeps general-use discovery ahead of developer utilities', () => {
     expect(CATEGORY_ORDER[0]).toBe('productivity');
+    expect(CATEGORY_ORDER[1]).toBe('pdf');
     expect(CATEGORY_ORDER.at(-1)).toBe('developer');
   });
 
@@ -60,18 +64,28 @@ describe('R2 ranked tool discovery', () => {
     const officeResults = searchTools('office');
     expect(officeResults.length).toBeGreaterThan(0);
     expect(officeResults.some((tool) => tool.category === 'productivity')).toBe(true);
+
+    const pdfResults = searchTools('pdf');
+    expect(pdfResults.length).toBeGreaterThan(10);
+    expect(pdfResults.every((tool) => tool.category === 'pdf' || tool.keywords.some((keyword) => keyword.includes('pdf')))).toBe(true);
   });
 
   it('respects category filtering while preserving ranked matches', () => {
     const results = searchTools('image', 'image');
     expect(results.length).toBeGreaterThan(1);
     expect(results.every((tool) => tool.category === 'image')).toBe(true);
+
+    const pdfResults = searchTools('pdf', 'pdf');
+    expect(pdfResults.length).toBe(20);
+    expect(pdfResults.every((tool) => tool.category === 'pdf')).toBe(true);
   });
 
   it('finds task-oriented queries across names, descriptions, and keywords', () => {
     expect(searchTools('scan document')[0]?.id).toBe('document-scanner');
     expect(searchTools('make qr code')[0]?.id).toBe('qr-studio');
     expect(searchTools('remove background')[0]?.id).toBe('background-remover');
+    expect(searchTools('merge pdf')[0]?.id).toBe('merge-pdf');
+    expect(searchTools('compress pdf')[0]?.id).toBe('compress-pdf');
   });
 
   it('returns the unfiltered registry order for an empty query', () => {
