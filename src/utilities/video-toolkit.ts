@@ -1,72 +1,7 @@
-/** Local video transformation and render-planning helpers. */
-export interface VideoMetadata { filename: string; fileSize: number; duration: number; width: number; height: number; aspectRatio: number; mimeType: string }
-export type VideoResizeMode = 'original' | '720p' | '1080p' | '50%' | '75%' | 'custom';
-export type VideoCropPreset = 'free' | '1:1' | '4:3' | '3:2' | '16:9' | '9:16';
-export type VideoPlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2;
-export type VideoQualityPreset = 'compact' | 'balanced' | 'high';
-export interface VideoProcessingOptions {
-  trimStart: number; trimEnd: number; cropPreset: VideoCropPreset; cropRect?: { x: number; y: number; width: number; height: number };
-  rotation: 0 | 90 | 180 | 270; flipHorizontal: boolean; flipVertical: boolean; resizeMode: VideoResizeMode;
-  customWidth?: number; customHeight?: number; preserveAspectRatio: boolean; playbackSpeed: VideoPlaybackSpeed; muteAudio: boolean; volume: number;
-}
-
-export function calculateVideoOutputDimensions(origWidth: number, origHeight: number, options: { rotation: 0 | 90 | 180 | 270; resizeMode: VideoResizeMode; customWidth?: number; customHeight?: number; preserveAspectRatio?: boolean; cropRect?: { x: number; y: number; width: number; height: number } }): { width: number; height: number } {
-  let width = Math.max(1, origWidth), height = Math.max(1, origHeight);
-  if (options.cropRect && options.cropRect.width > 0 && options.cropRect.height > 0) { width = Math.max(1, Math.round(width * options.cropRect.width)); height = Math.max(1, Math.round(height * options.cropRect.height)); }
-  if (options.rotation === 90 || options.rotation === 270) [width, height] = [height, width];
-  const aspect = width / height;
-  const even = (value: number) => Math.max(2, Math.round(value / 2) * 2);
-  switch (options.resizeMode) {
-    case '720p': if (aspect >= 1) { const h = Math.min(720, height); return { width: even(h * aspect), height: even(h) }; } else { const w = Math.min(720, width); return { width: even(w), height: even(w / aspect) }; }
-    case '1080p': if (aspect >= 1) { const h = Math.min(1080, height); return { width: even(h * aspect), height: even(h) }; } else { const w = Math.min(1080, width); return { width: even(w), height: even(w / aspect) }; }
-    case '50%': return { width: even(width * 0.5), height: even(height * 0.5) };
-    case '75%': return { width: even(width * 0.75), height: even(height * 0.75) };
-    case 'custom': {
-      const customWidth = options.customWidth && options.customWidth > 0 ? options.customWidth : width;
-      const customHeight = options.customHeight && options.customHeight > 0 ? options.customHeight : height;
-      return options.preserveAspectRatio === false ? { width: even(customWidth), height: even(customHeight) } : { width: even(customWidth), height: even(customWidth / aspect) };
-    }
-    default: return { width: even(width), height: even(height) };
-  }
-}
-
-export function normalizeVideoTrimRange(start: number, end: number, duration: number, minDuration = 0.05): { start: number; end: number; duration: number } {
-  const safeDuration = Math.max(0, Number.isFinite(duration) ? duration : 0);
-  const safeStart = Math.max(0, Math.min(safeDuration, Number.isFinite(start) ? start : 0));
-  const safeEnd = Math.max(safeStart, Math.min(safeDuration, Number.isFinite(end) ? end : safeDuration));
-  const adjustedEnd = safeDuration > 0 ? Math.min(safeDuration, Math.max(safeEnd, safeStart + Math.min(minDuration, safeDuration - safeStart))) : 0;
-  return { start: safeStart, end: adjustedEnd, duration: Math.max(0, adjustedEnd - safeStart) };
-}
-
-export function calculateEffectiveDuration(trimStart: number, trimEnd: number, speed: VideoPlaybackSpeed = 1): number {
-  const rawDuration = Math.max(0, trimEnd - Math.max(0, trimStart)); return Number((rawDuration / Math.max(0.1, speed)).toFixed(2));
-}
-
-/** Pixel-rate based bitrate plan with bounded values suitable for MediaRecorder. */
-export function calculateRecommendedVideoBitrate(width: number, height: number, fps: number, quality: VideoQualityPreset = 'balanced'): number {
-  const safeWidth = Math.max(2, width), safeHeight = Math.max(2, height), safeFps = Math.max(1, Math.min(60, fps));
-  const bitsPerPixelFrame = quality === 'compact' ? 0.055 : quality === 'high' ? 0.12 : 0.08;
-  const estimated = safeWidth * safeHeight * safeFps * bitsPerPixelFrame;
-  return Math.round(Math.max(750_000, Math.min(20_000_000, estimated)) / 50_000) * 50_000;
-}
-
-export function chooseVideoRenderFps(sourceHint: number | null | undefined, quality: VideoQualityPreset = 'balanced'): number {
-  const source = Number.isFinite(sourceHint) && (sourceHint || 0) > 0 ? Number(sourceHint) : 30;
-  const cap = quality === 'compact' ? 24 : quality === 'high' ? 60 : 30;
-  return Math.max(12, Math.min(cap, Math.round(source)));
-}
-
-export function formatVideoTime(seconds: number, includeMs = false): string {
-  if (isNaN(seconds) || seconds < 0) return '00:00';
-  const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60), pad = (n: number) => n.toString().padStart(2, '0');
-  if (includeMs) return `${pad(mins)}:${pad(secs)}.${pad(Math.floor((seconds % 1) * 100))}`;
-  return `${pad(mins)}:${pad(secs)}`;
-}
-export function formatVideoFileSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'; const sizes = ['B', 'KB', 'MB', 'GB']; const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(1024))); return `${parseFloat((bytes / 1024 ** i).toFixed(2))} ${sizes[i]}`;
-}
-export function getSupportedVideoExportMime(): string {
-  const types = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4;codecs=avc1', 'video/mp4'];
-  if (typeof MediaRecorder === 'undefined') return 'video/webm';
-  return types.find((type) => MediaRecorder.isTypeSupported(type)) || 'video/webm';
-}
+/** Local video transformation and browser export-planning helpers. */
+export interface VideoMetadata{filename:string;fileSize:number;duration:number;width:number;height:number;aspectRatio:number;mimeType:string;}export type VideoResizeMode='original'|'720p'|'1080p'|'50%'|'75%'|'custom';export type VideoCropPreset='free'|'1:1'|'4:3'|'3:2'|'16:9'|'9:16';export type VideoPlaybackSpeed=.5|.75|1|1.25|1.5|2;export type VideoQualityPreset='compact'|'balanced'|'high';export interface VideoProcessingOptions{trimStart:number;trimEnd:number;cropPreset:VideoCropPreset;cropRect?:{x:number;y:number;width:number;height:number};rotation:0|90|180|270;flipHorizontal:boolean;flipVertical:boolean;resizeMode:VideoResizeMode;customWidth?:number;customHeight?:number;preserveAspectRatio:boolean;playbackSpeed:VideoPlaybackSpeed;muteAudio:boolean;volume:number;}
+export function normalizeCropRect(rect:{x:number;y:number;width:number;height:number}|undefined){if(!rect)return undefined;const x=Math.max(0,Math.min(1,rect.x)),y=Math.max(0,Math.min(1,rect.y)),width=Math.max(.001,Math.min(1-x,rect.width)),height=Math.max(.001,Math.min(1-y,rect.height));return{x,y,width,height};}
+export function calculateVideoOutputDimensions(origWidth:number,origHeight:number,o:{rotation:0|90|180|270;resizeMode:VideoResizeMode;customWidth?:number;customHeight?:number;preserveAspectRatio?:boolean;cropRect?:{x:number;y:number;width:number;height:number}}){let width=Math.max(1,origWidth),height=Math.max(1,origHeight);const crop=normalizeCropRect(o.cropRect);if(crop){width=Math.max(1,Math.round(width*crop.width));height=Math.max(1,Math.round(height*crop.height));}if(o.rotation===90||o.rotation===270)[width,height]=[height,width];const aspect=width/height,even=(v:number)=>Math.max(2,Math.round(v/2)*2);if(o.resizeMode==='720p'){if(aspect>=1){const h=Math.min(720,height);return{width:even(h*aspect),height:even(h)};}const w=Math.min(720,width);return{width:even(w),height:even(w/aspect)};}if(o.resizeMode==='1080p'){if(aspect>=1){const h=Math.min(1080,height);return{width:even(h*aspect),height:even(h)};}const w=Math.min(1080,width);return{width:even(w),height:even(w/aspect)};}if(o.resizeMode==='50%')return{width:even(width*.5),height:even(height*.5)};if(o.resizeMode==='75%')return{width:even(width*.75),height:even(height*.75)};if(o.resizeMode==='custom'){const w=o.customWidth&&o.customWidth>0?o.customWidth:width,h=o.customHeight&&o.customHeight>0?o.customHeight:height;return o.preserveAspectRatio===false?{width:even(w),height:even(h)}:{width:even(w),height:even(w/aspect)};}return{width:even(width),height:even(height)};}
+export function normalizeVideoTrimRange(start:number,end:number,duration:number,minDuration=.05){const d=Math.max(0,Number.isFinite(duration)?duration:0),s=Math.max(0,Math.min(d,Number.isFinite(start)?start:0)),e=Math.max(s,Math.min(d,Number.isFinite(end)?end:d)),adjusted=d?Math.min(d,Math.max(e,s+Math.min(minDuration,d-s))):0;return{start:s,end:adjusted,duration:Math.max(0,adjusted-s)};}export function calculateEffectiveDuration(start:number,end:number,speed:VideoPlaybackSpeed=1){return Number((Math.max(0,end-Math.max(0,start))/Math.max(.1,speed)).toFixed(2));}export function calculateRecommendedVideoBitrate(width:number,height:number,fps:number,quality:VideoQualityPreset='balanced'){const bpp=quality==='compact'?.055:quality==='high'?.12:.08,estimate=Math.max(2,width)*Math.max(2,height)*Math.max(1,Math.min(60,fps))*bpp;return Math.round(Math.max(750000,Math.min(20000000,estimate))/50000)*50000;}export function chooseVideoRenderFps(source:number|null|undefined,quality:VideoQualityPreset='balanced'){const s=Number.isFinite(source)&&(source||0)>0?Number(source):30,cap=quality==='compact'?24:quality==='high'?60:30;return Math.max(12,Math.min(cap,Math.round(s)));}
+export interface VideoExportPlan{width:number;height:number;fps:number;bitrate:number;durationSeconds:number;estimatedBytes:number;mimeType:string;warnings:string[];realtimeRenderRequired:boolean;}export function planVideoExport(meta:Pick<VideoMetadata,'width'|'height'|'duration'>,options:VideoProcessingOptions,quality:VideoQualityPreset='balanced',sourceFps=30):VideoExportPlan{const trim=normalizeVideoTrimRange(options.trimStart,options.trimEnd,meta.duration),dimensions=calculateVideoOutputDimensions(meta.width,meta.height,{rotation:options.rotation,resizeMode:options.resizeMode,customWidth:options.customWidth,customHeight:options.customHeight,preserveAspectRatio:options.preserveAspectRatio,cropRect:options.cropRect}),fps=chooseVideoRenderFps(sourceFps,quality),bitrate=calculateRecommendedVideoBitrate(dimensions.width,dimensions.height,fps,quality),duration=calculateEffectiveDuration(trim.start,trim.end,options.playbackSpeed),audioRate=options.muteAudio?0:128000,warnings:string[]=[];if(dimensions.width*dimensions.height>3840*2160)warnings.push('Output exceeds 4K pixel count and may exceed browser encoder limits.');if(duration>1800)warnings.push('Long transformed exports are rendered in real time in this browser-only editor.');if(dimensions.width*dimensions.height*fps>1920*1080*60)warnings.push('High pixel-rate output can cause dropped frames on slower devices.');return{...dimensions,fps,bitrate,durationSeconds:duration,estimatedBytes:Math.round(duration*(bitrate+audioRate)/8),mimeType:getSupportedVideoExportMime(),warnings,realtimeRenderRequired:true};}
+export function formatVideoTime(seconds:number,includeMs=false){if(isNaN(seconds)||seconds<0)return'00:00';const m=Math.floor(seconds/60),s=Math.floor(seconds%60),p=(n:number)=>String(n).padStart(2,'0');return includeMs?`${p(m)}:${p(s)}.${p(Math.floor(seconds%1*100))}`:`${p(m)}:${p(s)}`;}export function formatVideoFileSize(bytes:number){if(!Number.isFinite(bytes)||bytes<=0)return'0 B';const units=['B','KB','MB','GB'],i=Math.min(units.length-1,Math.floor(Math.log(bytes)/Math.log(1024)));return`${parseFloat((bytes/1024**i).toFixed(2))} ${units[i]}`;}export function getSupportedVideoExportMime(){const types=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4;codecs=avc1','video/mp4'];if(typeof MediaRecorder==='undefined')return'video/webm';return types.find(t=>MediaRecorder.isTypeSupported(t))||'video/webm';}
