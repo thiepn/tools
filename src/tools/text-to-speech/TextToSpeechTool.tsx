@@ -1,449 +1,161 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Play,
-  Pause,
-  Square,
-  Copy,
-  Check,
-  RotateCcw,
-  Sparkles,
-  ShieldCheck,
-  AlertCircle,
-} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, Check, Copy, Pause, Play, RotateCcw, ShieldCheck, Square } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
 import {
-  getAvailableVoices,
+  chooseBestVoice,
   chunkTextForSpeech,
   estimateSpeechDuration,
   formatDurationSeconds,
-  SpeechVoiceOption,
+  getAvailableVoices,
+  inferSpeechLanguageHint,
+  type SpeechChunk,
+  type SpeechVoiceOption,
 } from '../../utilities/text-to-speech';
 import { copyToClipboard } from '../../utilities/clipboard';
-import { getPendingTransfer, clearPendingTransfer, setPendingTransfer } from '../../storage/transfer';
+import { clearPendingTransfer, getPendingTransfer, setPendingTransfer } from '../../storage/transfer';
 
 export const TextToSpeechTool: React.FC = () => {
-  const [text, setText] = useState<string>('');
+  const [text, setText] = useState('');
   const [voices, setVoices] = useState<SpeechVoiceOption[]>([]);
-  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>('');
-
-  const [rate, setRate] = useState<number>(1.0);
-  const [pitch, setPitch] = useState<number>(1.0);
-  const [volume, setVolume] = useState<number>(1.0);
-
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [activeChunkIndex, setActiveChunkIndex] = useState<number>(0);
-  const [totalChunks, setTotalChunks] = useState<number>(0);
-
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
+  const [rate, setRate] = useState(1);
+  const [pitch, setPitch] = useState(1);
+  const [volume, setVolume] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [activeChunkIndex, setActiveChunkIndex] = useState(-1);
+  const [activeBoundary, setActiveBoundary] = useState(0);
   const [copied, setCopied] = useState(false);
-  const synthRef = useRef<SpeechSynthesis | null>(null);
-  const chunksRef = useRef<string[]>([]);
-  const chunkIndexRef = useRef<number>(0);
+  const [speechError, setSpeechError] = useState<string | null>(null);
 
-  const speechSupported =
-    typeof window !== 'undefined' &&
-    typeof window.speechSynthesis?.speak === 'function' &&
-    typeof window.SpeechSynthesisUtterance === 'function';
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const chunksRef = useRef<SpeechChunk[]>([]);
+  const sessionRef = useRef(0);
+  const speechSupported = typeof window !== 'undefined' && typeof window.speechSynthesis?.speak === 'function' && typeof window.SpeechSynthesisUtterance === 'function';
 
   useEffect(() => {
     const pending = getPendingTransfer('text-to-speech');
-    if (pending) {
-      setText(pending);
-      clearPendingTransfer('text-to-speech');
-    }
+    if (pending) { setText(pending); clearPendingTransfer('text-to-speech'); }
   }, []);
 
   useEffect(() => {
-    if (!speechSupported) {
-      synthRef.current = null;
-      setVoices([]);
-      return;
-    }
-
+    if (!speechSupported) { synthRef.current = null; setVoices([]); return; }
     const synth = window.speechSynthesis;
     synthRef.current = synth;
-
-    const loadVoices = () => {
+    const load = () => {
       const list = getAvailableVoices();
       setVoices(list);
-      if (list.length > 0 && !selectedVoiceURI) {
-        const defaultVoice = list.find((v) => v.default) || list[0];
-        setSelectedVoiceURI(defaultVoice.voiceURI);
-      }
+      setSelectedVoiceURI((current) => current || chooseBestVoice(list, '', navigator.language)?.voiceURI || '');
     };
-
-    loadVoices();
-    synth.onvoiceschanged = loadVoices;
-
+    load();
+    synth.addEventListener?.('voiceschanged', load);
+    synth.onvoiceschanged = load;
     return () => {
+      sessionRef.current += 1;
       synth.cancel();
+      synth.removeEventListener?.('voiceschanged', load);
       synth.onvoiceschanged = null;
     };
-  }, [selectedVoiceURI, speechSupported]);
+  }, [speechSupported]);
 
-  const handleLoadSample = (sampleType: string) => {
-    if (sampleType === 'welcome') {
-      setText(
-        'Welcome to Tiny Tools! All processing is executed locally right in your web browser. Enjoy fast, private, and serverless tools designed for everyday productivity.'
-      );
-    } else if (sampleType === 'quote') {
-      setText(
-        'Simplicity is the prerequisite for reliability. Software engineering is not about writing thousands of lines of code, but crafting elegant and reliable solutions.'
-      );
-    } else if (sampleType === 'countdown') {
-      setText('Starting countdown sequence in three, two, one. All systems operational. Liftoff!');
-    }
-  };
-
-  const handleSpeakChunk = useCallback((index: number) => {
-    const synth = synthRef.current;
-    if (!synth || index >= chunksRef.current.length) {
-      setIsPlaying(false);
-      setIsPaused(false);
-      setActiveChunkIndex(0);
-      return;
-    }
-
-    const chunk = chunksRef.current[index];
-    const utterance = new SpeechSynthesisUtterance(chunk);
-
-    if (selectedVoiceURI) {
-      const matched = synth.getVoices().find((v) => v.voiceURI === selectedVoiceURI);
-      if (matched) utterance.voice = matched;
-    }
-
-    utterance.rate = rate;
-    utterance.pitch = pitch;
-    utterance.volume = volume;
-
-    utterance.onend = () => {
-      chunkIndexRef.current = index + 1;
-      setActiveChunkIndex(index + 1);
-      if (chunkIndexRef.current < chunksRef.current.length) {
-        handleSpeakChunk(chunkIndexRef.current);
-      } else {
-        setIsPlaying(false);
-        setIsPaused(false);
-        setActiveChunkIndex(0);
-      }
-    };
-
-    utterance.onerror = (e) => {
-      console.warn('SpeechSynthesis error:', e);
-      setIsPlaying(false);
-      setIsPaused(false);
-    };
-
-    synth.speak(utterance);
-  }, [rate, pitch, volume, selectedVoiceURI]);
-
-  const handlePlay = () => {
-    if (!speechSupported || !text.trim() || !synthRef.current) return;
-
-    if (isPaused) {
-      synthRef.current.resume();
-      setIsPaused(false);
-      setIsPlaying(true);
-      return;
-    }
-
-    synthRef.current.cancel();
-    const chunks = chunkTextForSpeech(text);
-    chunksRef.current = chunks.map((c) => c.text);
-    chunkIndexRef.current = 0;
-    setTotalChunks(chunks.length);
-    setActiveChunkIndex(0);
-    setIsPlaying(true);
-    setIsPaused(false);
-
-    handleSpeakChunk(0);
-  };
-
-  const handlePause = () => {
-    if (!synthRef.current) return;
-    synthRef.current.pause();
-    setIsPaused(true);
-  };
-
-  const handleStop = () => {
-    if (synthRef.current) synthRef.current.cancel();
-    setIsPlaying(false);
-    setIsPaused(false);
-    setActiveChunkIndex(0);
-  };
-
-  const handleCopy = async () => {
-    if (!text) return;
-    const ok = await copyToClipboard(text);
-    if (ok) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleSendToTool = (targetToolId: string) => {
-    if (!text) return;
-    setPendingTransfer(targetToolId, text);
-    window.location.hash = `#/tool/${targetToolId}`;
-  };
-
+  const selectedVoice = useMemo(() => chooseBestVoice(voices, selectedVoiceURI, inferSpeechLanguageHint(text)), [voices, selectedVoiceURI, text]);
+  const chunks = useMemo(() => chunkTextForSpeech(text), [text]);
   const estimatedDuration = estimateSpeechDuration(text, rate);
 
+  const stopSpeech = useCallback(() => {
+    sessionRef.current += 1;
+    synthRef.current?.cancel();
+    setIsPlaying(false); setIsPaused(false); setActiveChunkIndex(-1); setActiveBoundary(0);
+  }, []);
+
+  const speakChunk = useCallback((index: number, session: number) => {
+    const synth = synthRef.current;
+    const queue = chunksRef.current;
+    if (!synth || session !== sessionRef.current || index >= queue.length) {
+      if (session === sessionRef.current) { setIsPlaying(false); setIsPaused(false); setActiveChunkIndex(-1); }
+      return;
+    }
+    const chunk = queue[index];
+    const utterance = new SpeechSynthesisUtterance(chunk.text);
+    const actualVoice = selectedVoice ? synth.getVoices().find((voice) => voice.voiceURI === selectedVoice.voiceURI) : undefined;
+    if (actualVoice) utterance.voice = actualVoice;
+    utterance.lang = actualVoice?.lang || selectedVoice?.lang || inferSpeechLanguageHint(chunk.text);
+    utterance.rate = rate; utterance.pitch = pitch; utterance.volume = volume;
+    utterance.onstart = () => { if (session === sessionRef.current) { setActiveChunkIndex(index); setActiveBoundary(chunk.charStart); } };
+    utterance.onboundary = (event) => { if (session === sessionRef.current && Number.isFinite(event.charIndex)) setActiveBoundary(chunk.charStart + event.charIndex); };
+    utterance.onend = () => { if (session === sessionRef.current) speakChunk(index + 1, session); };
+    utterance.onerror = (event) => {
+      if (session !== sessionRef.current || event.error === 'canceled' || event.error === 'interrupted') return;
+      setSpeechError(`Speech playback stopped (${event.error || 'voice error'}). Try another installed voice.`);
+      setIsPlaying(false); setIsPaused(false);
+    };
+    synth.speak(utterance);
+  }, [pitch, rate, selectedVoice, volume]);
+
+  const startSpeech = useCallback((startIndex = 0) => {
+    if (!speechSupported || !synthRef.current || !text.trim()) return;
+    const queue = chunkTextForSpeech(text);
+    if (!queue.length) return;
+    sessionRef.current += 1;
+    const session = sessionRef.current;
+    synthRef.current.cancel();
+    chunksRef.current = queue;
+    setSpeechError(null); setIsPlaying(true); setIsPaused(false);
+    speakChunk(Math.max(0, Math.min(startIndex, queue.length - 1)), session);
+  }, [speakChunk, speechSupported, text]);
+
+  const handlePrimaryPlay = () => {
+    if (isPaused && synthRef.current) { synthRef.current.resume(); setIsPaused(false); setIsPlaying(true); return; }
+    startSpeech(activeChunkIndex >= 0 && !isPlaying ? activeChunkIndex : 0);
+  };
+  const handlePause = () => { if (synthRef.current && isPlaying) { synthRef.current.pause(); setIsPaused(true); setIsPlaying(false); } };
+  const handleTextChange = (value: string) => { if (isPlaying || isPaused) stopSpeech(); setText(value); };
+  const handleCopy = async () => { if (text && await copyToClipboard(text)) { setCopied(true); setTimeout(() => setCopied(false), 1600); } };
+  const handleSendToTool = (target: string) => { if (text) { setPendingTransfer(target, text); window.location.hash = `#/tool/${target}`; } };
+
+  const activeChunk = activeChunkIndex >= 0 ? chunksRef.current[activeChunkIndex] : null;
+
   return (
-    <ToolShell
-      toolId="text-to-speech"
-      title="Text to Speech / Voice Synthesizer"
-      description="Listen to any text aloud with customizable browser voices, speech rate, pitch, and sentence highlighting."
-      category="productivity"
-      relatedToolIds={['audio-recorder', 'image-to-text', 'word-counter']}
-      outputToTransfer={text}
-    >
-      <div className="space-y-6">
-        {!speechSupported && (
-          <div
-            role="alert"
-            className="p-3.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2"
-          >
-            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Text-to-speech is not supported in this browser. You can still edit, copy, and send the text to other tools.</span>
-          </div>
-        )}
+    <ToolShell toolId="text-to-speech" title="Text to Speech / Voice Synthesizer" description="Read long text aloud with stable chunked playback, installed-voice selection, pause/resume, progress, and boundary highlighting." category="productivity" relatedToolIds={['audio-recorder', 'image-to-text', 'word-counter']} outputToTransfer={text}>
+      <div className="space-y-5">
+        {!speechSupported && <div role="alert" className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"><AlertCircle className="h-4 w-4" />Text-to-speech is not supported in this browser. You can still edit, copy, and send the text to other tools.</div>}
+        {speechError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">{speechError}</div>}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-              Sample Text:
-            </span>
-            <button
-              type="button"
-              onClick={() => handleLoadSample('welcome')}
-              className="px-2 py-1 text-[11px] rounded bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100"
-            >
-              Welcome Intro
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLoadSample('quote')}
-              className="px-2 py-1 text-[11px] rounded bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100"
-            >
-              Tech Quote
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLoadSample('countdown')}
-              className="px-2 py-1 text-[11px] rounded bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100"
-            >
-              Countdown
-            </button>
-
-            {text && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleStop();
-                  setText('');
-                }}
-                className="px-2 py-1 text-[11px] rounded text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            )}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-950">
+          <div className="flex flex-wrap gap-2 text-[11px]">
+            <button onClick={() => handleTextChange('Welcome to Tiny Tools. Long passages are split into reliable speech chunks and played locally through your browser or operating system voice service.')} className="rounded border border-neutral-300 bg-white px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900">Sample intro</button>
+            <button onClick={() => handleTextChange('Simplicity is prerequisite for reliability. Clear tools should do one job accurately, predictably, and without unnecessary friction.')} className="rounded border border-neutral-300 bg-white px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900">Sample quote</button>
+            {text && <button onClick={() => { stopSpeech(); setText(''); }} className="rounded px-2 py-1 text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800"><RotateCcw className="h-3.5 w-3.5" /></button>}
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCopy}
-              disabled={!text}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 hover:bg-neutral-100 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 inline-flex items-center gap-1.5 disabled:opacity-40"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied!' : 'Copy Text'}</span>
-            </button>
-          </div>
+          <button onClick={handleCopy} disabled={!text} className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900">{copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}{copied ? 'Copied' : 'Copy text'}</button>
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-neutral-500">
-            <span className="font-semibold text-neutral-700 dark:text-neutral-300">
-              Input Text to Read Aloud
-            </span>
-            <span>Est. Duration: {formatDurationSeconds(estimatedDuration)}</span>
-          </div>
-
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Type or paste any text here to synthesize with your browser's speech engine..."
-            rows={7}
-            className="w-full p-3 text-sm font-sans border rounded-lg bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="flex justify-between text-xs"><span className="font-semibold">Input text</span><span className="text-neutral-500">{chunks.length} chunks · ~{formatDurationSeconds(estimatedDuration)}</span></div>
+          <textarea value={text} onChange={(event) => handleTextChange(event.target.value)} rows={9} placeholder="Type or paste text to read aloud…" className="w-full resize-y rounded-lg border border-neutral-300 bg-white p-3 text-sm dark:border-neutral-700 dark:bg-neutral-900" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <div className="space-y-4">
-            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-              Voice Playback
-            </span>
-
-            <div className="flex items-center gap-3">
-              {!isPlaying || isPaused ? (
-                <button
-                  type="button"
-                  disabled={!speechSupported || !text.trim()}
-                  onClick={handlePlay}
-                  className="px-4 py-2 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white shadow-2xs inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>{isPaused ? 'Resume Speech' : 'Speak Text'}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handlePause}
-                  className="px-4 py-2 text-xs font-semibold rounded-md bg-amber-600 hover:bg-amber-700 text-white shadow-2xs inline-flex items-center gap-2"
-                >
-                  <Pause className="w-4 h-4" />
-                  <span>Pause</span>
-                </button>
-              )}
-
-              {(isPlaying || isPaused) && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handlePlay}
-                    className="px-3 py-2 text-xs font-medium rounded-md bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 inline-flex items-center gap-1 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100"
-                    title="Restart from beginning"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Restart</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleStop}
-                    className="px-3.5 py-2 text-xs font-medium rounded-md bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 inline-flex items-center gap-1.5 text-neutral-800 dark:text-neutral-200"
-                  >
-                    <Square className="w-3.5 h-3.5 fill-current" />
-                    <span>Stop</span>
-                  </button>
-                </>
-              )}
-            </div>
-
-            {isPlaying && totalChunks > 1 && (
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between text-neutral-500">
-                  <span>Reading sentence {activeChunkIndex + 1} of {totalChunks}</span>
-                </div>
-                <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5">
-                  <div
-                    className="bg-blue-600 h-full rounded-full transition-all duration-200"
-                    style={{ width: `${Math.round(((activeChunkIndex + 1) / totalChunks) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 text-xs text-neutral-500 pt-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" aria-hidden="true" />
-              <span>Uses your browser/OS speech service. Voice availability and on-device status vary by platform.</span>
-            </div>
-          </div>
-
+        <div className="grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-950 md:grid-cols-2">
           <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                Select Voice ({voices.length} detected)
-              </label>
-              <select
-                value={selectedVoiceURI}
-                onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                disabled={!speechSupported || voices.length === 0}
-                className="w-full px-2.5 py-1.5 text-xs border rounded bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 disabled:opacity-50"
-              >
-                {voices.map((v) => (
-                  <option key={v.voiceURI} value={v.voiceURI}>
-                    {v.name} ({v.lang}){v.localService ? ' — local' : ''}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-wrap gap-2">
+              {(!isPlaying || isPaused) ? <button type="button" disabled={!speechSupported || !text.trim()} onClick={handlePrimaryPlay} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"><Play className="h-4 w-4" />{isPaused ? 'Resume Speech' : 'Speak Text'}</button> : <button type="button" onClick={handlePause} className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-xs font-semibold text-white"><Pause className="h-4 w-4" />Pause</button>}
+              {(isPlaying || isPaused) && <><button onClick={() => startSpeech(0)} className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"><RotateCcw className="h-3.5 w-3.5" />Restart</button><button onClick={stopSpeech} className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs dark:border-neutral-700 dark:bg-neutral-900"><Square className="h-3.5 w-3.5" />Stop</button></>}
             </div>
+            {activeChunk && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs dark:border-blue-800 dark:bg-blue-950/30"><div className="mb-1 font-semibold text-blue-800 dark:text-blue-200">Chunk {activeChunkIndex + 1} of {chunksRef.current.length}</div><div className="leading-relaxed text-neutral-700 dark:text-neutral-300">{activeChunk.text}</div><div className="mt-1 font-mono text-[10px] text-neutral-400">source position {activeBoundary.toLocaleString()}</div></div>}
+            <div className="flex items-start gap-2 text-[11px] text-neutral-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /><span>Uses your browser/OS speech service. Voice availability, network use, and on-device status vary by platform; local voices are labeled when the browser reports them.</span></div>
+          </div>
 
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <div>
-                <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
-                  <span>Speed: {rate}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.1"
-                  value={rate}
-                  onChange={(e) => setRate(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
-                  <span>Pitch: {pitch}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="1.5"
-                  step="0.1"
-                  value={pitch}
-                  onChange={(e) => setPitch(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
-                  <span>Volume: {Math.round(volume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="1.0"
-                  step="0.05"
-                  value={volume}
-                  onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-              </div>
+          <div className="space-y-3 text-xs">
+            <label className="block"><span className="mb-1 block font-semibold">Voice ({voices.length} detected)</span><select value={selectedVoiceURI} onChange={(event) => { stopSpeech(); setSelectedVoiceURI(event.target.value); }} disabled={!speechSupported || !voices.length} className="w-full rounded-md border border-neutral-300 bg-white px-2.5 py-2 dark:border-neutral-700 dark:bg-neutral-900">{voices.map((voice) => <option key={`${voice.voiceURI}-${voice.lang}`} value={voice.voiceURI}>{voice.name} ({voice.lang}){voice.localService ? ' — local' : ''}</option>)}</select></label>
+            <div className="grid grid-cols-3 gap-3">
+              <label>Speed {rate.toFixed(1)}×<input type="range" min="0.5" max="2" step="0.1" value={rate} onChange={(event) => { stopSpeech(); setRate(Number(event.target.value)); }} className="w-full" /></label>
+              <label>Pitch {pitch.toFixed(1)}×<input type="range" min="0.5" max="1.5" step="0.1" value={pitch} onChange={(event) => { stopSpeech(); setPitch(Number(event.target.value)); }} className="w-full" /></label>
+              <label>Volume {Math.round(volume * 100)}%<input type="range" min="0.1" max="1" step="0.05" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="w-full" /></label>
             </div>
           </div>
         </div>
 
-        {text && (
-          <div className="p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 space-y-1.5 text-xs">
-            <span className="font-semibold text-neutral-700 dark:text-neutral-300">
-              Send Current Text To:
-            </span>
-            <div className="flex flex-wrap gap-2 pt-0.5">
-              {[
-                { id: 'word-counter', label: 'Word Counter' },
-                { id: 'text-cleaner', label: 'Text Cleaner' },
-                { id: 'case-converter', label: 'Case Converter' },
-                { id: 'notepad', label: 'Quick Notepad' },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => handleSendToTool(t.id)}
-                  className="px-2 py-1 rounded bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-[11px] font-medium"
-                >
-                  → {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {text && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-[11px] dark:border-neutral-800 dark:bg-neutral-950"><span className="font-semibold">Send text to:</span>{[{ id: 'word-counter', label: 'Word Counter' }, { id: 'text-cleaner', label: 'Text Cleaner' }, { id: 'notepad', label: 'Quick Notepad' }].map((tool) => <button key={tool.id} onClick={() => handleSendToTool(tool.id)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-blue-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-blue-400">→ {tool.label}</button>)}</div>}
       </div>
     </ToolShell>
   );

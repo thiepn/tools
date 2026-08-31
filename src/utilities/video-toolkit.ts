@@ -1,183 +1,72 @@
-/**
- * Video Toolkit Utility
- * Local video trimming, transformation, cropping, speed adjustments, and dimension calculations
- */
-
-export interface VideoMetadata {
-  filename: string;
-  fileSize: number;
-  duration: number; // in seconds
-  width: number;
-  height: number;
-  aspectRatio: number;
-  mimeType: string;
-}
-
+/** Local video transformation and render-planning helpers. */
+export interface VideoMetadata { filename: string; fileSize: number; duration: number; width: number; height: number; aspectRatio: number; mimeType: string }
 export type VideoResizeMode = 'original' | '720p' | '1080p' | '50%' | '75%' | 'custom';
 export type VideoCropPreset = 'free' | '1:1' | '4:3' | '3:2' | '16:9' | '9:16';
 export type VideoPlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5 | 2;
-
+export type VideoQualityPreset = 'compact' | 'balanced' | 'high';
 export interface VideoProcessingOptions {
-  trimStart: number;
-  trimEnd: number;
-  cropPreset: VideoCropPreset;
-  cropRect?: { x: number; y: number; width: number; height: number }; // normalized 0..1
-  rotation: 0 | 90 | 180 | 270;
-  flipHorizontal: boolean;
-  flipVertical: boolean;
-  resizeMode: VideoResizeMode;
-  customWidth?: number;
-  customHeight?: number;
-  preserveAspectRatio: boolean;
-  playbackSpeed: VideoPlaybackSpeed;
-  muteAudio: boolean;
-  volume: number; // 0..1
+  trimStart: number; trimEnd: number; cropPreset: VideoCropPreset; cropRect?: { x: number; y: number; width: number; height: number };
+  rotation: 0 | 90 | 180 | 270; flipHorizontal: boolean; flipVertical: boolean; resizeMode: VideoResizeMode;
+  customWidth?: number; customHeight?: number; preserveAspectRatio: boolean; playbackSpeed: VideoPlaybackSpeed; muteAudio: boolean; volume: number;
 }
 
-/**
- * Calculates output dimensions considering rotation, scale mode, and aspect ratio
- */
-export function calculateVideoOutputDimensions(
-  origWidth: number,
-  origHeight: number,
-  options: {
-    rotation: 0 | 90 | 180 | 270;
-    resizeMode: VideoResizeMode;
-    customWidth?: number;
-    customHeight?: number;
-    preserveAspectRatio?: boolean;
-    cropRect?: { x: number; y: number; width: number; height: number };
-  }
-): { width: number; height: number } {
-  let effectiveW = origWidth;
-  let effectiveH = origHeight;
-
-  // If cropRect is provided
-  if (options.cropRect && options.cropRect.width > 0 && options.cropRect.height > 0) {
-    effectiveW = Math.round(origWidth * options.cropRect.width);
-    effectiveH = Math.round(origHeight * options.cropRect.height);
-  }
-
-  // If rotated 90 or 270 degrees, swap dimensions
-  if (options.rotation === 90 || options.rotation === 270) {
-    const temp = effectiveW;
-    effectiveW = effectiveH;
-    effectiveH = temp;
-  }
-
-  if (effectiveW <= 0 || effectiveH <= 0) {
-    return { width: 1280, height: 720 };
-  }
-
-  const aspect = effectiveW / effectiveH;
-
+export function calculateVideoOutputDimensions(origWidth: number, origHeight: number, options: { rotation: 0 | 90 | 180 | 270; resizeMode: VideoResizeMode; customWidth?: number; customHeight?: number; preserveAspectRatio?: boolean; cropRect?: { x: number; y: number; width: number; height: number } }): { width: number; height: number } {
+  let width = Math.max(1, origWidth), height = Math.max(1, origHeight);
+  if (options.cropRect && options.cropRect.width > 0 && options.cropRect.height > 0) { width = Math.max(1, Math.round(width * options.cropRect.width)); height = Math.max(1, Math.round(height * options.cropRect.height)); }
+  if (options.rotation === 90 || options.rotation === 270) [width, height] = [height, width];
+  const aspect = width / height;
+  const even = (value: number) => Math.max(2, Math.round(value / 2) * 2);
   switch (options.resizeMode) {
-    case '720p': {
-      if (aspect >= 1) {
-        const h = Math.min(720, effectiveH);
-        return { width: Math.round((h * aspect) / 2) * 2, height: h };
-      } else {
-        const w = Math.min(720, effectiveW);
-        return { width: w, height: Math.round((w / aspect) / 2) * 2 };
-      }
-    }
-    case '1080p': {
-      if (aspect >= 1) {
-        const h = Math.min(1080, effectiveH);
-        return { width: Math.round((h * aspect) / 2) * 2, height: h };
-      } else {
-        const w = Math.min(1080, effectiveW);
-        return { width: w, height: Math.round((w / aspect) / 2) * 2 };
-      }
-    }
-    case '50%': {
-      return {
-        width: Math.round((effectiveW * 0.5) / 2) * 2,
-        height: Math.round((effectiveH * 0.5) / 2) * 2,
-      };
-    }
-    case '75%': {
-      return {
-        width: Math.round((effectiveW * 0.75) / 2) * 2,
-        height: Math.round((effectiveH * 0.75) / 2) * 2,
-      };
-    }
+    case '720p': if (aspect >= 1) { const h = Math.min(720, height); return { width: even(h * aspect), height: even(h) }; } else { const w = Math.min(720, width); return { width: even(w), height: even(w / aspect) }; }
+    case '1080p': if (aspect >= 1) { const h = Math.min(1080, height); return { width: even(h * aspect), height: even(h) }; } else { const w = Math.min(1080, width); return { width: even(w), height: even(w / aspect) }; }
+    case '50%': return { width: even(width * 0.5), height: even(height * 0.5) };
+    case '75%': return { width: even(width * 0.75), height: even(height * 0.75) };
     case 'custom': {
-      const cW = options.customWidth && options.customWidth > 0 ? options.customWidth : effectiveW;
-      const cH = options.customHeight && options.customHeight > 0 ? options.customHeight : effectiveH;
-      if (options.preserveAspectRatio !== false) {
-        return { width: Math.round(cW / 2) * 2, height: Math.round((cW / aspect) / 2) * 2 };
-      }
-      return { width: Math.round(cW / 2) * 2, height: Math.round(cH / 2) * 2 };
+      const customWidth = options.customWidth && options.customWidth > 0 ? options.customWidth : width;
+      const customHeight = options.customHeight && options.customHeight > 0 ? options.customHeight : height;
+      return options.preserveAspectRatio === false ? { width: even(customWidth), height: even(customHeight) } : { width: even(customWidth), height: even(customWidth / aspect) };
     }
-    case 'original':
-    default:
-      return {
-        width: Math.round(effectiveW / 2) * 2,
-        height: Math.round(effectiveH / 2) * 2,
-      };
+    default: return { width: even(width), height: even(height) };
   }
 }
 
-/**
- * Calculates effective output duration considering trim boundaries and playback speed
- */
-export function calculateEffectiveDuration(
-  trimStart: number,
-  trimEnd: number,
-  speed: VideoPlaybackSpeed = 1
-): number {
-  const safeStart = Math.max(0, trimStart);
-  const safeEnd = Math.max(safeStart, trimEnd);
-  const rawDuration = safeEnd - safeStart;
-  return Number((rawDuration / speed).toFixed(2));
+export function normalizeVideoTrimRange(start: number, end: number, duration: number, minDuration = 0.05): { start: number; end: number; duration: number } {
+  const safeDuration = Math.max(0, Number.isFinite(duration) ? duration : 0);
+  const safeStart = Math.max(0, Math.min(safeDuration, Number.isFinite(start) ? start : 0));
+  const safeEnd = Math.max(safeStart, Math.min(safeDuration, Number.isFinite(end) ? end : safeDuration));
+  const adjustedEnd = safeDuration > 0 ? Math.min(safeDuration, Math.max(safeEnd, safeStart + Math.min(minDuration, safeDuration - safeStart))) : 0;
+  return { start: safeStart, end: adjustedEnd, duration: Math.max(0, adjustedEnd - safeStart) };
 }
 
-/**
- * Formats seconds to mm:ss or mm:ss.SS
- */
+export function calculateEffectiveDuration(trimStart: number, trimEnd: number, speed: VideoPlaybackSpeed = 1): number {
+  const rawDuration = Math.max(0, trimEnd - Math.max(0, trimStart)); return Number((rawDuration / Math.max(0.1, speed)).toFixed(2));
+}
+
+/** Pixel-rate based bitrate plan with bounded values suitable for MediaRecorder. */
+export function calculateRecommendedVideoBitrate(width: number, height: number, fps: number, quality: VideoQualityPreset = 'balanced'): number {
+  const safeWidth = Math.max(2, width), safeHeight = Math.max(2, height), safeFps = Math.max(1, Math.min(60, fps));
+  const bitsPerPixelFrame = quality === 'compact' ? 0.055 : quality === 'high' ? 0.12 : 0.08;
+  const estimated = safeWidth * safeHeight * safeFps * bitsPerPixelFrame;
+  return Math.round(Math.max(750_000, Math.min(20_000_000, estimated)) / 50_000) * 50_000;
+}
+
+export function chooseVideoRenderFps(sourceHint: number | null | undefined, quality: VideoQualityPreset = 'balanced'): number {
+  const source = Number.isFinite(sourceHint) && (sourceHint || 0) > 0 ? Number(sourceHint) : 30;
+  const cap = quality === 'compact' ? 24 : quality === 'high' ? 60 : 30;
+  return Math.max(12, Math.min(cap, Math.round(source)));
+}
+
 export function formatVideoTime(seconds: number, includeMs = false): string {
   if (isNaN(seconds) || seconds < 0) return '00:00';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const pad = (n: number) => n.toString().padStart(2, '0');
-
-  if (includeMs) {
-    const ms = Math.floor((seconds % 1) * 100);
-    return `${pad(mins)}:${pad(secs)}.${pad(ms)}`;
-  }
+  const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60), pad = (n: number) => n.toString().padStart(2, '0');
+  if (includeMs) return `${pad(mins)}:${pad(secs)}.${pad(Math.floor((seconds % 1) * 100))}`;
   return `${pad(mins)}:${pad(secs)}`;
 }
-
-/**
- * Formats byte size to human-readable string
- */
 export function formatVideoFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'; const sizes = ['B', 'KB', 'MB', 'GB']; const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(1024))); return `${parseFloat((bytes / 1024 ** i).toFixed(2))} ${sizes[i]}`;
 }
-
-/**
- * Checks supported browser video recording mime type
- */
 export function getSupportedVideoExportMime(): string {
-  const types = [
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm',
-    'video/mp4;codecs=avc1',
-    'video/mp4',
-  ];
-
+  const types = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4;codecs=avc1', 'video/mp4'];
   if (typeof MediaRecorder === 'undefined') return 'video/webm';
-
-  for (const t of types) {
-    if (MediaRecorder.isTypeSupported(t)) {
-      return t;
-    }
-  }
-  return 'video/webm';
+  return types.find((type) => MediaRecorder.isTypeSupported(type)) || 'video/webm';
 }
