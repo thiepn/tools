@@ -1,349 +1,39 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  Video,
-  Mic,
-  MicOff,
-  Square,
-  Play,
-  Pause,
-  RotateCcw,
-  Download,
-  Trash2,
-  ShieldCheck,
-  Circle,
-  AlertCircle,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Video, Mic, MicOff, Square, Play, Pause, RotateCcw, Download, Trash2, ShieldCheck, Circle, AlertCircle } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
-import {
-  getSupportedVideoMimeType,
-  formatRecordingDuration,
-  formatByteSize,
-  generateRecordingFilename,
-  stopAllMediaTracks,
-  RecordingMeta,
-} from '../../utilities/screen-recorder';
+import { calculateElapsedRecordingSeconds, formatRecordingDuration, formatByteSize, generateRecordingFilename, getMediaRecorderOptions, getSupportedVideoMimeType, stopAllMediaTracks, type RecordingMeta } from '../../utilities/screen-recorder';
 
-export const ScreenRecorderTool: React.FC = () => {
-  const [includeMic, setIncludeMic] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+type RecordingQuality='balanced'|'high';
+export const ScreenRecorderTool:React.FC=()=>{
+ const[includeMic,setIncludeMic]=useState(false);const[quality,setQuality]=useState<RecordingQuality>('balanced');const[isRecording,setIsRecording]=useState(false);const[isPaused,setIsPaused]=useState(false);const[elapsedSeconds,setElapsedSeconds]=useState(0);const[recordingMeta,setRecordingMeta]=useState<RecordingMeta|null>(null);const[errorMessage,setErrorMessage]=useState<string|null>(null);
+ const recorderRef=useRef<MediaRecorder|null>(null),displayRef=useRef<MediaStream|null>(null),micRef=useRef<MediaStream|null>(null),chunksRef=useRef<Blob[]>([]),timerRef=useRef<number|null>(null),recordingUrlRef=useRef<string|null>(null);const startedAtRef=useRef(0),pauseStartedRef=useRef<number|null>(null),pausedTotalRef=useRef(0);
+ const clearTimer=()=>{if(timerRef.current!==null){clearInterval(timerRef.current);timerRef.current=null;}};
+ const activeElapsed=()=>calculateElapsedRecordingSeconds(startedAtRef.current,pausedTotalRef.current+(pauseStartedRef.current!==null?performance.now()-pauseStartedRef.current:0),performance.now());
+ const refreshElapsed=()=>setElapsedSeconds(Math.floor(activeElapsed()));
+ useEffect(()=>()=>{clearTimer();stopAllMediaTracks(displayRef.current,micRef.current);if(recordingUrlRef.current)URL.revokeObjectURL(recordingUrlRef.current);},[]);
 
-  const [recordingMeta, setRecordingMeta] = useState<RecordingMeta | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+ const handleStopRecording=()=>{clearTimer();if(recorderRef.current&&recorderRef.current.state!=='inactive')recorderRef.current.stop();stopAllMediaTracks(displayRef.current,micRef.current);};
+ const handleStartRecording=async()=>{setErrorMessage(null);chunksRef.current=[];if(!navigator.mediaDevices?.getDisplayMedia){setErrorMessage('Screen recording is not supported in this browser environment.');return;}try{
+  const frameRate=quality==='high'?60:30;const display=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:frameRate,max:frameRate}},audio:true});displayRef.current=display;const videoTrack=display.getVideoTracks()[0];if(videoTrack)videoTrack.onended=handleStopRecording;const tracks=[...display.getTracks()];
+  if(includeMic){try{const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});micRef.current=mic;tracks.push(...mic.getAudioTracks());}catch(error){console.warn('Microphone unavailable; continuing without microphone audio:',error);setErrorMessage('Microphone was unavailable, so recording continues with screen/system audio only.');}}
+  const combined=new MediaStream(tracks);const options=getMediaRecorderOptions(quality==='high'?8_000_000:4_000_000);const recorder=new MediaRecorder(combined,options);recorderRef.current=recorder;recorder.ondataavailable=event=>{if(event.data?.size)chunksRef.current.push(event.data);};
+  startedAtRef.current=performance.now();pausedTotalRef.current=0;pauseStartedRef.current=null;setElapsedSeconds(0);setIsPaused(false);setIsRecording(true);
+  recorder.onstop=()=>{const duration=activeElapsed();clearTimer();const mimeType=recorder.mimeType||options.mimeType||getSupportedVideoMimeType();const blob=new Blob(chunksRef.current,{type:mimeType});if(recordingUrlRef.current)URL.revokeObjectURL(recordingUrlRef.current);const url=URL.createObjectURL(blob);recordingUrlRef.current=url;setRecordingMeta({blob,url,durationSeconds:duration,mimeType,sizeBytes:blob.size,recordedAt:new Date()});setElapsedSeconds(Math.floor(duration));setIsRecording(false);setIsPaused(false);pauseStartedRef.current=null;stopAllMediaTracks(displayRef.current,micRef.current);};
+  recorder.start(1000);timerRef.current=window.setInterval(refreshElapsed,250);
+ }catch(error:any){console.error('Failed to start recording:',error);setErrorMessage(error?.name==='NotAllowedError'?'Screen capture permission was cancelled or denied.':error?.message||'Failed to capture screen.');stopAllMediaTracks(displayRef.current,micRef.current);setIsRecording(false);}};
+ const handlePauseResume=()=>{const recorder=recorderRef.current;if(!recorder)return;if(isPaused){if(recorder.state==='paused')recorder.resume();if(pauseStartedRef.current!==null)pausedTotalRef.current+=performance.now()-pauseStartedRef.current;pauseStartedRef.current=null;setIsPaused(false);timerRef.current=window.setInterval(refreshElapsed,250);}else{if(recorder.state==='recording')recorder.pause();refreshElapsed();pauseStartedRef.current=performance.now();setIsPaused(true);clearTimer();}};
+ const handleDiscard=()=>{if(recordingUrlRef.current){URL.revokeObjectURL(recordingUrlRef.current);recordingUrlRef.current=null;}setRecordingMeta(null);setElapsedSeconds(0);chunksRef.current=[];};
+ const handleDownload=()=>{if(!recordingMeta)return;const link=document.createElement('a');link.href=recordingMeta.url;link.download=generateRecordingFilename(recordingMeta.mimeType,recordingMeta.recordedAt);link.click();};
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const displayStreamRef = useRef<MediaStream | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerIntervalRef = useRef<number | null>(null);
-  const elapsedSecondsRef = useRef(0);
-
-  // Critical Cleanup on Unmount or Route Change
-  useEffect(() => {
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      stopAllMediaTracks(displayStreamRef.current, micStreamRef.current);
-      if (recordingMeta?.url) URL.revokeObjectURL(recordingMeta.url);
-    };
-  }, [recordingMeta]);
-
-  const incrementElapsedSeconds = () => {
-    setElapsedSeconds((prev) => {
-      const next = prev + 1;
-      elapsedSecondsRef.current = next;
-      return next;
-    });
-  };
-
-  // Start Recording
-  const handleStartRecording = async () => {
-    setErrorMessage(null);
-    chunksRef.current = [];
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      setErrorMessage('Screen recording is not supported in this browser environment.');
-      return;
-    }
-
-    try {
-      // 1. Request Display Stream
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 30, max: 60 } },
-        audio: true, // system/tab audio if available
-      });
-      displayStreamRef.current = displayStream;
-
-      // Handle user clicking "Stop sharing" in browser native bar
-      displayStream.getVideoTracks()[0].onended = () => {
-        handleStopRecording();
-      };
-
-      // 2. Request Optional Microphone Audio Stream
-      let combinedTracks: MediaStreamTrack[] = [...displayStream.getTracks()];
-
-      if (includeMic) {
-        try {
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          micStreamRef.current = micStream;
-          combinedTracks.push(...micStream.getAudioTracks());
-        } catch (micErr) {
-          console.warn('Microphone permission denied or unavailable, continuing with screen video only:', micErr);
-        }
-      }
-
-      const combinedStream = new MediaStream(combinedTracks);
-      const mimeType = getSupportedVideoMimeType();
-
-      const recorder = new MediaRecorder(combinedStream, { mimeType });
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const fullBlob = new Blob(chunksRef.current, { type: mimeType });
-        const videoUrl = URL.createObjectURL(fullBlob);
-
-        setRecordingMeta({
-          blob: fullBlob,
-          url: videoUrl,
-          durationSeconds: elapsedSecondsRef.current,
-          mimeType,
-          sizeBytes: fullBlob.size,
-          recordedAt: new Date(),
-        });
-
-        setIsRecording(false);
-        setIsPaused(false);
-        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-
-        // Teardown live streams
-        stopAllMediaTracks(displayStreamRef.current, micStreamRef.current);
-      };
-
-      recorder.start(1000); // 1s slice chunks
-      setIsRecording(true);
-      setIsPaused(false);
-      elapsedSecondsRef.current = 0;
-      setElapsedSeconds(0);
-
-      // Start elapsed timer
-      timerIntervalRef.current = window.setInterval(incrementElapsedSeconds, 1000);
-    } catch (err: any) {
-      console.error('Failed to start recording:', err);
-      if (err.name === 'NotAllowedError') {
-        setErrorMessage('Screen capture permission was cancelled or denied.');
-      } else {
-        setErrorMessage(err.message || 'Failed to capture screen.');
-      }
-      stopAllMediaTracks(displayStreamRef.current, micStreamRef.current);
-      setIsRecording(false);
-    }
-  };
-
-  const handlePauseResume = () => {
-    if (!mediaRecorderRef.current) return;
-    if (isPaused) {
-      mediaRecorderRef.current.resume();
-      setIsPaused(false);
-      timerIntervalRef.current = window.setInterval(incrementElapsedSeconds, 1000);
-    } else {
-      mediaRecorderRef.current.pause();
-      setIsPaused(true);
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    }
-  };
-
-  const handleStopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    stopAllMediaTracks(displayStreamRef.current, micStreamRef.current);
-  };
-
-  const handleDiscard = () => {
-    if (recordingMeta?.url) URL.revokeObjectURL(recordingMeta.url);
-    setRecordingMeta(null);
-    elapsedSecondsRef.current = 0;
-    setElapsedSeconds(0);
-    chunksRef.current = [];
-  };
-
-  const handleDownload = () => {
-    if (!recordingMeta) return;
-    const link = document.createElement('a');
-    link.href = recordingMeta.url;
-    link.download = generateRecordingFilename(recordingMeta.mimeType);
-    link.click();
-  };
-
-  return (
-    <ToolShell
-      toolId="screen-recorder"
-      title="Screen Recorder"
-      description="Record your screen, browser tab, or app window with audio locally in your browser."
-      category="media"
-      relatedToolIds={['audio-recorder', 'image-annotator', 'timer-stopwatch']}
-    >
-      <div className="space-y-6">
-        {/* Start / Recording Action Bar */}
-        <div className="p-4 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-4">
-          {!isRecording && !recordingMeta ? (
-            /* Setup Controls */
-            <div className="flex flex-wrap items-center gap-4">
-              <button
-                type="button"
-                onClick={handleStartRecording}
-                className="px-4 py-2 text-xs font-semibold rounded-md bg-red-600 hover:bg-red-700 text-white shadow-2xs inline-flex items-center gap-2"
-              >
-                <Circle className="w-3.5 h-3.5 fill-current" />
-                <span>Start Recording</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIncludeMic(!includeMic)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md border inline-flex items-center gap-1.5 transition-colors ${
-                  includeMic
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                    : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-700'
-                }`}
-              >
-                {includeMic ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
-                <span>Microphone Audio: {includeMic ? 'ON' : 'OFF'}</span>
-              </button>
-            </div>
-          ) : isRecording ? (
-            /* Live Recording Controls */
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-mono font-bold">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
-                <span>{isPaused ? 'PAUSED' : 'REC'}</span>
-                <span>{formatRecordingDuration(elapsedSeconds)}</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={handlePauseResume}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 inline-flex items-center gap-1.5"
-              >
-                {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-                <span>{isPaused ? 'Resume' : 'Pause'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleStopRecording}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 inline-flex items-center gap-1.5 shadow-2xs"
-              >
-                <Square className="w-3.5 h-3.5 fill-current" />
-                <span>Stop & Preview</span>
-              </button>
-            </div>
-          ) : (
-            /* Post-recording Actions */
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDownload}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs inline-flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download Video</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDiscard}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 inline-flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Record Again</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDiscard}
-                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded"
-                title="Discard recording"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 text-xs text-neutral-500">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>100% In-Browser. No video is ever uploaded.</span>
-          </div>
-        </div>
-
-        {errorMessage && (
-          <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 rounded-lg flex items-center gap-2 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* Stage / Video Preview */}
-        {!recordingMeta ? (
-          <div className="p-12 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50 dark:bg-neutral-900/40 text-center space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Video className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                {isRecording ? 'Recording in progress...' : 'Ready to Record Screen or Window'}
-              </h3>
-              <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">
-                {isRecording
-                  ? 'Your screen capture is actively encoding locally. Switch tabs or apps freely.'
-                  : 'Click "Start Recording" above to select a screen, browser tab, or app window.'}
-              </p>
-            </div>
-          </div>
-        ) : (
-          /* Video Review Player */
-          <div className="space-y-4">
-            <div className="p-3 bg-neutral-900 rounded-xl flex items-center justify-center overflow-hidden shadow-inner border border-neutral-800">
-              <video
-                src={recordingMeta.url}
-                controls
-                autoPlay
-                className="max-h-[500px] w-full object-contain rounded shadow"
-              />
-            </div>
-
-            <div className="p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-4 text-xs">
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-neutral-700 dark:text-neutral-300">
-                  Duration: {formatRecordingDuration(recordingMeta.durationSeconds)}
-                </span>
-                <span className="text-neutral-400">•</span>
-                <span className="text-neutral-500">Size: {formatByteSize(recordingMeta.sizeBytes)}</span>
-                <span className="text-neutral-400">•</span>
-                <span className="text-neutral-500 font-mono text-[11px]">{recordingMeta.mimeType}</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleDownload}
-                className="text-blue-600 dark:text-blue-400 font-medium hover:underline inline-flex items-center gap-1"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Save to Downloads</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </ToolShell>
-  );
+ return <ToolShell toolId="screen-recorder" title="Screen Recorder" description="Record your screen, tab, or app window locally with accurate active-time tracking, optional microphone audio, and selectable recording quality." category="media" relatedToolIds={['audio-recorder','image-annotator','timer-stopwatch']}>
+  <div className="space-y-6">
+   <div className="p-4 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-4">
+    {!isRecording&&!recordingMeta?<div className="flex flex-wrap items-center gap-3"><button type="button" onClick={()=>void handleStartRecording()} className="px-4 py-2 text-xs font-semibold rounded-md bg-red-600 hover:bg-red-700 text-white inline-flex items-center gap-2"><Circle className="w-3.5 h-3.5 fill-current"/>Start Recording</button><button type="button" aria-pressed={includeMic} onClick={()=>setIncludeMic(value=>!value)} className={`px-3 py-1.5 text-xs font-medium rounded-md border inline-flex items-center gap-1.5 ${includeMic?'bg-blue-50 dark:bg-blue-950/40 text-blue-700 border-blue-300':'bg-white dark:bg-neutral-900 text-neutral-600 border-neutral-300 dark:border-neutral-700'}`}>{includeMic?<Mic className="w-3.5 h-3.5"/>:<MicOff className="w-3.5 h-3.5"/>}Microphone: {includeMic?'ON':'OFF'}</button><label className="text-xs text-neutral-600 dark:text-neutral-300">Quality <select value={quality} onChange={e=>setQuality(e.target.value as RecordingQuality)} className="ml-1 rounded border border-neutral-300 bg-white px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900"><option value="balanced">Balanced · 30 fps</option><option value="high">High · 60 fps</option></select></label></div>:isRecording?<div className="flex flex-wrap items-center gap-3"><div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-700 border border-red-200 text-xs font-mono font-bold"><span className={`w-2.5 h-2.5 rounded-full bg-red-600 ${isPaused?'':'animate-pulse'}`}/>{isPaused?'PAUSED':'REC'} <span>{formatRecordingDuration(elapsedSeconds)}</span></div><button type="button" onClick={handlePauseResume} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 inline-flex items-center gap-1.5">{isPaused?<Play className="w-3.5 h-3.5"/>:<Pause className="w-3.5 h-3.5"/>}{isPaused?'Resume':'Pause'}</button><button type="button" onClick={handleStopRecording} className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 inline-flex items-center gap-1.5"><Square className="w-3.5 h-3.5 fill-current"/>Stop & Preview</button></div>:<div className="flex items-center gap-2"><button type="button" onClick={handleDownload} className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 text-white inline-flex items-center gap-1.5"><Download className="w-3.5 h-3.5"/>Download Video</button><button type="button" onClick={handleDiscard} className="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 inline-flex items-center gap-1.5"><RotateCcw className="w-3.5 h-3.5"/>Record Again</button><button type="button" onClick={handleDiscard} aria-label="Discard recording" className="p-1.5 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button></div>}
+    <div className="flex items-center gap-2 text-xs text-neutral-500"><ShieldCheck className="w-4 h-4 text-emerald-500"/><span>Local recording. No video upload.</span></div>
+   </div>
+   {errorMessage&&<div role="alert" className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-lg flex items-center gap-2 text-xs"><AlertCircle className="w-4 h-4 shrink-0"/><span>{errorMessage}</span></div>}
+   {!recordingMeta?<div className="p-12 border border-neutral-200 dark:border-neutral-800 rounded-xl bg-neutral-50 dark:bg-neutral-900/40 text-center space-y-3"><div className="w-12 h-12 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center"><Video className="w-6 h-6"/></div><div><h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{isRecording?'Recording in progress…':'Ready to Record Screen or Window'}</h3><p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">{isRecording?'Elapsed time is based on monotonic active recording time, not timer ticks.':'Choose quality and microphone audio, then select a screen, tab, or app window.'}</p></div></div>:<div className="space-y-4"><div className="p-3 bg-neutral-900 rounded-xl flex items-center justify-center overflow-hidden border border-neutral-800"><video src={recordingMeta.url} controls autoPlay className="max-h-[500px] w-full object-contain rounded"/></div><div className="p-3 bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-4 text-xs"><div className="flex flex-wrap items-center gap-3"><strong>Duration: {formatRecordingDuration(recordingMeta.durationSeconds)}</strong><span>Size: {formatByteSize(recordingMeta.sizeBytes)}</span><span className="font-mono text-[11px]">{recordingMeta.mimeType||'browser default'}</span></div><button type="button" onClick={handleDownload} className="text-blue-600 dark:text-blue-400 font-medium hover:underline inline-flex items-center gap-1"><Download className="w-3.5 h-3.5"/>Save to Downloads</button></div></div>}
+  </div>
+ </ToolShell>;
 };
-
 export default ScreenRecorderTool;
