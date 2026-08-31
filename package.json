@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "browser:smoke": "node scripts/r5-browser-smoke.mjs",
+    "browser:smoke": "node scripts/r5-browser-smoke-expanded.mjs",
     "browser:functional": "node scripts/r6-functional-smoke.mjs",
     "browser:capabilities": "node scripts/r7-capability-ci.mjs",
     "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs"
