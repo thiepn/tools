@@ -1,6 +1,6 @@
 /**
  * Batch File Renamer Utility
- * Rule transformation engine, case formatting, collision detection, and sequential numbering
+ * Rule transformations, portable filename sanitization, and deterministic collision resolution.
  */
 
 export interface RenamerFileItem {
@@ -13,217 +13,143 @@ export interface RenamerFileItem {
   hasCollision?: boolean;
 }
 
-export type CaseConversionMode =
-  | 'none'
-  | 'lowercase'
-  | 'uppercase'
-  | 'titlecase'
-  | 'kebabcase'
-  | 'snakecase'
-  | 'camelcase';
-
+export type CaseConversionMode = 'none' | 'lowercase' | 'uppercase' | 'titlecase' | 'kebabcase' | 'snakecase' | 'camelcase';
 export interface RenamerRules {
-  prefix: string;
-  suffix: string;
-  findText: string;
-  replaceText: string;
-  useRegex: boolean;
-  matchCase: boolean;
-  replaceSpacesWith: 'none' | 'dash' | 'underscore' | 'dot';
-  caseConversion: CaseConversionMode;
-  sequentialNumbering: boolean;
-  numberingStart: number;
-  numberingPadding: number; // 1, 2, 3, 4
-  numberingPosition: 'start' | 'end';
-  insertDate: boolean;
-  dateFormat: 'YYYY-MM-DD' | 'YYYYMMDD' | 'DD-MM-YYYY';
-  changeExtension: boolean;
-  customExtension: string;
-  autoResolveCollisions: boolean;
+  prefix: string; suffix: string; findText: string; replaceText: string; useRegex: boolean; matchCase: boolean;
+  replaceSpacesWith: 'none' | 'dash' | 'underscore' | 'dot'; caseConversion: CaseConversionMode;
+  sequentialNumbering: boolean; numberingStart: number; numberingPadding: number; numberingPosition: 'start' | 'end';
+  insertDate: boolean; dateFormat: 'YYYY-MM-DD' | 'YYYYMMDD' | 'DD-MM-YYYY';
+  changeExtension: boolean; customExtension: string; autoResolveCollisions: boolean;
 }
 
 export const DEFAULT_RENAMER_RULES: RenamerRules = {
-  prefix: '',
-  suffix: '',
-  findText: '',
-  replaceText: '',
-  useRegex: false,
-  matchCase: false,
-  replaceSpacesWith: 'none',
-  caseConversion: 'none',
-  sequentialNumbering: false,
-  numberingStart: 1,
-  numberingPadding: 2,
-  numberingPosition: 'end',
-  insertDate: false,
-  dateFormat: 'YYYY-MM-DD',
-  changeExtension: false,
-  customExtension: '',
-  autoResolveCollisions: true,
+  prefix: '', suffix: '', findText: '', replaceText: '', useRegex: false, matchCase: false,
+  replaceSpacesWith: 'none', caseConversion: 'none', sequentialNumbering: false, numberingStart: 1,
+  numberingPadding: 2, numberingPosition: 'end', insertDate: false, dateFormat: 'YYYY-MM-DD',
+  changeExtension: false, customExtension: '', autoResolveCollisions: true,
 };
 
-/**
- * Splits filename into base name and extension
- */
+const WINDOWS_RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+
 export function splitFilename(fullname: string): { base: string; ext: string } {
   const lastDot = fullname.lastIndexOf('.');
-  if (lastDot <= 0) {
-    return { base: fullname, ext: '' };
-  }
-  return {
-    base: fullname.substring(0, lastDot),
-    ext: fullname.substring(lastDot + 1),
-  };
+  if (lastDot <= 0) return { base: fullname, ext: '' };
+  return { base: fullname.substring(0, lastDot), ext: fullname.substring(lastDot + 1) };
 }
 
-/**
- * Applies renaming rules across a batch of files with duplicate collision detection
- */
-export function applyRenamingRules(
-  files: { id: string; file: File }[],
-  rules: RenamerRules
-): RenamerFileItem[] {
-  const formattedDate = getFormattedDate(rules.dateFormat);
-  const nameOccurrences = new Map<string, number>();
+/** Produces a component that is safe on Windows/macOS/Linux filesystems. */
+export function sanitizeFilenameComponent(value: string, fallback = 'untitled', maxLength = 180): string {
+  let safe = value
+    .normalize('NFC')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/[. ]+$/g, '')
+    .trim();
+  if (!safe || safe === '.' || safe === '..') safe = fallback;
+  if (WINDOWS_RESERVED.test(safe)) safe = `_${safe}`;
+  return Array.from(safe).slice(0, Math.max(1, maxLength)).join('');
+}
 
-  // Pass 1: Transform base names according to rules
-  const results: RenamerFileItem[] = files.map((item, idx) => {
+function collisionKey(base: string, ext: string): string {
+  return `${base}${ext ? `.${ext}` : ''}`.normalize('NFC').toLocaleLowerCase();
+}
+
+export function applyRenamingRules(files: { id: string; file: File }[], rules: RenamerRules): RenamerFileItem[] {
+  const formattedDate = getFormattedDate(rules.dateFormat);
+  const transformed: RenamerFileItem[] = files.map((item, index) => {
     const { base, ext } = splitFilename(item.file.name);
     let newBase = base;
 
-    // 1. Find & Replace
     if (rules.findText) {
       try {
         if (rules.useRegex) {
-          const flags = rules.matchCase ? 'g' : 'gi';
-          const reg = new RegExp(rules.findText, flags);
-          newBase = newBase.replace(reg, rules.replaceText);
+          newBase = newBase.replace(new RegExp(rules.findText, rules.matchCase ? 'g' : 'gi'), rules.replaceText);
+        } else if (rules.matchCase) {
+          newBase = newBase.split(rules.findText).join(rules.replaceText);
         } else {
-          if (rules.matchCase) {
-            newBase = newBase.split(rules.findText).join(rules.replaceText);
-          } else {
-            const reg = new RegExp(escapeRegex(rules.findText), 'gi');
-            newBase = newBase.replace(reg, rules.replaceText);
-          }
+          newBase = newBase.replace(new RegExp(escapeRegex(rules.findText), 'gi'), rules.replaceText);
         }
       } catch {
-        // Regex syntax fallback
+        // Invalid regex leaves the original text intact instead of corrupting names.
       }
     }
 
-    // 2. Replace Spaces
-    if (rules.replaceSpacesWith === 'dash') {
-      newBase = newBase.replace(/\s+/g, '-');
-    } else if (rules.replaceSpacesWith === 'underscore') {
-      newBase = newBase.replace(/\s+/g, '_');
-    } else if (rules.replaceSpacesWith === 'dot') {
-      newBase = newBase.replace(/\s+/g, '.');
-    }
-
-    // 3. Case Conversion
+    const delimiter = rules.replaceSpacesWith === 'dash' ? '-' : rules.replaceSpacesWith === 'underscore' ? '_' : rules.replaceSpacesWith === 'dot' ? '.' : null;
+    if (delimiter) newBase = newBase.replace(/\s+/g, delimiter);
     newBase = applyCaseConversion(newBase, rules.caseConversion);
 
-    // 4. Sequential Numbering
     if (rules.sequentialNumbering) {
-      const numVal = rules.numberingStart + idx;
-      const numStr = String(numVal).padStart(rules.numberingPadding, '0');
-      if (rules.numberingPosition === 'start') {
-        newBase = `${numStr}_${newBase}`;
-      } else {
-        newBase = `${newBase}_${numStr}`;
-      }
+      const numeric = Math.max(0, Math.trunc(rules.numberingStart + index));
+      const token = String(numeric).padStart(Math.max(1, rules.numberingPadding), '0');
+      newBase = rules.numberingPosition === 'start' ? `${token}_${newBase}` : `${newBase}_${token}`;
     }
+    if (rules.insertDate) newBase = `${newBase}_${formattedDate}`;
+    if (rules.prefix) newBase = `${rules.prefix}${newBase}`;
+    if (rules.suffix) newBase = `${newBase}${rules.suffix}`;
 
-    // 5. Insert Date
-    if (rules.insertDate) {
-      newBase = `${newBase}_${formattedDate}`;
-    }
-
-    // 6. Prefix & Suffix
-    if (rules.prefix) {
-      newBase = `${rules.prefix}${newBase}`;
-    }
-    if (rules.suffix) {
-      newBase = `${newBase}${rules.suffix}`;
-    }
-
-    // Extension resolution
-    let targetExt = ext;
-    if (rules.changeExtension && rules.customExtension.trim()) {
-      targetExt = rules.customExtension.replace(/^\./, '').trim();
-    }
+    let targetExt = rules.changeExtension && rules.customExtension.trim() ? rules.customExtension.replace(/^\./, '').trim() : ext;
+    newBase = sanitizeFilenameComponent(newBase, 'untitled');
+    targetExt = targetExt ? sanitizeFilenameComponent(targetExt, '', 24).replace(/\./g, '') : '';
 
     return {
-      id: item.id,
-      file: item.file,
-      originalName: item.file.name,
-      originalExt: ext,
-      newName: newBase,
-      newExt: targetExt,
-      hasCollision: false,
+      id: item.id, file: item.file, originalName: item.file.name, originalExt: ext,
+      newName: newBase, newExt: targetExt, hasCollision: false,
     };
   });
 
-  // Pass 2: Collision detection and resolution
-  for (let i = 0; i < results.length; i++) {
-    const it = results[i];
-    const fullTarget = it.newExt ? `${it.newName}.${it.newExt}` : it.newName;
-    const currentCount = nameOccurrences.get(fullTarget) || 0;
-
-    if (currentCount > 0) {
-      it.hasCollision = true;
-      if (rules.autoResolveCollisions) {
-        it.newName = `${it.newName}-${currentCount}`;
-      }
+  const used = new Set<string>();
+  for (const item of transformed) {
+    const originalBase = item.newName;
+    let candidateBase = originalBase;
+    let suffix = 0;
+    while (used.has(collisionKey(candidateBase, item.newExt))) {
+      item.hasCollision = true;
+      if (!rules.autoResolveCollisions) break;
+      suffix += 1;
+      candidateBase = sanitizeFilenameComponent(`${originalBase}-${suffix}`, 'untitled');
     }
-
-    nameOccurrences.set(fullTarget, currentCount + 1);
+    if (rules.autoResolveCollisions) item.newName = candidateBase;
+    used.add(collisionKey(item.newName, item.newExt));
   }
 
-  return results;
+  // Mark the first member of an unresolved collision group too, so the UI makes
+  // the whole conflict visible instead of only later files.
+  if (!rules.autoResolveCollisions) {
+    const counts = new Map<string, number>();
+    for (const item of transformed) {
+      const key = collisionKey(item.newName, item.newExt);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    for (const item of transformed) item.hasCollision = (counts.get(collisionKey(item.newName, item.newExt)) || 0) > 1;
+  }
+  return transformed;
 }
 
-function applyCaseConversion(str: string, mode: CaseConversionMode): string {
+function applyCaseConversion(value: string, mode: CaseConversionMode): string {
   switch (mode) {
-    case 'lowercase':
-      return str.toLowerCase();
-    case 'uppercase':
-      return str.toUpperCase();
-    case 'titlecase':
-      return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
-    case 'kebabcase':
-      return str
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .replace(/[\s_.]+/g, '-')
-        .toLowerCase();
-    case 'snakecase':
-      return str
-        .replace(/([a-z])([A-Z])/g, '$1_$2')
-        .replace(/[\s-.]+/g, '_')
-        .toLowerCase();
+    case 'lowercase': return value.toLocaleLowerCase();
+    case 'uppercase': return value.toLocaleUpperCase();
+    case 'titlecase': return value.replace(/[\p{L}\p{N}]+/gu, (token) => token.charAt(0).toLocaleUpperCase() + token.slice(1).toLocaleLowerCase());
+    case 'kebabcase': return value.replace(/([\p{Ll}])([\p{Lu}])/gu, '$1-$2').replace(/[\s_.]+/g, '-').toLocaleLowerCase();
+    case 'snakecase': return value.replace(/([\p{Ll}])([\p{Lu}])/gu, '$1_$2').replace(/[\s.\-]+/g, '_').toLocaleLowerCase();
     case 'camelcase': {
-      const words = str.split(/[\s_.-]+/);
-      return words
-        .map((w, i) => (i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.substring(1).toLowerCase()))
-        .join('');
+      const words = value.split(/[\s_.\-]+/).filter(Boolean);
+      return words.map((word, index) => index === 0 ? word.toLocaleLowerCase() : word.charAt(0).toLocaleUpperCase() + word.slice(1).toLocaleLowerCase()).join('');
     }
-    case 'none':
-    default:
-      return str;
+    default: return value;
   }
 }
 
-function getFormattedDate(fmt: string): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-
-  if (fmt === 'YYYYMMDD') return `${yyyy}${mm}${dd}`;
-  if (fmt === 'DD-MM-YYYY') return `${dd}-${mm}-${yyyy}`;
+function getFormattedDate(format: string): string {
+  const date = new Date();
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  if (format === 'YYYYMMDD') return `${yyyy}${mm}${dd}`;
+  if (format === 'DD-MM-YYYY') return `${dd}-${mm}-${yyyy}`;
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
