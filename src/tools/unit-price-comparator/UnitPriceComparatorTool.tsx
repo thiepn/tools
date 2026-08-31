@@ -21,7 +21,7 @@ export const UnitPriceComparatorTool: React.FC = () => {
   const [products, setProducts] = useState<ProductItem[]>(INITIAL); const [basis, setBasis] = useState<NormalizationBasis>('standard'); const [currency, setCurrency] = useState('€');
   const [needed, setNeeded] = useState(0); const [waste, setWaste] = useState(0); const [includeTax, setIncludeTax] = useState(true);
   const evaluation = useMemo(() => evaluateProducts(products,basis,{neededQuantityInBase:needed>0?needed:undefined,wastePercent:waste,includeTax}),[products,basis,needed,waste,includeTax]);
-  const rankedNeed = useMemo(() => needed>0 ? rankProductsForNeed(products,needed,basis,waste) : [],[products,needed,basis,waste]);
+  const rankedNeed = useMemo(() => needed>0 ? rankProductsForNeed(products,needed,basis,waste,includeTax) : [],[products,needed,basis,waste,includeTax]);
   const update = (id:string, patch:Partial<ProductItem>) => setProducts((current)=>current.map((p)=>p.id===id?{...p,...patch}:p));
   const add = () => setProducts((current)=>[...current,{id:`item-${Date.now()}`,name:`Option ${current.length+1}`,price:1,packCount:1,unitSize:1,unitId:current[0]?.unitId||'item'}].slice(0,10));
   const summary = evaluation.hasMismatchedCategories ? 'Cannot rank items from different measurement categories.' : evaluation.items.map((item)=>`${item.name}: ${currency}${item.pricePerStandardUnit.toFixed(4)}/${item.standardUnitLabel}${item.isBestValue?' — best value':''}${item.purchaseCostForNeed!==undefined?`; need ${item.packagesForNeed} package(s), ${currency}${item.purchaseCostForNeed.toFixed(2)}`:''}`).join('\n');
