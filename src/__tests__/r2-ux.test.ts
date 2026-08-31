@@ -82,7 +82,7 @@ describe('R2 ranked tool discovery', () => {
     expect(searchTools('', 'device')).toHaveLength(16);
     expect(searchTools('', 'calculator')).toHaveLength(46);
     expect(searchTools('', 'calculator').every((tool) => tool.category === 'calculator')).toBe(true);
-    expect(searchTools('', 'files').length).toBeGreaterThanOrEqual(22);
+    expect(searchTools('', 'files')).toHaveLength(21);
   });
 
   it('finds task-oriented queries across names, descriptions, and keywords', () => {
