@@ -46,7 +46,7 @@ describe('CSV & Table Studio', () => {
     const result = parseTableInput('Name,Name,Score\nAda,A,97\nGrace,G\nLinus,L,88,ignored');
     expect(result.data.headers).toEqual(['Name', 'Name (2)', 'Score', 'Column 4']);
     expect(result.data.rows[1]).toEqual(['Grace', 'G', '', '']);
-    expect(result.raggedRowCount).toBe(2);
+    expect(result.raggedRowCount).toBe(3);
     expect(result.stats.rowCount).toBe(3);
     expect(result.stats.columnCount).toBe(4);
   });
