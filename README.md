@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **314 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, Office/eBook interchange, images, audio/video, everyday documents, planning, productivity, math, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **327 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, Office/eBook interchange, images, audio/video, everyday documents, planning, productivity, math, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -67,6 +67,13 @@ DOCX routes cover DOCX → Markdown, HTML, and plain text; Markdown/plain text �
 
 P13 reuses the existing JSZip dependency and processes Office/eBook package contents locally. Its boundary is deliberately content-oriented: DOCX/PPTX extraction does not reproduce exact Word/PowerPoint layout, drawings, animations, charts, equations, or embedded media; generated DOCX files use a lightweight style set; EPUB conversion follows package spine reading order and does not reproduce fixed-layout positioning, DRM, or every CSS/media feature.
 
+### P14 — Developer & Security Completion
+P14 adds **13 public routes**, bringing Tiny Tools to **327**.
+
+Structured-data routes add a path-aware JSON structural diff and recursively stable JSON key sorting/canonicalization. Security routes add local JWT signature verification for HS256/384/512 and RS256/384/512, PEM/X.509 certificate inspection, PKCS#10 CSR decoding, and SHA-256/384/512 Subresource Integrity generation. Web-security and publishing routes add a Content-Security-Policy builder, PWA web-app manifest generator, JSON-LD/schema markup generator, SERP snippet preview, URL slug generator, hreflang tag generator, and local HAR network-log viewer/summary.
+
+P14 keeps security claims narrow. JWT signature verification only proves the supplied key matches the JWS signature; it does not establish issuer trust, authorization, revocation, or claim validity. X.509 inspection does not build a trust chain or query revocation services. CSR decoding does not validate CA policy. CSP, JSON-LD, PWA, SERP, and hreflang generators produce standards-oriented local output but cannot guarantee browser, search-engine, social-platform, or deployment behavior. HAR files may contain sensitive request data and remain entirely local.
+
 ## Tech stack
 
 - React 19
@@ -75,12 +82,13 @@ P13 reuses the existing JSZip dependency and processes Office/eBook package cont
 - Tailwind CSS
 - Vitest
 - JSZip for local ZIP/package workflows including archives, Office Open XML, and EPUB
-- Canvas, Web Audio/OfflineAudioContext, Web Crypto, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
+- Web Crypto for hashing, HMAC, AES-GCM, JWT signature verification, SRI hashes, and certificate fingerprints
+- Canvas, Web Audio/OfflineAudioContext, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
 - Local browser ML/OCR/background-removal runtimes for tools that require them
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-light text/study, privacy/developer, document/planning, P11/P12 authoring, and P13 Office/eBook processing engines
+- Dependency-light text/study, privacy/developer, document/planning, P11/P12 authoring, P13 Office/eBook, and P14 developer/security engines
 - Central idempotent public-catalog registration and full-catalog integrity tests
 
 ## Local development
@@ -100,17 +108,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11–P13 catalogs and browser-tests the full **314-route** runtime catalog at desktop and mobile widths (**628 route renders**) before the later functional, capability, and compatibility gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11–P14 catalogs and browser-tests the full **327-route** runtime catalog at desktop and mobile widths (**654 route renders**) before the later functional, capability, and compatibility gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook interchange opens and creates ZIP/XML packages locally through JSZip. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook interchange opens and creates ZIP/XML packages locally through JSZip. P14 keys, certificates, policies, manifests, structured data, and HAR files are processed locally through deterministic code and Web Crypto. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases and large ZIP packages are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12 parsers and P13 Office/eBook converters deliberately document their supported subsets instead of claiming complete language, publishing, Word, PowerPoint, or e-reader rendering semantics.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases and large ZIP/HAR inputs are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12/P14 parsers and P13 Office/eBook converters deliberately document their supported subsets instead of claiming complete language, publishing, cryptographic-PKI, Word, PowerPoint, e-reader, SEO, or browser-policy semantics.
 
 ## Project structure
 
@@ -120,7 +128,7 @@ src/
 ├── components/       Shared application UI
 ├── device/           P2 device task metadata
 ├── everyday/         P9 document/planning metadata
-├── expansion/        P11 + P12 + P13 expansion metadata
+├── expansion/        P11 + P12 + P13 + P14 expansion metadata
 ├── files/            P4 file-conversion metadata
 ├── image/            P5 image metadata
 ├── media/            P6 audio/video metadata
@@ -136,4 +144,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 through P13 now produce and certify a 314-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.
+The original 50 tools remain the hardened S-tier foundation. **P1 through P14 now produce and certify a 327-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.
