@@ -16,6 +16,7 @@ const EXTENSION_CATALOGS = [
   { phase: 'P8 privacy/developer', path: path.resolve(ROOT, 'src/privacy-dev/publicPrivacyDevTasks.ts'), expected: 16, shape: 'tuple' },
   { phase: 'P9 everyday documents/planning', path: path.resolve(ROOT, 'src/everyday/publicEverydayTasks.ts'), expected: 13, shape: 'tuple' },
   { phase: 'P11 high-value gaps', path: path.resolve(ROOT, 'src/expansion/publicP11Tasks.ts'), expected: 29, shape: 'tuple' },
+  { phase: 'P12 web/developer authoring', path: path.resolve(ROOT, 'src/expansion/publicP12Tasks.ts'), expected: 18, shape: 'tuple' },
 ];
 
 function readCatalogIds(catalog) {

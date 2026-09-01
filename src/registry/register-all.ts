@@ -8,5 +8,6 @@ import{registerTextStudyTools}from'./text-study-extension';
 import{registerPrivacyDevTools}from'./privacy-dev-extension';
 import{registerEverydayTools}from'./everyday-extension';
 import{registerP11Tools}from'./p11-extension';
-const REGISTRARS=[registerPdfPublicTools,registerDeviceDiagnosticTools,registerCalculatorTools,registerFileConversionTools,registerImageMicroTools,registerMediaMicroTools,registerTextStudyTools,registerPrivacyDevTools,registerEverydayTools,registerP11Tools];
+import{registerP12Tools}from'./p12-extension';
+const REGISTRARS=[registerPdfPublicTools,registerDeviceDiagnosticTools,registerCalculatorTools,registerFileConversionTools,registerImageMicroTools,registerMediaMicroTools,registerTextStudyTools,registerPrivacyDevTools,registerEverydayTools,registerP11Tools,registerP12Tools];
 export function registerAllPublicTools(){for(const register of REGISTRARS)register()}
