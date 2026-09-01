@@ -69,6 +69,13 @@ Planning routes cover live countdowns, work-hours/timesheet totals, ISO week and
 
 P9 keeps its claims deliberately narrow: invoices, quotes, and receipts are generic templates rather than tax/legal-compliance systems; label dimensions depend on paper, printer, and print scaling; resumes do not claim universal ATS compatibility; timesheets do not apply payroll, overtime, wage, or labor-law rules; and February 29 age calculations use February 28 as the clamped anniversary in non-leap years while legal age rules may differ by jurisdiction.
 
+### P10 — Public Completeness & Catalog Hardening
+P10 is a closure and integrity phase rather than a route-count phase: the catalog remains at **253 public routes**.
+
+P10 centralizes P1–P9 registration behind one idempotent `registerAllPublicTools()` entry point used by both production and tests; removes stale 50-tool and 202-route landing-page metadata; makes the dashboard count derive from the runtime registry; extends R2 discovery checks to the complete catalog; makes search-result counts accessible to assistive technology; and adds a full-catalog audit for canonical IDs/routes, metadata quality, search discoverability, category integrity, related-tool links, count synchronization, static metadata, and R5 expansion coverage.
+
+The audit also found and repaired stale Whiteboard and Teleprompter related-tool links that pointed to `quick-notepad` instead of the real `notepad` route. No P10 change weakens the existing fixed startup budgets or the 506-render R5 matrix.
+
 ## Tech stack
 
 - React 19
@@ -82,6 +89,7 @@ P9 keeps its claims deliberately narrow: invoices, quotes, and receipts are gene
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
 - Dependency-free text/study, privacy/developer, and everyday-document/planning engines
+- Central idempotent public-catalog registration and full-catalog integrity tests
 
 ## Local development
 
@@ -100,7 +108,7 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 catalogs and browser-tests the full **253-route** runtime catalog at desktop and mobile widths (**506 route renders**) before the later R6–R9 gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 route catalogs and browser-tests the full **253-route** runtime catalog at desktop and mobile widths (**506 route renders**) before the later R6–R9 gates. P10 adds integrity checks around that catalog rather than another route family.
 
 ## Privacy model
 
@@ -126,13 +134,13 @@ src/
 ├── pdf/              P1 PDF metadata/gateway routing
 ├── privacy-dev/      P8 privacy/developer public task metadata
 ├── text-study/       P7 text/study public task metadata
-├── registry/         Base 50-tool registry plus expansion registration
+├── registry/         Base registry, phase adapters, and central registration
 ├── storage/          Local preferences/transfers
 ├── tools/            Lazy-loaded tools/shared family shells
 ├── utilities/        Pure/shared processing helpers
-└── __tests__/        Regression tests
+└── __tests__/        Regression and full-catalog integrity tests
 ```
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 through P9 expand the public catalog to 253 routes** while preserving the original release baseline, truthful browser boundaries, shared-engine architecture, and fixed startup bundle budgets.
+The original 50 tools remain the hardened S-tier foundation. **P1 through P10 produce and certify a 253-route public catalog** while preserving the original release baseline, truthful browser boundaries, shared-engine architecture, fixed startup bundle budgets, and exhaustive desktop/mobile route acceptance.
