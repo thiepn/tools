@@ -2,7 +2,7 @@
   "name": "tiny-tools",
   "private": true,
   "version": "0.19.0",
-  "description": "A privacy-first collection of 300 public browser utility routes for PDFs, diagnostics, calculators, file conversion, images, media, text, study, privacy, developer, documents, planning, math, design, web, and everyday tasks.",
+  "description": "A privacy-first collection of 314 public browser utility routes for PDFs, diagnostics, calculators, file conversion, Office/eBooks, images, media, text, study, privacy, developer, documents, planning, math, design, web, and everyday tasks.",
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
