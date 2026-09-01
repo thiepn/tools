@@ -17,5 +17,6 @@ const ROWS:Row[]=[
 ['design','Design & Visuals','Design','Colors, contrast, dimensions, palettes, and visual layout helpers.','design|visual|visuals|color|layout|graphics','purple'],
 ['developer','Developer Utilities','Developer','JSON, regex, encoding, secure generators, and technical text workflows.','developer|development|coding|code|programming|technical','indigo'],
 ];
-export const CATEGORY_PRESENTATION=Object.fromEntries(ROWS.map(([id,label,shortLabel,description,terms,color])=>[id,{label,shortLabel,description,searchTerms:terms.split('|'),badge:{bg:`tt-category-${color}`,text:'',border:''}}]))as Record<ToolCategory,CategoryPresentation>;
+const AUX='tt-badge';
+export const CATEGORY_PRESENTATION=Object.fromEntries(ROWS.map(([id,label,shortLabel,description,terms,color])=>[id,{label,shortLabel,description,searchTerms:terms.split('|'),badge:{bg:`tt-category-${color}`,text:AUX,border:AUX}}]))as Record<ToolCategory,CategoryPresentation>;
 export function getCategoryPresentation(category:ToolCategory):CategoryPresentation{return CATEGORY_PRESENTATION[category]}
