@@ -9,6 +9,7 @@ import {registerImageMicroTools} from './registry/image-micro-extension';
 import {registerMediaMicroTools} from './registry/media-micro-extension';
 import {registerTextStudyTools} from './registry/text-study-extension';
 import {registerPrivacyDevTools} from './registry/privacy-dev-extension';
+import {registerEverydayTools} from './registry/everyday-extension';
 import './index.css';
 
 registerPdfPublicTools();
@@ -19,6 +20,7 @@ registerImageMicroTools();
 registerMediaMicroTools();
 registerTextStudyTools();
 registerPrivacyDevTools();
+registerEverydayTools();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
