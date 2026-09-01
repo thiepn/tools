@@ -1,0 +1,15 @@
+import JSZip from'jszip';
+import{describe,expect,it}from'vitest';
+import{PUBLIC_P13_TASKS}from'../expansion/publicP13Tasks';
+import{TOOLS_REGISTRY}from'../registry/tools';
+import{registerAllPublicTools}from'../registry/register-all';
+import{createDocx,createEpub,editEpubMetadata,extractDocx,extractEpub,extractPptx,inspectDocxMetadata,inspectEpubMetadata}from'../utilities/p13-office';
+registerAllPublicTools();
+describe('P13 Office and eBook interchange',()=>{
+ it('registers 14 unique routes and grows the catalog to 314',()=>{expect(PUBLIC_P13_TASKS).toHaveLength(14);expect(new Set(PUBLIC_P13_TASKS.map(t=>t.id)).size).toBe(14);expect(TOOLS_REGISTRY).toHaveLength(314);for(const task of PUBLIC_P13_TASKS)expect(TOOLS_REGISTRY.some(t=>t.id===task.id)).toBe(true)});
+ it('creates and re-extracts lightweight DOCX content',async()=>{const bytes=await createDocx('# Heading\n\nParagraph\n\n- Item',{title:'Demo',creator:'Ada'});expect(await extractDocx(bytes,'markdown')).toContain('# Heading');expect(await extractDocx(bytes,'text')).toContain('Paragraph');expect(await extractDocx(bytes,'html')).toContain('<h1>Heading</h1>');const meta=await inspectDocxMetadata(bytes);expect(meta.title).toBe('Demo');expect(meta.creator).toBe('Ada')});
+ it('creates EPUB 3 content and reads its spine in multiple formats',async()=>{const bytes=await createEpub('# Chapter\n\nHello **world**',{title:'Book',creator:'Ada',language:'en'});expect(await extractEpub(bytes,'markdown')).toContain('# Chapter');expect(await extractEpub(bytes,'text')).toContain('Hello world');expect(await extractEpub(bytes,'html')).toContain('<h1>Chapter</h1>');expect((await inspectEpubMetadata(bytes)).title).toBe('Book')});
+ it('edits EPUB package metadata without discarding content',async()=>{const bytes=await createEpub('Hello',{title:'Old',creator:'Ada'}),edited=await editEpubMetadata(bytes,{title:'New',publisher:'Tiny Tools'});const meta=await inspectEpubMetadata(edited);expect(meta.title).toBe('New');expect(meta.publisher).toBe('Tiny Tools');expect(await extractEpub(edited,'text')).toContain('Hello')});
+ it('extracts PPTX slide text in slide-number order',async()=>{const zip=new JSZip();zip.file('[Content_Types].xml','x');zip.file('ppt/slides/slide2.xml','<p:sld xmlns:p="p" xmlns:a="a"><a:p><a:r><a:t>Second</a:t></a:r></a:p></p:sld>');zip.file('ppt/slides/slide1.xml','<p:sld xmlns:p="p" xmlns:a="a"><a:p><a:r><a:t>First</a:t></a:r></a:p><a:p><a:r><a:t>Point</a:t></a:r></a:p></p:sld>');const bytes=await zip.generateAsync({type:'uint8array'});const text=await extractPptx(bytes,'text'),md=await extractPptx(bytes,'markdown');expect(text.indexOf('First')).toBeLessThan(text.indexOf('Second'));expect(md).toContain('# Slide 1');expect(md).toContain('## First')});
+ it('keeps every P13 tool local-first file or text interchange metadata',()=>{for(const t of PUBLIC_P13_TASKS){expect(t.category).toBe('files');expect(['docx','epub','pptx']).toContain(t.format);expect(t.description).toMatch(/local/i)}});
+});
