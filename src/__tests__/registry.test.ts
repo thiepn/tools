@@ -3,9 +3,9 @@ import{TOOLS_REGISTRY,CATEGORIES,getToolById}from'../registry/tools';
 import{searchTools}from'../registry/search';
 import{registerAllPublicTools}from'../registry/register-all';
 registerAllPublicTools();
-const EXPECTED_TOOL_COUNT=314;
+const EXPECTED_TOOL_COUNT=327;
 describe('Tools Registry Verification',()=>{
- it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P13 expansion`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
+ it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P14 expansion`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique IDs with no duplicates',()=>{const ids=TOOLS_REGISTRY.map(t=>t.id);expect(new Set(ids).size).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique routes with no duplicates',()=>{const routes=TOOLS_REGISTRY.map(t=>t.route);expect(new Set(routes).size).toBe(EXPECTED_TOOL_COUNT)});
  it('ensures all tools belong to a registered category',()=>{const valid=new Set(CATEGORIES.map(c=>c.id));for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true)});
@@ -20,5 +20,6 @@ describe('Tools Registry Verification',()=>{
   expect(searchTools('yaml formatter')[0]?.id).toBe('yaml-formatter');expect(searchTools('subnet calculator')[0]?.id).toBe('cidr-subnet-calculator');expect(searchTools('matrix calculator')[0]?.id).toBe('matrix-calculator');expect(searchTools('linear regression')[0]?.id).toBe('linear-regression-calculator');expect(searchTools('sitemap generator')[0]?.id).toBe('sitemap-xml-builder');
   expect(searchTools('xml formatter')[0]?.id).toBe('xml-formatter');expect(searchTools('semver')[0]?.id).toBe('semver-comparator');expect(searchTools('chmod')[0]?.id).toBe('chmod-calculator');expect(searchTools('color contrast')[0]?.id).toBe('color-contrast-checker');expect(searchTools('css clamp')[0]?.id).toBe('css-clamp-calculator');
   expect(searchTools('docx markdown')[0]?.id).toBe('docx-to-markdown');expect(searchTools('markdown docx')[0]?.id).toBe('markdown-to-docx');expect(searchTools('epub markdown')[0]?.id).toBe('epub-to-markdown');expect(searchTools('epub metadata')[0]?.id).toBe('epub-metadata-editor');expect(searchTools('pptx text')[0]?.id).toBe('pptx-to-text');
+  expect(searchTools('json structural diff')[0]?.id).toBe('json-structural-diff');expect(searchTools('jwt signature')[0]?.id).toBe('jwt-signature-verifier');expect(searchTools('x509 certificate')[0]?.id).toBe('x509-certificate-inspector');expect(searchTools('csp builder')[0]?.id).toBe('csp-builder');expect(searchTools('har viewer')[0]?.id).toBe('har-viewer');
  });
 });
