@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **253 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, everyday documents, planning, productivity, math, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **282 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, everyday documents, planning, productivity, math, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -76,6 +76,17 @@ P10 centralizes P1–P9 registration behind one idempotent `registerAllPublicToo
 
 The audit also found and repaired stale Whiteboard and Teleprompter related-tool links that pointed to `quick-notepad` instead of the real `notepad` route. No P10 change weakens the existing fixed startup budgets or the 506-render R5 matrix.
 
+### P11 — Remaining High-Value Gaps
+P11 adds **29 public routes** without adding a backend or new runtime dependency.
+
+Developer/data routes cover YAML formatting and YAML↔JSON, TOML formatting and TOML↔JSON, SQL formatting/minification, a bounded JSON Schema validator, a practical JSONPath evaluator, Base32/Base58/Ascii85 conversion, file↔Base64, IPv4 CIDR/subnet calculation, user-agent parsing, UTM link building, and Markdown↔HTML conversion.
+
+Advanced math/statistics routes cover matrix arithmetic/inversion/determinants, exact BigInt combinations and permutations, normal-distribution/z-score probabilities, Pearson correlation and one-variable least-squares regression, GCD/LCM/prime factorization, complex arithmetic, quadratic roots, and vector operations.
+
+Design/web/everyday routes cover SVG cleanup, DPI/print sizing, approximate color-vision transforms, robots.txt generation, sitemap XML generation, vCard/VCF generation, local RFC-style TOTP codes, and CSS minification.
+
+P11 keeps lightweight parsers honest about their scope: YAML and TOML support common practical subsets rather than every advanced language feature; SQL formatting is lexical rather than dialect-semantic; JSON Schema and JSONPath deliberately support documented subsets; user-agent detection is heuristic; color-vision simulation is approximate; prime factorization is not intended for cryptographic-size integers; and TOTP secrets remain local in browser memory.
+
 ## Tech stack
 
 - React 19
@@ -88,7 +99,7 @@ The audit also found and repaired stale Whiteboard and Teleprompter related-tool
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-free text/study, privacy/developer, and everyday-document/planning engines
+- Dependency-free text/study, privacy/developer, everyday-document/planning, and P11 parser/math/web engines
 - Central idempotent public-catalog registration and full-catalog integrity tests
 
 ## Local development
@@ -108,17 +119,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 route catalogs and browser-tests the full **253-route** runtime catalog at desktop and mobile widths (**506 route renders**) before the later R6–R9 gates. P10 adds integrity checks around that catalog rather than another route family.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11 route catalogs and browser-tests the full **282-route** runtime catalog at desktop and mobile widths (**564 route renders**) before the later R6–R9 gates. P10 remains the catalog-integrity layer while P11 extends the certified public surface.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study, privacy/developer, and P9 everyday-document/planning workflows operate on local deterministic algorithms and browser APIs. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study, privacy/developer, P9 everyday-document/planning, and P11 developer/math/web workflows operate on local deterministic algorithms and browser APIs. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals. P8 cryptographic tools require Web Crypto; encrypted data cannot be recovered without the password. P9 printable documents depend on browser print/PDF behavior and do not replace jurisdiction-specific legal, tax, payroll, or employment requirements.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals. P8 cryptographic tools require Web Crypto; encrypted data cannot be recovered without the password. P9 printable documents depend on browser print/PDF behavior and do not replace jurisdiction-specific legal, tax, payroll, or employment requirements. P11 text formats and validators use documented lightweight subsets where full standards engines would add disproportionate dependency weight.
 
 ## Project structure
 
@@ -128,6 +139,7 @@ src/
 ├── components/       Shared application UI
 ├── device/           P2 device task metadata
 ├── everyday/         P9 everyday-document/planning task metadata
+├── expansion/        P11 high-value-gap task metadata
 ├── files/            P4 file-conversion metadata
 ├── image/            P5 public image task metadata
 ├── media/            P6 public audio/video task metadata
@@ -143,4 +155,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 through P10 produce and certify a 253-route public catalog** while preserving the original release baseline, truthful browser boundaries, shared-engine architecture, fixed startup bundle budgets, and exhaustive desktop/mobile route acceptance.
+The original 50 tools remain the hardened S-tier foundation. **P1 through P11 now produce and certify a 282-route public catalog** while preserving the original release baseline, truthful browser boundaries, shared-engine architecture, fixed startup bundle budgets, and exhaustive desktop/mobile route acceptance.

@@ -3,9 +3,9 @@ import{TOOLS_REGISTRY,CATEGORIES,getToolById}from'../registry/tools';
 import{searchTools}from'../registry/search';
 import{registerAllPublicTools}from'../registry/register-all';
 registerAllPublicTools();
-const EXPECTED_TOOL_COUNT=253;
+const EXPECTED_TOOL_COUNT=282;
 describe('Tools Registry Verification',()=>{
- it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P10 audit`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
+ it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P11 expansion`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique IDs with no duplicates',()=>{const ids=TOOLS_REGISTRY.map(t=>t.id);expect(new Set(ids).size).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique routes with no duplicates',()=>{const routes=TOOLS_REGISTRY.map(t=>t.route);expect(new Set(routes).size).toBe(EXPECTED_TOOL_COUNT)});
  it('ensures all tools belong to a registered category',()=>{const valid=new Set(CATEGORIES.map(c=>c.id));for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true)});
@@ -17,5 +17,6 @@ describe('Tools Registry Verification',()=>{
   expect(searchTools('readability checker')[0]?.id).toBe('readability-checker');expect(searchTools('markdown preview')[0]?.id).toBe('markdown-preview');expect(searchTools('flashcards')[0]?.id).toBe('flashcard-maker');expect(searchTools('spaced repetition')[0]?.id).toBe('spaced-repetition-planner');expect(searchTools('apa citation')[0]?.id).toBe('citation-formatter');
   expect(searchTools('file checksum')[0]?.id).toBe('file-checksum-generator');expect(searchTools('encrypt text')[0]?.id).toBe('text-encryptor');expect(searchTools('uuid generator')[0]?.id).toBe('uuid-generator');expect(searchTools('jwt decoder')[0]?.id).toBe('jwt-decoder');expect(searchTools('cron expression')[0]?.id).toBe('cron-expression-helper');
   expect(searchTools('invoice maker')[0]?.id).toBe('invoice-generator');expect(searchTools('printable calendar')[0]?.id).toBe('printable-calendar-generator');expect(searchTools('work hours timesheet')[0]?.id).toBe('work-hours-timesheet');expect(searchTools('age calculator')[0]?.id).toBe('birthday-age-calculator');expect(searchTools('resume builder')[0]?.id).toBe('resume-builder');
+  expect(searchTools('yaml formatter')[0]?.id).toBe('yaml-formatter');expect(searchTools('subnet calculator')[0]?.id).toBe('cidr-subnet-calculator');expect(searchTools('matrix calculator')[0]?.id).toBe('matrix-calculator');expect(searchTools('linear regression')[0]?.id).toBe('linear-regression-calculator');expect(searchTools('sitemap generator')[0]?.id).toBe('sitemap-xml-builder');
  });
 });
