@@ -1,0 +1,6 @@
+import type{ToolCategory,ToolDefinition}from'../types';
+import{CATEGORIES,TOOLS_REGISTRY}from'./tools';
+type FamilyTask={id:string;name:string;shortName:string;description:string;keywords:string[];featured?:boolean};
+type Overrides=Partial<Omit<ToolDefinition,'id'|'name'|'shortName'|'route'>>;
+export function ensureCategory(id:ToolCategory,label:string,description:string,after?:ToolCategory){if(CATEGORIES.some(c=>c.id===id))return;const index=after?CATEGORIES.findIndex(c=>c.id===after):-1;CATEGORIES.splice(index>=0?index+1:CATEGORIES.length,0,{id,label,description})}
+export function registerFamily<T extends FamilyTask>(tasks:T[],category:ToolCategory|null,iconName:string|null,component:ToolDefinition['component']|null,decorate?:(task:T)=>Overrides):void{const known=new Set(TOOLS_REGISTRY.map(t=>t.id));for(const task of tasks){if(known.has(task.id))continue;const extra=decorate?.(task)??{},definition:ToolDefinition={id:task.id,name:task.name,shortName:task.shortName,description:task.description,category:(extra.category??category)!,keywords:extra.keywords??task.keywords,iconName:(extra.iconName??iconName)!,route:`/${task.id}`,featured:Boolean(task.featured),acceptsTextTransfer:false,producesTextTransfer:false,component:(extra.component??component)!,...extra};TOOLS_REGISTRY.push(definition);known.add(task.id)}}

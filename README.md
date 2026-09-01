@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **224 task routes** for text, study, PDFs, device diagnostics, calculators, file conversion, images, audio/video, productivity, math, time, and everyday tasks.
+Tiny Tools is a privacy-first public utility suite with **240 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, productivity, math, time, and everyday work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -51,7 +51,16 @@ Text routes cover English Flesch readability estimates, n-grams, email/URL/hasht
 
 Study routes cover local flashcards, cloze deletion practice, typed memorization scoring, self-testing, a deterministic spaced-review interval helper, weighted study-session planning, inclusive page-range reading plans, and basic APA 7 / MLA 9 / Chicago author-date citation formatting. The review planner does not claim SM-2 or FSRS equivalence, readability formulas are explicitly English-oriented approximations, and the citation formatter tells users to verify advanced or institution-specific requirements against the relevant style guide.
 
-The text and study workspaces are separately lazy-loaded and add no runtime dependency. Markdown preview is rendered from a deliberately limited React-node parser rather than executing raw HTML.
+### P8 — Privacy & Developer Essentials
+P8 adds **16 public routes**: 8 privacy/security workflows and 8 developer essentials.
+
+Privacy/security routes cover SHA-256/384/512 text hashing and file checksums, checksum verification, HMAC-SHA, portable PBKDF2 + AES-256-GCM text encryption, a bounded whole-file AES-256-GCM format, local password-strength heuristics, and deterministic redaction of common email, phone-like, IPv4, and Luhn-valid payment-card patterns.
+
+Developer routes cover UUID v4/v7, ULID, JWT header/payload decoding, Unix timestamp conversion, exact BigInt base conversion, UTF-8 text ↔ hexadecimal, HTML entity encoding/decoding, and standard five-field cron validation/preview.
+
+P8 makes deliberate capability distinctions: JWT decoding is not signature verification; password strength is not a breach-database lookup or exact cracking-time prediction; PII pattern detection does not claim to find names, addresses, or every personal-data form; and file encryption is capped at 128 MiB because Web Crypto whole-file processing requires the input in browser memory.
+
+The privacy/security and developer workspaces are separately lazy-loaded and add no runtime dependency. P1 PDF metadata is compacted without changing its routes or gateway behavior to preserve the existing startup bundle budget.
 
 ## Tech stack
 
@@ -65,7 +74,7 @@ The text and study workspaces are separately lazy-loaded and add no runtime depe
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-free text-analysis and study-planning helpers
+- Dependency-free text/study and privacy/developer helper engines
 
 ## Local development
 
@@ -84,17 +93,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P7 catalogs and browser-tests the full **224-route** runtime catalog at desktop and mobile widths (**448 route renders**) before the later R6–R9 gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P8 catalogs and browser-tests the full **240-route** runtime catalog at desktop and mobile widths (**480 route renders**) before the later R6–R9 gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study workflows operate on in-memory strings and local deterministic algorithms. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study and P8 privacy/developer workflows operate on local deterministic algorithms and Web Crypto. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals. P8 cryptographic tools require Web Crypto; encrypted data cannot be recovered without the password.
 
 ## Project structure
 
@@ -108,6 +117,7 @@ src/
 ├── media/            P6 public audio/video task metadata
 ├── pdf/              P1 PDF metadata/gateway routing
 ├── text-study/       P7 text/study public task metadata
+├── privacy-dev/      P8 privacy/developer public task metadata
 ├── registry/         Base 50-tool registry plus expansion registration
 ├── storage/          Local preferences/transfers
 ├── tools/            Lazy-loaded tools/shared family shells
@@ -117,4 +127,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 + P6 + P7 expand the public catalog to 224 routes** while preserving the original release baseline, truthful browser boundaries, and shared-engine architecture.
+The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 + P6 + P7 + P8 expand the public catalog to 240 routes** while preserving the original release baseline, truthful browser boundaries, and shared-engine architecture.

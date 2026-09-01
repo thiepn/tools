@@ -8,12 +8,13 @@ import { registerFileConversionTools } from '../registry/file-conversion-extensi
 import { registerImageMicroTools } from '../registry/image-micro-extension';
 import { registerMediaMicroTools } from '../registry/media-micro-extension';
 import { registerTextStudyTools } from '../registry/text-study-extension';
+import { registerPrivacyDevTools } from '../registry/privacy-dev-extension';
 
-registerPdfPublicTools();registerDeviceDiagnosticTools();registerCalculatorTools();registerFileConversionTools();registerImageMicroTools();registerMediaMicroTools();registerTextStudyTools();
-const EXPECTED_TOOL_COUNT=224;
+registerPdfPublicTools();registerDeviceDiagnosticTools();registerCalculatorTools();registerFileConversionTools();registerImageMicroTools();registerMediaMicroTools();registerTextStudyTools();registerPrivacyDevTools();
+const EXPECTED_TOOL_COUNT=240;
 
 describe('Tools Registry Verification',()=>{
-  it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P7`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT);});
+  it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P8`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT);});
   it('has unique IDs with no duplicates',()=>{const ids=TOOLS_REGISTRY.map(t=>t.id);expect(new Set(ids).size).toBe(EXPECTED_TOOL_COUNT);});
   it('has unique routes with no duplicates',()=>{const routes=TOOLS_REGISTRY.map(t=>t.route);expect(new Set(routes).size).toBe(EXPECTED_TOOL_COUNT);});
   it('ensures all tools belong to a registered category',()=>{const valid=new Set(CATEGORIES.map(c=>c.id));for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true);});
@@ -23,5 +24,6 @@ describe('Tools Registry Verification',()=>{
     expect(searchTools('diff').some(t=>t.id==='text-diff')).toBe(true);expect(searchTools('merge pdf').some(t=>t.id==='merge-pdf')).toBe(true);expect(searchTools('microphone test')[0]?.id).toBe('microphone-test');expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');expect(searchTools('csv to excel')[0]?.id).toBe('csv-to-xlsx');expect(searchTools('crop image')[0]?.id).toBe('crop-image');
     expect(searchTools('join audio')[0]?.id).toBe('audio-joiner');expect(searchTools('compress video')[0]?.id).toBe('video-compressor');expect(searchTools('video to gif')[0]?.id).toBe('video-to-gif');expect(searchTools('burn subtitles')[0]?.id).toBe('subtitle-burner');expect(searchTools('webcam recorder')[0]?.id).toBe('webcam-video-recorder');expect(searchTools('add music to video')[0]?.id).toBe('add-audio-to-video');
     expect(searchTools('readability checker')[0]?.id).toBe('readability-checker');expect(searchTools('markdown preview')[0]?.id).toBe('markdown-preview');expect(searchTools('flashcards')[0]?.id).toBe('flashcard-maker');expect(searchTools('spaced repetition')[0]?.id).toBe('spaced-repetition-planner');expect(searchTools('apa citation')[0]?.id).toBe('citation-formatter');
+    expect(searchTools('file checksum')[0]?.id).toBe('file-checksum-generator');expect(searchTools('encrypt text')[0]?.id).toBe('text-encryptor');expect(searchTools('uuid generator')[0]?.id).toBe('uuid-generator');expect(searchTools('jwt decoder')[0]?.id).toBe('jwt-decoder');expect(searchTools('cron expression')[0]?.id).toBe('cron-expression-helper');
   });
 });
