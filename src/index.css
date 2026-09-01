@@ -32,6 +32,15 @@ textarea {
   outline-offset: 2px;
 }
 
+/* Keep every dashboard category visible instead of hiding categories behind
+   a horizontal scroller on narrow viewports. */
+[aria-label="Tool categories"] {
+  flex-wrap: wrap;
+  overflow: visible;
+  padding-bottom: 0;
+  align-items: flex-start;
+}
+
 /* Category badge colors live in CSS so registry metadata stays compact. */
 .tt-category-cyan { @apply bg-cyan-50 text-cyan-700 border-cyan-200; }
 .dark .tt-category-cyan { @apply bg-cyan-950/40 text-cyan-300 border-cyan-800; }
