@@ -1,5 +1,5 @@
 import type{ToolCategory}from'../types';
-export interface CategoryPresentation{label:string;shortLabel:string;description:string;searchTerms:string[];badge:string}
+export interface CategoryPresentation{label:string;shortLabel:string;description:string;searchTerms:string[];badge:{bg:string;text:string;border:string}}
 type Row=[ToolCategory,string,string,string,string,string];
 export const CATEGORY_ORDER:ToolCategory[]=['productivity','pdf','image','text','files','media','device','time','calculator','everyday','math','design','developer'];
 const ROWS:Row[]=[
@@ -17,5 +17,5 @@ const ROWS:Row[]=[
 ['design','Design & Visuals','Design','Colors, contrast, dimensions, palettes, and visual layout helpers.','design|visual|visuals|color|layout|graphics','purple'],
 ['developer','Developer Utilities','Developer','JSON, regex, encoding, secure generators, and technical text workflows.','developer|development|coding|code|programming|technical','indigo'],
 ];
-export const CATEGORY_PRESENTATION=Object.fromEntries(ROWS.map(([id,label,shortLabel,description,terms,color])=>[id,{label,shortLabel,description,searchTerms:terms.split('|'),badge:`tt-category-${color}`}]))as Record<ToolCategory,CategoryPresentation>;
+export const CATEGORY_PRESENTATION=Object.fromEntries(ROWS.map(([id,label,shortLabel,description,terms,color])=>[id,{label,shortLabel,description,searchTerms:terms.split('|'),badge:{bg:`tt-category-${color}`,text:'',border:''}}]))as Record<ToolCategory,CategoryPresentation>;
 export function getCategoryPresentation(category:ToolCategory):CategoryPresentation{return CATEGORY_PRESENTATION[category]}
