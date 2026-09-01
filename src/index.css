@@ -32,6 +32,32 @@ textarea {
   outline-offset: 2px;
 }
 
+/* Category badge colors live in CSS so registry metadata stays compact. */
+.tt-category-cyan { @apply bg-cyan-50 text-cyan-700 border-cyan-200; }
+.dark .tt-category-cyan { @apply bg-cyan-950/40 text-cyan-300 border-cyan-800; }
+.tt-category-red { @apply bg-red-50 text-red-700 border-red-200; }
+.dark .tt-category-red { @apply bg-red-950/40 text-red-300 border-red-800; }
+.tt-category-rose { @apply bg-rose-50 text-rose-700 border-rose-200; }
+.dark .tt-category-rose { @apply bg-rose-950/40 text-rose-300 border-rose-800; }
+.tt-category-emerald { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+.dark .tt-category-emerald { @apply bg-emerald-950/40 text-emerald-300 border-emerald-800; }
+.tt-category-orange { @apply bg-orange-50 text-orange-700 border-orange-200; }
+.dark .tt-category-orange { @apply bg-orange-950/40 text-orange-300 border-orange-800; }
+.tt-category-pink { @apply bg-pink-50 text-pink-700 border-pink-200; }
+.dark .tt-category-pink { @apply bg-pink-950/40 text-pink-300 border-pink-800; }
+.tt-category-sky { @apply bg-sky-50 text-sky-700 border-sky-200; }
+.dark .tt-category-sky { @apply bg-sky-950/40 text-sky-300 border-sky-800; }
+.tt-category-amber { @apply bg-amber-50 text-amber-700 border-amber-200; }
+.dark .tt-category-amber { @apply bg-amber-950/40 text-amber-300 border-amber-800; }
+.tt-category-blue { @apply bg-blue-50 text-blue-700 border-blue-200; }
+.dark .tt-category-blue { @apply bg-blue-950/40 text-blue-300 border-blue-800; }
+.tt-category-teal { @apply bg-teal-50 text-teal-700 border-teal-200; }
+.dark .tt-category-teal { @apply bg-teal-950/40 text-teal-300 border-teal-800; }
+.tt-category-purple { @apply bg-purple-50 text-purple-700 border-purple-200; }
+.dark .tt-category-purple { @apply bg-purple-950/40 text-purple-300 border-purple-800; }
+.tt-category-indigo { @apply bg-indigo-50 text-indigo-700 border-indigo-200; }
+.dark .tt-category-indigo { @apply bg-indigo-950/40 text-indigo-300 border-indigo-800; }
+
 /* Shared per-tool UI contract. Tool implementations can remain bespoke while
    inheriting predictable disabled, read-only, overflow, and action behavior. */
 .tt-tool-content {
