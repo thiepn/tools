@@ -1,0 +1,22 @@
+import{readFileSync}from'node:fs';
+import{describe,expect,it}from'vitest';
+import{CATEGORIES,TOOLS_REGISTRY}from'../registry/tools';
+import{registerAllPublicTools}from'../registry/register-all';
+import{searchTools}from'../registry/search';
+import{CATEGORY_ORDER,getCategoryPresentation}from'../registry/category-presentation';
+import{APP_MANAGED_TOOL_IDS,getAppManagedRelatedToolIds,LEGACY_TOOL_SHELL_ID_ALIASES}from'../registry/tool-shell-mode';
+import{DEFAULT_DOCUMENT_DESCRIPTION}from'../utilities/navigation';
+registerAllPublicTools();
+const EXPECTED=253,root=(name:string)=>readFileSync(new URL(`../../${name}`,import.meta.url),'utf8');
+describe('P10 public completeness and catalog hardening',()=>{
+ it('keeps registration idempotent at the certified route count',()=>{expect(TOOLS_REGISTRY).toHaveLength(EXPECTED);registerAllPublicTools();expect(TOOLS_REGISTRY).toHaveLength(EXPECTED)});
+ it('requires canonical IDs, routes, and production-grade metadata',()=>{for(const tool of TOOLS_REGISTRY){expect(tool.id).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);expect(tool.route).toBe(`/${tool.id}`);expect(tool.name.trim()).toBe(tool.name);expect(tool.shortName.trim()).toBe(tool.shortName);expect(tool.description.trim()).toBe(tool.description);expect(tool.description.length).toBeGreaterThanOrEqual(15);expect(tool.description).not.toMatch(/\b(?:todo|tbd|coming soon|placeholder|lorem ipsum)\b/i);expect(tool.keywords.length).toBeGreaterThan(0);for(const keyword of tool.keywords){expect(keyword.trim()).toBe(keyword);expect(keyword.length).toBeGreaterThan(0)}}});
+ it('makes every route directly discoverable by its canonical ID',()=>{for(const tool of TOOLS_REGISTRY)expect(searchTools(tool.id)[0]?.id,tool.id).toBe(tool.id)});
+ it('keeps every exact public name within the first three search results',()=>{for(const tool of TOOLS_REGISTRY){const top=searchTools(tool.name).slice(0,3).map(t=>t.id);expect(top,tool.name).toContain(tool.id)}});
+ it('keeps category order, presentation, and membership complete',()=>{const ids=CATEGORIES.map(c=>c.id);expect(new Set(CATEGORY_ORDER)).toEqual(new Set(ids));expect(CATEGORY_ORDER).toHaveLength(ids.length);let total=0;for(const id of ids){const tools=TOOLS_REGISTRY.filter(t=>t.category===id);expect(tools.length,id).toBeGreaterThan(0);total+=tools.length;const p=getCategoryPresentation(id);expect(p.label).toBeTruthy();expect(p.shortLabel).toBeTruthy();expect(p.description).toBeTruthy();expect(p.searchTerms.length).toBeGreaterThan(0)}expect(total).toBe(EXPECTED)});
+ it('keeps app-managed related-tool links and legacy aliases resolvable',()=>{const ids=new Set(TOOLS_REGISTRY.map(t=>t.id));for(const id of APP_MANAGED_TOOL_IDS){expect(ids.has(id),id).toBe(true);for(const related of getAppManagedRelatedToolIds(id))expect(ids.has(related),`${id} -> ${related}`).toBe(true)}for(const target of Object.values(LEGACY_TOOL_SHELL_ID_ALIASES))expect(ids.has(target),target).toBe(true)});
+ it('keeps repository-facing route counts synchronized with the runtime registry',()=>{const pkg=JSON.parse(root('package.json'))as{description:string},readme=root('README.md'),pkgCount=Number(pkg.description.match(/(\d+) public browser utility routes/)?.[1]),readmeCount=Number(readme.match(/\*\*(\d+) task routes\*\*/)?.[1]);expect(pkgCount).toBe(EXPECTED);expect(readmeCount).toBe(EXPECTED)});
+ it('prevents stale numeric catalog claims in runtime and static landing metadata',()=>{const dashboard=root('src/components/Dashboard.tsx'),index=root('index.html');expect(dashboard).toContain('{TOOLS_REGISTRY.length} browser utilities');expect(dashboard).not.toMatch(/\b(?:50|202|224|240) browser utilities\b/);expect(index).not.toMatch(/\b(?:50|202|224|240|253) (?:routes|tools|utilities)\b/i);expect(DEFAULT_DOCUMENT_DESCRIPTION).not.toMatch(/^\d+\s/)});
+ it('keeps search-result announcements accessible',()=>{const dashboard=root('src/components/Dashboard.tsx');expect(dashboard).toContain("role={cleanSearchQuery ? 'status' : undefined}");expect(dashboard).toContain("aria-live={cleanSearchQuery ? 'polite' : undefined}");expect(dashboard).toContain('role="status"')});
+ it('keeps the expansion browser gate explicitly aware of P9 and runtime-derived totals',()=>{const r5=root('scripts/r5-browser-smoke-expanded.mjs');expect(r5).toContain("phase: 'P9 everyday documents/planning'");expect(r5).toContain("expected: 13");expect(r5).toContain('const expectedRuntimeTools = 50 + extensionIds.length')});
+});
