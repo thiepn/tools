@@ -233,9 +233,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               Small tools. Zero friction.
             </h1>
             <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1.5 max-w-2xl leading-relaxed">
-              50 browser utilities for text, images, files, media, time, and everyday tasks.
-              Your content is processed locally; advanced tools may download static runtime or
-              model assets when needed.
+              {TOOLS_REGISTRY.length} browser utilities across PDFs, files, images, media,
+              calculators, text, study, planning, diagnostics, developer tasks, and everyday work.
+              Your content is processed locally whenever possible; network-dependent tools disclose
+              the external data they use.
             </p>
           </div>
 
@@ -430,7 +431,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ? `Search results for “${cleanSearchQuery}”`
                 : selectedCategoryPresentation?.label}
             </h2>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+            <p
+              className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5"
+              role={cleanSearchQuery ? 'status' : undefined}
+              aria-live={cleanSearchQuery ? 'polite' : undefined}
+              aria-atomic={cleanSearchQuery ? 'true' : undefined}
+            >
               {cleanSearchQuery
                 ? `${filteredTools.length} matching ${filteredTools.length === 1 ? 'tool' : 'tools'}${
                     selectedCategoryPresentation
@@ -442,7 +448,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {filteredTools.length === 0 ? (
-            <div className="p-10 text-center bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 space-y-2">
+            <div className="p-10 text-center bg-neutral-50 dark:bg-neutral-950 rounded-lg border border-neutral-200 dark:border-neutral-800 space-y-2" role="status">
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 No tools match your current search and category.
               </p>
@@ -480,8 +486,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <span>
             <strong>Local processing:</strong> Tiny Tools does not upload your files or inputs to an
-            application backend. Some advanced tools fetch static runtime or model files when first
-            used.
+            application backend. Tools that need static runtimes, models, or external reference data
+            disclose that dependency in their workflow.
           </span>
         </div>
         <div className="text-[11px] text-neutral-400 whitespace-nowrap">
