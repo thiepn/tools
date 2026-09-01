@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **282 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, everyday documents, planning, productivity, math, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **300 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, everyday documents, planning, productivity, math, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -36,56 +36,35 @@ The original 50-tool suite remains the hardened S-tier baseline. Public-complete
 23 task-specific image routes reuse the existing image optimizer and local background-removal engines for crop/rotation, format conversion, target-size compression, EXIF cleaning, social sizing, privacy redaction, favicon packs, grids, filters, comparison, background workflows, contact sheets, guided portrait cropping, and high-quality non-AI resampling.
 
 ### P6 — Audio & Video Micro-Tools Suite
-P6 adds **29 public media routes**: 12 audio workflows and 17 video workflows.
+P6 adds **29 public media routes**: 12 audio workflows and 17 video workflows. Audio covers joining, WAV conversion, gain, speed, normalization, silence trimming, EQ, reverse, cleanup, channel conversion, ringtone trimming, and coupled pitch/speed shifting. Video covers merging, compression, browser-supported conversion, WAV extraction, audio mixing, overlays, looping, frame/thumbnail extraction, webcam recording, subtitle burning, GIF export, speed, crop/resize, mute, and volume adjustment.
 
-Audio routes cover joining, browser-decodable audio → PCM WAV conversion, gain, speed, peak normalization, silence trimming, three-band EQ, reverse, basic filter/gate cleanup, stereo↔mono conversion, ringtone trimming, and coupled pitch/speed shifting. Audio export deliberately uses standard WAV because browsers do not expose a reliable universal MP3/AAC encoder. Speed/pitch routes clearly state that native playback-rate rendering changes pitch and duration together.
-
-Video routes cover merging, compression, browser-supported format conversion, WAV extraction, adding/mixing audio, text and logo overlays, looping, PNG frame extraction, thumbnail extraction, webcam recording, SRT/WebVTT subtitle burning, video → GIF, speed changes, crop/resize, mute, and source-volume adjustment.
-
-Transformed video uses a shared Canvas + Web Audio + MediaRecorder renderer. It is intentionally real-time, must remain in a visible tab, and exports only containers/codecs actually supported by the current browser. Mixed-aspect merge inputs are letterboxed rather than stretched. Mute Video omits the source audio track instead of merely reducing volume to zero. Additional audio is decoded through Web Audio and mixed locally. P6 does not claim GIF → MP4 conversion or automatic video stabilization because those would require a dedicated animated-GIF/transcoding or motion-analysis engine that Tiny Tools does not currently ship.
+Transformed video uses a shared Canvas + Web Audio + MediaRecorder renderer and exports only containers/codecs supported by the current browser. P6 does not claim arbitrary FFmpeg-style transcoding or automatic stabilization.
 
 ### P7 — Text & Study Expansion
-P7 adds **22 public routes**: 14 text/Markdown workflows and 8 study/citation workflows.
-
-Text routes cover English Flesch readability estimates, n-grams, email/URL/hashtag/mention extraction, repeated-phrase discovery, Jaccard/cosine text similarity, Unicode inspection, repetition, grapheme-aware reversal, hard wrapping, whitespace visualization, deterministic Lorem Ipsum, safe common-Markdown preview, Markdown → plain text, and HTML → plain text.
-
-Study routes cover local flashcards, cloze deletion practice, typed memorization scoring, self-testing, a deterministic spaced-review interval helper, weighted study-session planning, inclusive page-range reading plans, and basic APA 7 / MLA 9 / Chicago author-date citation formatting. The review planner does not claim SM-2 or FSRS equivalence, readability formulas are explicitly English-oriented approximations, and the citation formatter tells users to verify advanced or institution-specific requirements against the relevant style guide.
+P7 adds **22 public routes**: 14 text/Markdown workflows and 8 study/citation workflows. Text covers readability, n-grams, extraction, repeated phrases, similarity, Unicode inspection, repetition, reversal, hard wrapping, whitespace visualization, Lorem Ipsum, Markdown preview/plain text, and HTML → plain text. Study routes cover flashcards, cloze practice, memorization scoring, self-testing, spaced-review planning, study-session planning, reading plans, and basic citation formatting.
 
 ### P8 — Privacy & Developer Essentials
-P8 adds **16 public routes**: 8 privacy/security workflows and 8 developer essentials.
+P8 adds **16 public routes**: 8 privacy/security workflows and 8 developer essentials. Privacy/security covers SHA hashing/checksums, checksum verification, HMAC, password-based AES-GCM text/file encryption, password-strength heuristics, and deterministic PII-pattern redaction. Developer routes cover UUID/ULID, JWT decoding, Unix timestamps, BigInt base conversion, UTF-8 ↔ hex, HTML entities, and cron validation/preview.
 
-Privacy/security routes cover SHA-256/384/512 text hashing and file checksums, checksum verification, HMAC-SHA, portable PBKDF2 + AES-256-GCM text encryption, a bounded whole-file AES-256-GCM format, local password-strength heuristics, and deterministic redaction of common email, phone-like, IPv4, and Luhn-valid payment-card patterns.
-
-Developer routes cover UUID v4/v7, ULID, JWT header/payload decoding, Unix timestamp conversion, exact BigInt base conversion, UTF-8 text ↔ hexadecimal, HTML entity encoding/decoding, and standard five-field cron validation/preview.
-
-P8 makes deliberate capability distinctions: JWT decoding is not signature verification; password strength is not a breach-database lookup or exact cracking-time prediction; PII pattern detection does not claim to find names, addresses, or every personal-data form; and file encryption is capped at 128 MiB because Web Crypto whole-file processing requires the input in browser memory.
+JWT decoding is not signature verification; password strength is not a breach lookup; PII detection is pattern-based; and encrypted data cannot be recovered without the password.
 
 ### P9 — Everyday Documents & Planning
-P9 adds **13 public routes**: 8 printable everyday-document workflows and 5 time/planning utilities.
-
-Document routes cover invoices, quotes/estimates, simple receipts, email signatures, printable labels, printable monthly calendars, weekly schedules, and simple resumes. They share a local document engine with escaped user content, sanitized website links, deterministic money totals, and printable HTML so the browser can print or save the result as PDF.
-
-Planning routes cover live countdowns, work-hours/timesheet totals, ISO week and weekday lookup, elapsed-time calculation, and calendar age. Timesheets support overnight shifts and unpaid breaks, ISO week calculations follow Monday/first-Thursday rules, and age calculations use clamped calendar anniversaries.
-
-P9 keeps its claims deliberately narrow: invoices, quotes, and receipts are generic templates rather than tax/legal-compliance systems; label dimensions depend on paper, printer, and print scaling; resumes do not claim universal ATS compatibility; timesheets do not apply payroll, overtime, wage, or labor-law rules; and February 29 age calculations use February 28 as the clamped anniversary in non-leap years while legal age rules may differ by jurisdiction.
+P9 adds **13 public routes**: invoices, quotes, receipts, email signatures, labels, printable calendars, weekly schedules, resumes, countdowns, work-hours totals, ISO week lookup, elapsed time, and calendar age. Generated documents are generic helpers rather than jurisdiction-specific tax, legal, payroll, or employment systems.
 
 ### P10 — Public Completeness & Catalog Hardening
-P10 is a closure and integrity phase rather than a route-count phase: the catalog remains at **253 public routes**.
-
-P10 centralizes P1–P9 registration behind one idempotent `registerAllPublicTools()` entry point used by both production and tests; removes stale 50-tool and 202-route landing-page metadata; makes the dashboard count derive from the runtime registry; extends R2 discovery checks to the complete catalog; makes search-result counts accessible to assistive technology; and adds a full-catalog audit for canonical IDs/routes, metadata quality, search discoverability, category integrity, related-tool links, count synchronization, static metadata, and R5 expansion coverage.
-
-The audit also found and repaired stale Whiteboard and Teleprompter related-tool links that pointed to `quick-notepad` instead of the real `notepad` route. No P10 change weakens the existing fixed startup budgets or the 506-render R5 matrix.
+P10 is a closure/integrity phase rather than a route-count phase. It centralizes public registration, makes catalog counts runtime-derived, hardens search/accessibility, audits canonical IDs/routes and metadata, validates related-tool links, and keeps the original startup and browser-acceptance budgets intact.
 
 ### P11 — Remaining High-Value Gaps
-P11 adds **29 public routes** without adding a backend or new runtime dependency.
+P11 adds **29 public routes** without a backend or new runtime dependency. Developer/data routes cover YAML/TOML formatting and conversion, SQL formatting, bounded JSON Schema and JSONPath tools, Base32/Base58/Ascii85, file↔Base64, CIDR/subnets, user-agent parsing, UTM links, and Markdown↔HTML. Math/statistics adds matrices, combinatorics, normal probabilities, regression/correlation, GCD/LCM/factors, complex numbers, quadratics, and vectors. Design/web/everyday adds SVG cleanup, DPI/print sizing, color-vision approximation, robots.txt, sitemaps, vCard, TOTP, and CSS minification.
 
-Developer/data routes cover YAML formatting and YAML↔JSON, TOML formatting and TOML↔JSON, SQL formatting/minification, a bounded JSON Schema validator, a practical JSONPath evaluator, Base32/Base58/Ascii85 conversion, file↔Base64, IPv4 CIDR/subnet calculation, user-agent parsing, UTM link building, and Markdown↔HTML conversion.
+### P12 — Web & Developer Authoring
+P12 adds **18 public routes**, bringing Tiny Tools to **300**.
 
-Advanced math/statistics routes cover matrix arithmetic/inversion/determinants, exact BigInt combinations and permutations, normal-distribution/z-score probabilities, Pearson correlation and one-variable least-squares regression, GCD/LCM/prime factorization, complex arithmetic, quadratic roots, and vector operations.
+Developer/interchange routes cover XML formatting with balanced-tag validation, URL decomposition, query-string parsing/building, Semantic Version precedence comparison, chmod octal↔symbolic permissions, JSON→TypeScript inference, HTTP header parsing, common MIME-type lookup, Unicode NFC/NFD/NFKC/NFKD normalization, `.env` formatting/parsing, and HTML minification.
 
-Design/web/everyday routes cover SVG cleanup, DPI/print sizing, approximate color-vision transforms, robots.txt generation, sitemap XML generation, vCard/VCF generation, local RFC-style TOTP codes, and CSS minification.
+Web/design authoring routes cover common HTML meta tags, Open Graph/Twitter card metadata, WCAG 2.x color-contrast ratios, CSS linear/radial gradients, CSS box shadows, responsive `clamp()` expressions, and escaped semantic HTML table generation from CSV/TSV/semicolon data.
 
-P11 keeps lightweight parsers honest about their scope: YAML and TOML support common practical subsets rather than every advanced language feature; SQL formatting is lexical rather than dialect-semantic; JSON Schema and JSONPath deliberately support documented subsets; user-agent detection is heuristic; color-vision simulation is approximate; prime factorization is not intended for cryptographic-size integers; and TOTP secrets remain local in browser memory.
+P12 keeps claims narrow: XML validation checks balanced tag structure rather than XSD/DTD semantics; JSON→TypeScript describes the supplied sample rather than proving an API contract; MIME lookup is curated rather than exhaustive; `.env` parsing follows a documented common subset; metadata generators do not promise search ranking or social-preview behavior; and contrast checking uses WCAG 2.x luminance thresholds rather than newer perceptual models.
 
 ## Tech stack
 
@@ -99,7 +78,7 @@ P11 keeps lightweight parsers honest about their scope: YAML and TOML support co
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-free text/study, privacy/developer, everyday-document/planning, and P11 parser/math/web engines
+- Dependency-free text/study, privacy/developer, everyday-document/planning, P11, and P12 processing engines
 - Central idempotent public-catalog registration and full-catalog integrity tests
 
 ## Local development
@@ -119,17 +98,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11 route catalogs and browser-tests the full **282-route** runtime catalog at desktop and mobile widths (**564 route renders**) before the later R6–R9 gates. P10 remains the catalog-integrity layer while P11 extends the certified public surface.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9, P11, and P12 catalogs and browser-tests the full **300-route** runtime catalog at desktop and mobile widths (**600 route renders**) before the later functional, capability, and compatibility gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study, privacy/developer, P9 everyday-document/planning, and P11 developer/math/web workflows operate on local deterministic algorithms and browser APIs. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study, privacy/developer, document/planning, P11, and P12 workflows use local deterministic algorithms and browser APIs. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals. P8 cryptographic tools require Web Crypto; encrypted data cannot be recovered without the password. P9 printable documents depend on browser print/PDF behavior and do not replace jurisdiction-specific legal, tax, payroll, or employment requirements. P11 text formats and validators use documented lightweight subsets where full standards engines would add disproportionate dependency weight.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12 parsers and generators deliberately document their supported subsets instead of claiming complete language, schema, crawler, SEO, or platform semantics.
 
 ## Project structure
 
@@ -138,14 +117,14 @@ src/
 ├── calculators/      P3 calculator catalog
 ├── components/       Shared application UI
 ├── device/           P2 device task metadata
-├── everyday/         P9 everyday-document/planning task metadata
-├── expansion/        P11 high-value-gap task metadata
+├── everyday/         P9 document/planning metadata
+├── expansion/        P11 + P12 expansion metadata
 ├── files/            P4 file-conversion metadata
-├── image/            P5 public image task metadata
-├── media/            P6 public audio/video task metadata
+├── image/            P5 image metadata
+├── media/            P6 audio/video metadata
 ├── pdf/              P1 PDF metadata/gateway routing
-├── privacy-dev/      P8 privacy/developer public task metadata
-├── text-study/       P7 text/study public task metadata
+├── privacy-dev/      P8 privacy/developer metadata
+├── text-study/       P7 text/study metadata
 ├── registry/         Base registry, phase adapters, and central registration
 ├── storage/          Local preferences/transfers
 ├── tools/            Lazy-loaded tools/shared family shells
@@ -155,4 +134,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 through P11 now produce and certify a 282-route public catalog** while preserving the original release baseline, truthful browser boundaries, shared-engine architecture, fixed startup bundle budgets, and exhaustive desktop/mobile route acceptance.
+The original 50 tools remain the hardened S-tier foundation. **P1 through P12 now produce and certify a 300-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.
