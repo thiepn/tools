@@ -1,7 +1,7 @@
 import type{ToolCategory}from'../types';
 export type P14Engine='security'|'web';
 export interface PublicP14Task{id:string;name:string;shortName:string;description:string;keywords:string[];engine:P14Engine;category:ToolCategory}
-type Raw=[string,string,string,string,P14Engine,ToolCategory];
+type Raw=[string,string,string,string,string,P14Engine,ToolCategory];
 const RAW:Raw[]=[
 ['json-structural-diff','JSON Structural Diff','JSON Diff','Compare two JSON values structurally and list added, removed, and changed paths locally.','json compare|json diff|structural diff','security','developer'],
 ['json-canonicalizer','JSON Sorter & Canonicalizer','JSON Canonicalizer','Recursively sort JSON object keys for deterministic readable or compact output.','json sort|canonical json|stable json','security','developer'],
