@@ -8,6 +8,7 @@ import {registerFileConversionTools} from './registry/file-conversion-extension'
 import {registerImageMicroTools} from './registry/image-micro-extension';
 import {registerMediaMicroTools} from './registry/media-micro-extension';
 import {registerTextStudyTools} from './registry/text-study-extension';
+import {registerPrivacyDevTools} from './registry/privacy-dev-extension';
 import './index.css';
 
 registerPdfPublicTools();
@@ -17,6 +18,7 @@ registerFileConversionTools();
 registerImageMicroTools();
 registerMediaMicroTools();
 registerTextStudyTools();
+registerPrivacyDevTools();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
