@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **240 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, productivity, math, time, and everyday work.
+Tiny Tools is a privacy-first public utility suite with **253 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, everyday documents, planning, productivity, math, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -60,7 +60,14 @@ Developer routes cover UUID v4/v7, ULID, JWT header/payload decoding, Unix times
 
 P8 makes deliberate capability distinctions: JWT decoding is not signature verification; password strength is not a breach-database lookup or exact cracking-time prediction; PII pattern detection does not claim to find names, addresses, or every personal-data form; and file encryption is capped at 128 MiB because Web Crypto whole-file processing requires the input in browser memory.
 
-The privacy/security and developer workspaces are separately lazy-loaded and add no runtime dependency. P1 PDF metadata is compacted without changing its routes or gateway behavior to preserve the existing startup bundle budget.
+### P9 — Everyday Documents & Planning
+P9 adds **13 public routes**: 8 printable everyday-document workflows and 5 time/planning utilities.
+
+Document routes cover invoices, quotes/estimates, simple receipts, email signatures, printable labels, printable monthly calendars, weekly schedules, and simple resumes. They share a local document engine with escaped user content, sanitized website links, deterministic money totals, and printable HTML so the browser can print or save the result as PDF.
+
+Planning routes cover live countdowns, work-hours/timesheet totals, ISO week and weekday lookup, elapsed-time calculation, and calendar age. Timesheets support overnight shifts and unpaid breaks, ISO week calculations follow Monday/first-Thursday rules, and age calculations use clamped calendar anniversaries.
+
+P9 keeps its claims deliberately narrow: invoices, quotes, and receipts are generic templates rather than tax/legal-compliance systems; label dimensions depend on paper, printer, and print scaling; resumes do not claim universal ATS compatibility; timesheets do not apply payroll, overtime, wage, or labor-law rules; and February 29 age calculations use February 28 as the clamped anniversary in non-leap years while legal age rules may differ by jurisdiction.
 
 ## Tech stack
 
@@ -74,7 +81,7 @@ The privacy/security and developer workspaces are separately lazy-loaded and add
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-free text/study and privacy/developer helper engines
+- Dependency-free text/study, privacy/developer, and everyday-document/planning engines
 
 ## Local development
 
@@ -93,17 +100,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P8 catalogs and browser-tests the full **240-route** runtime catalog at desktop and mobile widths (**480 route renders**) before the later R6–R9 gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 catalogs and browser-tests the full **253-route** runtime catalog at desktop and mobile widths (**506 route renders**) before the later R6–R9 gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study and P8 privacy/developer workflows operate on local deterministic algorithms and Web Crypto. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study, privacy/developer, and P9 everyday-document/planning workflows operate on local deterministic algorithms and browser APIs. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals. P8 cryptographic tools require Web Crypto; encrypted data cannot be recovered without the password.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require appropriate permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export rather than FFmpeg-style arbitrary transcoding; video-to-audio works only when Web Audio can decode the source container/audio codec; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and P4 XLSX conversion is value-oriented rather than a full spreadsheet-rendering engine. P7 readability scores are English-oriented heuristics, and its citation output covers common basic fields rather than every rule in the underlying style manuals. P8 cryptographic tools require Web Crypto; encrypted data cannot be recovered without the password. P9 printable documents depend on browser print/PDF behavior and do not replace jurisdiction-specific legal, tax, payroll, or employment requirements.
 
 ## Project structure
 
@@ -112,12 +119,13 @@ src/
 ├── calculators/      P3 calculator catalog
 ├── components/       Shared application UI
 ├── device/           P2 device task metadata
+├── everyday/         P9 everyday-document/planning task metadata
 ├── files/            P4 file-conversion metadata
 ├── image/            P5 public image task metadata
 ├── media/            P6 public audio/video task metadata
 ├── pdf/              P1 PDF metadata/gateway routing
-├── text-study/       P7 text/study public task metadata
 ├── privacy-dev/      P8 privacy/developer public task metadata
+├── text-study/       P7 text/study public task metadata
 ├── registry/         Base 50-tool registry plus expansion registration
 ├── storage/          Local preferences/transfers
 ├── tools/            Lazy-loaded tools/shared family shells
@@ -127,4 +135,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 + P2 + P3 + P4 + P5 + P6 + P7 + P8 expand the public catalog to 240 routes** while preserving the original release baseline, truthful browser boundaries, and shared-engine architecture.
+The original 50 tools remain the hardened S-tier foundation. **P1 through P9 expand the public catalog to 253 routes** while preserving the original release baseline, truthful browser boundaries, shared-engine architecture, and fixed startup bundle budgets.

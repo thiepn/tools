@@ -14,6 +14,7 @@ const EXTENSION_CATALOGS = [
   { phase: 'P6 audio/video media', path: path.resolve(ROOT, 'src/media/publicMediaTasks.ts'), expected: 29, shape: 'tuple' },
   { phase: 'P7 text/study', path: path.resolve(ROOT, 'src/text-study/publicTextStudyTasks.ts'), expected: 22, shape: 'tuple' },
   { phase: 'P8 privacy/developer', path: path.resolve(ROOT, 'src/privacy-dev/publicPrivacyDevTasks.ts'), expected: 16, shape: 'tuple' },
+  { phase: 'P9 everyday documents/planning', path: path.resolve(ROOT, 'src/everyday/publicEverydayTasks.ts'), expected: 13, shape: 'tuple' },
 ];
 
 function readCatalogIds(catalog) {
