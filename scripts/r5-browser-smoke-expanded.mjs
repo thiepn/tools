@@ -17,6 +17,7 @@ const EXTENSION_CATALOGS = [
   { phase: 'P9 everyday documents/planning', path: path.resolve(ROOT, 'src/everyday/publicEverydayTasks.ts'), expected: 13, shape: 'tuple' },
   { phase: 'P11 high-value gaps', path: path.resolve(ROOT, 'src/expansion/publicP11Tasks.ts'), expected: 29, shape: 'tuple' },
   { phase: 'P12 web/developer authoring', path: path.resolve(ROOT, 'src/expansion/publicP12Tasks.ts'), expected: 18, shape: 'tuple' },
+  { phase: 'P13 Office/eBook interchange', path: path.resolve(ROOT, 'src/expansion/publicP13Tasks.ts'), expected: 14, shape: 'tuple' },
 ];
 
 function readCatalogIds(catalog) {
