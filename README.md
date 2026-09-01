@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **300 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, images, audio/video, everyday documents, planning, productivity, math, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **314 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, Office/eBook interchange, images, audio/video, everyday documents, planning, productivity, math, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -58,13 +58,14 @@ P10 is a closure/integrity phase rather than a route-count phase. It centralizes
 P11 adds **29 public routes** without a backend or new runtime dependency. Developer/data routes cover YAML/TOML formatting and conversion, SQL formatting, bounded JSON Schema and JSONPath tools, Base32/Base58/Ascii85, file↔Base64, CIDR/subnets, user-agent parsing, UTM links, and Markdown↔HTML. Math/statistics adds matrices, combinatorics, normal probabilities, regression/correlation, GCD/LCM/factors, complex numbers, quadratics, and vectors. Design/web/everyday adds SVG cleanup, DPI/print sizing, color-vision approximation, robots.txt, sitemaps, vCard, TOTP, and CSS minification.
 
 ### P12 — Web & Developer Authoring
-P12 adds **18 public routes**, bringing Tiny Tools to **300**.
+P12 adds **18 public routes**, bringing Tiny Tools to **300**. Developer/interchange routes cover XML formatting, URL/query parsing, SemVer comparison, chmod, JSON→TypeScript, HTTP headers, MIME lookup, Unicode normalization, `.env` formatting/parsing, and HTML minification. Web/design routes cover HTML meta tags, Open Graph/Twitter cards, WCAG 2.x contrast ratios, CSS gradients, box shadows, responsive `clamp()`, and escaped HTML table generation.
 
-Developer/interchange routes cover XML formatting with balanced-tag validation, URL decomposition, query-string parsing/building, Semantic Version precedence comparison, chmod octal↔symbolic permissions, JSON→TypeScript inference, HTTP header parsing, common MIME-type lookup, Unicode NFC/NFD/NFKC/NFKD normalization, `.env` formatting/parsing, and HTML minification.
+### P13 — Office & eBook Interchange
+P13 adds **14 public routes**, bringing Tiny Tools to **314**.
 
-Web/design authoring routes cover common HTML meta tags, Open Graph/Twitter card metadata, WCAG 2.x color-contrast ratios, CSS linear/radial gradients, CSS box shadows, responsive `clamp()` expressions, and escaped semantic HTML table generation from CSV/TSV/semicolon data.
+DOCX routes cover DOCX → Markdown, HTML, and plain text; Markdown/plain text → lightweight editable DOCX; and common DOCX package metadata inspection. EPUB routes cover EPUB → Markdown, HTML, and plain text; Markdown/plain text → simple standards-oriented EPUB 3; and common Dublin Core package metadata editing. PPTX routes extract slide text to plain text or a slide-by-slide Markdown outline.
 
-P12 keeps claims narrow: XML validation checks balanced tag structure rather than XSD/DTD semantics; JSON→TypeScript describes the supplied sample rather than proving an API contract; MIME lookup is curated rather than exhaustive; `.env` parsing follows a documented common subset; metadata generators do not promise search ranking or social-preview behavior; and contrast checking uses WCAG 2.x luminance thresholds rather than newer perceptual models.
+P13 reuses the existing JSZip dependency and processes Office/eBook package contents locally. Its boundary is deliberately content-oriented: DOCX/PPTX extraction does not reproduce exact Word/PowerPoint layout, drawings, animations, charts, equations, or embedded media; generated DOCX files use a lightweight style set; EPUB conversion follows package spine reading order and does not reproduce fixed-layout positioning, DRM, or every CSS/media feature.
 
 ## Tech stack
 
@@ -73,12 +74,13 @@ P12 keeps claims narrow: XML validation checks balanced tag structure rather tha
 - Vite
 - Tailwind CSS
 - Vitest
+- JSZip for local ZIP/package workflows including archives, Office Open XML, and EPUB
 - Canvas, Web Audio/OfflineAudioContext, Web Crypto, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
 - Local browser ML/OCR/background-removal runtimes for tools that require them
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-free text/study, privacy/developer, everyday-document/planning, P11, and P12 processing engines
+- Dependency-light text/study, privacy/developer, document/planning, P11/P12 authoring, and P13 Office/eBook processing engines
 - Central idempotent public-catalog registration and full-catalog integrity tests
 
 ## Local development
@@ -98,17 +100,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9, P11, and P12 catalogs and browser-tests the full **300-route** runtime catalog at desktop and mobile widths (**600 route renders**) before the later functional, capability, and compatibility gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11–P13 catalogs and browser-tests the full **314-route** runtime catalog at desktop and mobile widths (**628 route renders**) before the later functional, capability, and compatibility gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image and media micro-tools operate on local Blob/Canvas/Web Audio/MediaStream data. Text/study, privacy/developer, document/planning, P11, and P12 workflows use local deterministic algorithms and browser APIs. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook interchange opens and creates ZIP/XML packages locally through JSZip. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12 parsers and generators deliberately document their supported subsets instead of claiming complete language, schema, crawler, SEO, or platform semantics.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases and large ZIP packages are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12 parsers and P13 Office/eBook converters deliberately document their supported subsets instead of claiming complete language, publishing, Word, PowerPoint, or e-reader rendering semantics.
 
 ## Project structure
 
@@ -118,7 +120,7 @@ src/
 ├── components/       Shared application UI
 ├── device/           P2 device task metadata
 ├── everyday/         P9 document/planning metadata
-├── expansion/        P11 + P12 expansion metadata
+├── expansion/        P11 + P12 + P13 expansion metadata
 ├── files/            P4 file-conversion metadata
 ├── image/            P5 image metadata
 ├── media/            P6 audio/video metadata
@@ -134,4 +136,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 through P12 now produce and certify a 300-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.
+The original 50 tools remain the hardened S-tier foundation. **P1 through P13 now produce and certify a 314-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.

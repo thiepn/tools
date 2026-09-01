@@ -9,5 +9,6 @@ import{registerPrivacyDevTools}from'./privacy-dev-extension';
 import{registerEverydayTools}from'./everyday-extension';
 import{registerP11Tools}from'./p11-extension';
 import{registerP12Tools}from'./p12-extension';
-const REGISTRARS=[registerPdfPublicTools,registerDeviceDiagnosticTools,registerCalculatorTools,registerFileConversionTools,registerImageMicroTools,registerMediaMicroTools,registerTextStudyTools,registerPrivacyDevTools,registerEverydayTools,registerP11Tools,registerP12Tools];
+import{registerP13Tools}from'./p13-extension';
+const REGISTRARS=[registerPdfPublicTools,registerDeviceDiagnosticTools,registerCalculatorTools,registerFileConversionTools,registerImageMicroTools,registerMediaMicroTools,registerTextStudyTools,registerPrivacyDevTools,registerEverydayTools,registerP11Tools,registerP12Tools,registerP13Tools];
 export function registerAllPublicTools(){for(const register of REGISTRARS)register()}
