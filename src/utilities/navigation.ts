@@ -2,7 +2,7 @@ import type { ToolDefinition } from '../types';
 
 export const DEFAULT_DOCUMENT_TITLE = 'Tiny Tools — Small tools. Zero friction.';
 export const DEFAULT_DOCUMENT_DESCRIPTION =
-  '50 privacy-first browser utilities for text, images, files, media, time, and everyday tasks.';
+  'Privacy-first browser utilities for PDFs, files, images, media, calculators, text, study, planning, diagnostics, and everyday tasks.';
 
 export function getDocumentMetadata(
   tool?: Pick<ToolDefinition, 'name' | 'description'>
