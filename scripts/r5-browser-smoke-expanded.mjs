@@ -19,6 +19,7 @@ const EXTENSION_CATALOGS = [
   { phase: 'P12 web/developer authoring', path: path.resolve(ROOT, 'src/expansion/publicP12Tasks.ts'), expected: 18, shape: 'tuple' },
   { phase: 'P13 Office/eBook interchange', path: path.resolve(ROOT, 'src/expansion/publicP13Tasks.ts'), expected: 14, shape: 'tuple' },
   { phase: 'P14 developer/security completion', path: path.resolve(ROOT, 'src/expansion/publicP14Tasks.ts'), expected: 13, shape: 'tuple' },
+  { phase: 'P15 math/data visualization', path: path.resolve(ROOT, 'src/expansion/publicP15Tasks.ts'), expected: 13, shape: 'tuple' },
 ];
 
 function readCatalogIds(catalog) {
