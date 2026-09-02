@@ -27,7 +27,7 @@ const V:Raw[]=[
 ['video-thumbnail-extractor','Video Thumbnail Extractor','Export an exact video frame as PNG.','screenshot',true],
 ['webcam-video-recorder','Webcam Video Recorder','Record camera and microphone locally.','',true],
 ['add-logo-to-video','Add Image / Logo to Video','Overlay a local image or logo.','watermark'],
-['subtitle-burner','Subtitle Burner','Burn SRT/WebVTT cues into video.','subtitles'],
+['subtitle-burner','Subtitle Burner','Burn SRT/WebVTT cues into video.','srt to video subtitles captions burn'],
 ['video-to-gif','Video to GIF','Encode a short clip as animated GIF.','mp4 gif'],
 ['video-speed-changer','Video Speed Changer','Change speed with real-time rendering.','slow motion'],
 ['crop-resize-video','Crop & Resize Video','Crop common ratios and resize.','vertical'],
