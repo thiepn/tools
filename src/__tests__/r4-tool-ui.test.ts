@@ -81,7 +81,12 @@ describe('R4 per-tool UI contract', () => {
     });
 
     expect(violations).toEqual([]);
-    expect(LEGACY_TOOL_SHELL_ID_ALIASES).toEqual({ 'qr-code-studio': 'qr-studio' });
+    expect(LEGACY_TOOL_SHELL_ID_ALIASES['qr-code-studio']).toBe('qr-studio');
+    expect(LEGACY_TOOL_SHELL_ID_ALIASES['csv-to-json']).toBe('data-converter');
+    expect(LEGACY_TOOL_SHELL_ID_ALIASES['docx-to-markdown']).toBe('document-converter');
+    expect(LEGACY_TOOL_SHELL_ID_ALIASES['heic-image-converter']).toBe('image-converter');
+    expect(LEGACY_TOOL_SHELL_ID_ALIASES['audio-to-wav-converter']).toBe('audio-converter');
+    expect(LEGACY_TOOL_SHELL_ID_ALIASES['srt-to-vtt']).toBe('subtitle-converter');
   });
 
   it('wraps every app-managed bare tool through ToolShell in App', () => {
