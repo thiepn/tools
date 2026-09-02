@@ -1,7 +1,7 @@
 import type{ToolCategory}from'../types';
-export type P13Format='document'|'docx'|'epub';
-export interface PublicP13Task{id:string;name:string;shortName:string;description:string;keywords:string[];format:P13Format;category:ToolCategory;mode:'convert'|'inspect'|'edit'}
-type Raw=[string,string,string,P13Format,'convert'|'inspect'|'edit'];
+export type P13Format='document'|'docx'|'epub'|'pptx';
+export interface PublicP13Task{id:string;name:string;shortName:string;description:string;keywords:string[];format:P13Format;category:ToolCategory;mode:'convert'|'import'|'export'|'inspect'|'edit'}
+type Raw=[string,string,string,P13Format,'convert'|'import'|'export'|'inspect'|'edit'];
 const RAW:Raw[]=[
 ['document-converter','Document & eBook Converter','document converter docx markdown html text epub pdf pptx','document','convert'],
 ['docx-metadata-inspector','DOCX Metadata Inspector','docx metadata','docx','inspect'],
