@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **328 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, unified file conversion, file viewing and inspection, images, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **334 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, unified file conversion, file viewing and inspection, image enhancement/restoration, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -79,11 +79,26 @@ P17 adds eight local, upload-first viewers that complement conversion rather tha
 
 These viewers deliberately avoid false fidelity claims. Office/OpenDocument previews are content-oriented; spreadsheet viewers do not reproduce macros/charts/pivot/layout state; presentation viewers do not reproduce animations or master-layout fidelity; EPUB scripts and DRM are not executed; and SVG active content is stripped from the preview. RAR/7Z browsing uses the same pinned local libarchive runtime as archive conversion.
 
+## P18 — Image Enhancement & Restoration
+
+P18 adds six local restoration workflows and upgrades the existing Image Upscaler without duplicating its route:
+
+- **Image Enhancer** — edge-preserving denoise, auto levels, local contrast, saturation, and adjustable unsharp-mask refinement in one workspace.
+- **Object & Blemish Remover** — paint an unwanted small object or blemish and fill the mask deterministically from neighboring pixels.
+- **Old Photo Restorer** — suppress isolated dust/spot artifacts, denoise scans, recover faded tonal range, adjust warmth, and apply controlled sharpening.
+- **Perspective Corrector** — four-corner projective correction for photographed pages, signs, artwork, screens, and other rectangular planes.
+- **Auto Deskew Image** — estimate common ±12° rotational skew from strong horizontal edge structure and apply a correction with optional manual trim.
+- **Red-Eye Remover** — click/select an eye region and suppress only strongly red-dominant pixels inside the correction circle.
+
+The existing **Image Upscaler** now uses staged high-quality browser resampling followed by restrained local edge refinement instead of a single resize pass. It remains deliberately non-generative: Tiny Tools does not describe classical resampling as AI super-resolution or claim reconstruction of detail that was never captured.
+
+P18 restoration tools are also deliberately bounded. Neighborhood inpainting is intended for small objects and simple backgrounds rather than large generative removals; old-photo restoration does not invent missing faces, colorize monochrome photos, or reconstruct torn regions; perspective correction relies on user-specified corners; and auto-deskew reports confidence because images without text/horizons may not contain enough directional structure.
+
 ## Public-completeness phases
 
-The original 50-tool suite remains the hardened S-tier baseline. P1–P17 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, subtitle workflows, and file viewing/inspection.
+The original 50-tool suite remains the hardened S-tier baseline. P1–P18 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, subtitle workflows, file viewing/inspection, and image restoration.
 
-After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increased conversion breadth without route sprawl. P17 adds eight distinct viewer/inspection workflows, bringing the current catalog to **328 public routes**.
+After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increased conversion breadth without route sprawl. P17 added eight distinct viewer/inspection workflows for **328 routes**. P18 adds six new restoration workflows while upgrading the existing upscaler in place, bringing the current catalog to **334 public routes**.
 
 Current expansion-family counts:
 
@@ -103,3 +118,4 @@ Current expansion-family counts:
 - P15 math/data visualization: **13** routes.
 - P16 subtitle/media: **9** routes.
 - P17 file viewers/inspection: **8** routes.
+- P18 image enhancement/restoration: **6** routes.
