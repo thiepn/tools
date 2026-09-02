@@ -1,10 +1,10 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **334 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, unified file conversion, file viewing and inspection, image enhancement/restoration, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **343 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, network/browser diagnostics, calculators, unified file conversion, file viewing and inspection, image enhancement/restoration, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
-> Some advanced tools download static runtime/model assets when first used, such as local Whisper transcription, OCR, background-removal assets, the dedicated PDF runtime, or optional format runtimes for legacy XLS, RAR/7Z reading, MP3 encoding, and HEIC/TIFF fallback decoding. These runtimes execute against the file locally after loading; Tiny Tools does not upload the user's file to a conversion service. Currency conversion is the only calculator family route that intentionally fetches current external reference-rate data.
+> Some advanced tools download static runtime/model assets when first used, such as local Whisper transcription, OCR, background-removal assets, the dedicated PDF runtime, or optional format runtimes for legacy XLS, RAR/7Z reading, MP3 encoding, and HEIC/TIFF fallback decoding. These runtimes execute against the file locally after loading; Tiny Tools does not upload the user's file to a conversion service. Currency conversion intentionally fetches current external reference-rate data. P19 Internet/network diagnostics intentionally contact clearly disclosed external test endpoints only after the user starts a probe; browser capability, graphics, codec, and storage inspectors remain local-only.
 
 ## Principles
 
@@ -94,11 +94,27 @@ The existing **Image Upscaler** now uses staged high-quality browser resampling 
 
 P18 restoration tools are also deliberately bounded. Neighborhood inpainting is intended for small objects and simple backgrounds rather than large generative removals; old-photo restoration does not invent missing faces, colorize monochrome photos, or reconstruct torn regions; perspective correction relies on user-specified corners; and auto-deskew reports confidence because images without text/horizons may not contain enough directional structure.
 
+## P19 — Network & Browser Diagnostics
+
+P19 adds nine diagnostic routes. Four make explicit, user-triggered external network probes; five inspect only browser-local capabilities.
+
+- **Internet Speed Test** — measures download/upload payload throughput plus HTTPS latency and jitter against Cloudflare public speed-test endpoints. Test bytes are generated in memory; no user file is uploaded.
+- **Connection Stability Test** — repeats small HTTPS probes and summarizes average/min/max latency, jitter, standard deviation, slow spikes, and request failures. It deliberately does not label HTTP-request failures as ICMP packet loss.
+- **IPv4 / IPv6 Connectivity Test** — probes IPv4-only and IPv6-only Cloudflare hosts and reports IPv4-only, IPv6-only, dual-stack, or unavailable reachability. Optional Cloudflare metadata can show the public address/edge information returned by that service.
+- **WebRTC Leak Test** — gathers ICE candidates locally and can optionally use `stun:stun.cloudflare.com:3478` to inspect server-reflexive candidates. Literal private/public IPs and privacy-preserving `.local` mDNS candidates are identified separately.
+- **Browser Capability Inspector** — checks modern browser/runtime APIs including workers, WebAssembly, WebRTC, WebGPU, WebCodecs, storage, compression, clipboard, and File System Access features without a remote probe.
+- **WebGL Inspector** — reports WebGL/WebGL2 context type, renderer/vendor strings when exposed, limits, antialiasing, and extensions locally.
+- **WebGPU Inspector** — requests a local GPU adapter and reports exposed adapter information, features, and selected limits without sending graphics data elsewhere.
+- **Media Codec Support Tester** — queries browser-declared decoding and MediaRecorder encoding support for mainstream MP4/H.264, HEVC, AV1, VP8/VP9, Opus, AAC, MP3, FLAC, Ogg, WebM, and WAV MIME combinations.
+- **Browser Storage & Quota Inspector** — reports `navigator.storage` usage/quota, persistence status, IndexedDB, Cache Storage, localStorage, and OPFS capability, with an explicit user action for requesting persistent storage.
+
+External diagnostic routes do not auto-run when opened. Their interfaces disclose that Cloudflare receives the connection information required to serve the probe. The local five routes do not make diagnostic network requests. Speed results are browser-to-test-endpoint estimates and are not advertised as ISP-certified measurements; codec results are browser-declared MIME capability rather than proof that every profile/resolution/DRM stream will work.
+
 ## Public-completeness phases
 
-The original 50-tool suite remains the hardened S-tier baseline. P1–P18 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, subtitle workflows, file viewing/inspection, and image restoration.
+The original 50-tool suite remains the hardened S-tier baseline. P1–P19 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, subtitle workflows, file viewing/inspection, image restoration, and network/browser diagnostics.
 
-After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increased conversion breadth without route sprawl. P17 added eight distinct viewer/inspection workflows for **328 routes**. P18 adds six new restoration workflows while upgrading the existing upscaler in place, bringing the current catalog to **334 public routes**.
+After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increased conversion breadth without route sprawl. P17 added eight distinct viewer/inspection workflows for **328 routes**. P18 added six restoration workflows while upgrading the existing upscaler in place for **334 routes**. P19 adds nine network/browser diagnostics, bringing the current catalog to **343 public routes**.
 
 Current expansion-family counts:
 
@@ -119,3 +135,4 @@ Current expansion-family counts:
 - P16 subtitle/media: **9** routes.
 - P17 file viewers/inspection: **8** routes.
 - P18 image enhancement/restoration: **6** routes.
+- P19 network/browser diagnostics: **9** routes.
