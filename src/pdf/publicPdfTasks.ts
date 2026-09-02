@@ -1,7 +1,6 @@
 export interface PublicPdfTask{id:string;pdfTaskId:string;name:string;shortName:string;description:string;keywords:string[];pdfHash:string;featured:boolean}
 type Raw=[string,string,string,string,string,string,string,boolean?];
 const RAW:Raw[]=[
-['create-pdf','create-pdf','Create PDF','Create PDF','Create a PDF from Markdown, plain text, or simple HTML without uploading your content.','create pdf|make pdf|text to pdf|markdown to pdf|html to pdf|new pdf','#/create',true],
 ['merge-pdf','merge-pdfs','Merge PDFs','Merge PDF','Combine multiple PDF files into one document in the order you choose.','merge pdf|combine pdf|join pdf|append pdf|multiple pdf files','#/merge',true],
 ['scan-to-pdf','scan-to-pdf','Scan to PDF','Scan to PDF','Turn camera captures, JPGs, PNGs, and other images into a PDF, with optional OCR.','scan to pdf|images to pdf|jpg to pdf|png to pdf|photo to pdf|camera scan','#/scan',true],
 ['edit-pdf','edit-pdf','Edit PDF','Edit PDF','Edit supported PDF text, images, vectors, tables, and added objects locally in the browser.','edit pdf|change pdf|edit pdf text|replace pdf text|pdf editor','#/tools/edit-pdf',true],
@@ -18,7 +17,6 @@ const RAW:Raw[]=[
 ['ocr-pdf','ocr-pdf','OCR PDF','OCR PDF','Recognize printed text in scanned PDF pages and create a searchable PDF reconstruction locally.','ocr pdf|searchable pdf|scan text pdf|recognize text|tesseract pdf','#/tools/ocr-pdf',true],
 ['compress-pdf','compress-pdf','Compress PDF','Compress PDF','Reduce PDF file size with preservation-oriented or stronger image-based compression options.','compress pdf|reduce pdf size|make pdf smaller|optimize pdf|shrink pdf','#/tools/compress-pdf',true],
 ['pdf-metadata','metadata','PDF Metadata Editor','PDF Metadata','View, edit, or remove PDF title, author, subject, keywords, and other document metadata.','pdf metadata|remove pdf metadata|pdf author|pdf title|document properties|privacy','#/tools/metadata'],
-['export-pdf','export-content','Export PDF Content','Export PDF','Export PDF text, Markdown, HTML, page images, or split PDF parts locally.','pdf to text|pdf to jpg|pdf to jpeg|pdf to png|pdf to html|pdf to markdown|extract pdf text|export pdf images','#/tools/export-content',true],
 ['compare-pdf','compare-pdfs','Compare PDFs','Compare PDFs','Compare two PDF versions visually or by extracted text to find changes.','compare pdf|pdf diff|changes between pdfs|original revised pdf|document comparison','#/compare'],
 ['pdf-page-tools','organize-pages','PDF Page Tools','PDF Page Tools','Use one page workspace for rotate, delete, duplicate, reverse, reorder, and extract operations.','rotate pdf|delete pdf page|duplicate pdf page|reverse pdf|extract page|reorder pages','#/tools/organize-pages'],
 ];
