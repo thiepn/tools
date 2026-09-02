@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **352 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, Office/eBook interchange, images, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **320 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, unified file conversion, images, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -16,77 +16,75 @@ The application is a static React + TypeScript + Vite site. User files and conte
 - Shared engines behind task-specific routes instead of duplicated implementations.
 - Static deployment compatible with GitHub Pages.
 
-## Public completeness expansion
+## Unified converters
 
-The original 50-tool suite remains the hardened S-tier baseline. Public-completeness phases add general-purpose task families without weakening those existing release gates.
+Tiny Tools deliberately avoids publishing a separate route for every format pair. Related formats live in one upload-first converter: choose or drop a file, confirm the detected source format, select **Convert to**, and download the result.
 
-### P1 — PDF Suite
-20 public PDF task routes use the dedicated local-first PDF Everything engine.
+### Document & eBook Converter
 
-### P2 — Device Diagnostics Suite
-16 native browser diagnostics cover camera, microphone, audio output, displays, input devices, controllers, battery status, tone generation, and tuning with truthful browser capability boundaries.
+Inputs: **TXT, Markdown, HTML, DOCX, EPUB, PPTX, PDF**.
 
-### P3 — Everyday Calculator Suite
-46 config-driven calculators cover school/math, money, household/travel/construction, and low-risk fitness estimates. Forty-five are fully local; live currency conversion explicitly discloses its reference-rate network request.
+Outputs: **TXT, Markdown, HTML, DOCX, EPUB, PDF**.
 
-### P4 — File & Format Conversion Suite
-18 routes cover CSV/JSON/XML/XLSX interchange, CSV split/merge, signature-based file inspection, TAR/GZIP, and ZIP↔TAR. XLSX is deliberately value-oriented rather than a claim of full Excel fidelity.
+DOCX, EPUB, and PPTX conversions are content-oriented rather than layout-perfect. PDF import performs best-effort local text extraction; scanned or complex PDFs should use the dedicated PDF OCR/export tools. PDF output is generated locally for portable reading and does not claim editable text-layer fidelity.
 
-### P5 — Image Micro-Tools Suite
-23 task-specific image routes reuse the existing image optimizer and local background-removal engines for crop/rotation, format conversion, target-size compression, EXIF cleaning, social sizing, privacy redaction, favicon packs, grids, filters, comparison, background workflows, contact sheets, guided portrait cropping, and high-quality non-AI resampling.
+### Data & Spreadsheet Converter
 
-### P6 — Audio & Video Micro-Tools Suite
-P6 adds **29 public media routes**: 12 audio workflows and 17 video workflows. Audio covers joining, WAV conversion, gain, speed, normalization, silence trimming, EQ, reverse, cleanup, channel conversion, ringtone trimming, and coupled pitch/speed shifting. Video covers merging, compression, browser-supported conversion, WAV extraction, audio mixing, overlays, looping, frame/thumbnail extraction, webcam recording, subtitle burning, GIF export, speed, crop/resize, mute, and volume adjustment.
+Converts between compatible **CSV, JSON, XML, XLSX, YAML, and TOML** inputs and outputs. Structured conversions normalize through JSON; XLSX handling is value-oriented and uses the first worksheet rather than claiming full Excel rendering fidelity.
 
-Transformed video uses a shared Canvas + Web Audio + MediaRecorder renderer and exports only containers/codecs supported by the current browser. P6 does not claim arbitrary FFmpeg-style transcoding or automatic stabilization.
+CSV splitting and merging remain separate utilities because they are file operations rather than format conversions.
 
-### P7 — Text & Study Expansion
-P7 adds **22 public routes**: 14 text/Markdown workflows and 8 study/citation workflows. Text covers readability, n-grams, extraction, repeated phrases, similarity, Unicode inspection, repetition, reversal, hard wrapping, whitespace visualization, Lorem Ipsum, Markdown preview/plain text, and HTML → plain text. Study routes cover flashcards, cloze practice, memorization scoring, self-testing, spaced-review planning, study-session planning, reading plans, and basic citation formatting.
+### Image Converter
 
-### P8 — Privacy & Developer Essentials
-P8 adds **16 public routes**: 8 privacy/security workflows and 8 developer essentials. Privacy/security covers SHA hashing/checksums, checksum verification, HMAC, password-based AES-GCM text/file encryption, password-strength heuristics, and deterministic PII-pattern redaction. Developer routes cover UUID/ULID, JWT decoding, Unix timestamps, BigInt base conversion, UTF-8 ↔ hex, HTML entities, and cron validation/preview.
+Accepts browser-decodable image inputs including common **JPG, PNG, WebP, GIF/BMP raster content, SVG, AVIF, and HEIC/HEIF when supported by the browser/OS**. Outputs are **JPG, PNG, WebP, and AVIF when the browser encoder supports the requested type**. Multiple images can be converted in one batch and downloaded as a ZIP.
 
-JWT decoding is not signature verification; password strength is not a breach lookup; PII detection is pattern-based; and encrypted data cannot be recovered without the password.
+Image editing, target-size compression, metadata cleaning, resizing, background tools, favicon creation, and other image operations remain dedicated routes.
 
-### P9 — Everyday Documents & Planning
-P9 adds **13 public routes**: invoices, quotes, receipts, email signatures, labels, printable calendars, weekly schedules, resumes, countdowns, work-hours totals, ISO week lookup, elapsed time, and calendar age. Generated documents are generic helpers rather than jurisdiction-specific tax, legal, payroll, or employment systems.
+### Audio Converter
 
-### P10 — Public Completeness & Catalog Hardening
-P10 is a closure/integrity phase rather than a route-count phase. It centralizes public registration, makes catalog counts runtime-derived, hardens search/accessibility, audits canonical IDs/routes and metadata, validates related-tool links, and keeps the original startup and browser-acceptance budgets intact.
+Accepts browser-decodable audio such as **MP3, WAV, M4A/AAC, OGG/Opus, FLAC, WebM**, and other formats supported by the current browser. **WAV output is always available**. Compressed outputs such as MP3, AAC/M4A, OGG/Opus, or WebM/Opus appear only when `MediaRecorder.isTypeSupported()` confirms that the current browser exposes that local encoder. Compressed conversion may therefore run approximately in real time.
 
-### P11 — Remaining High-Value Gaps
-P11 adds **29 public routes** without a backend or new runtime dependency. Developer/data routes cover YAML/TOML formatting and conversion, SQL formatting, bounded JSON Schema and JSONPath tools, Base32/Base58/Ascii85, file↔Base64, CIDR/subnets, user-agent parsing, UTM links, and Markdown↔HTML. Math/statistics adds matrices, combinatorics, normal probabilities, regression/correlation, GCD/LCM/factors, complex numbers, quadratics, and vectors. Design/web/everyday adds SVG cleanup, DPI/print sizing, color-vision approximation, robots.txt, sitemaps, vCard, TOTP, and CSS minification.
+### Video Converter
 
-### P12 — Web & Developer Authoring
-P12 adds **18 public routes**, bringing Tiny Tools to **300**. Developer/interchange routes cover XML formatting, URL/query parsing, SemVer comparison, chmod, JSON→TypeScript, HTTP headers, MIME lookup, Unicode normalization, `.env` formatting/parsing, and HTML minification. Web/design routes cover HTML meta tags, Open Graph/Twitter cards, WCAG 2.x contrast ratios, CSS gradients, box shadows, responsive `clamp()`, and escaped HTML table generation.
+The existing Video Converter remains the single general video format converter. It uses the browser's available MediaRecorder container/codec combinations and therefore does not claim universal FFmpeg-style MP4/MOV/WebM transcoding. Video GIF Maker remains separate because animated-GIF creation is a specialized rendering workflow rather than another browser video container.
 
-### P13 — Office & eBook Interchange
-P13 adds **14 public routes**, bringing Tiny Tools to **314**.
+### Subtitle Converter
 
-DOCX routes cover DOCX → Markdown, HTML, and plain text; Markdown/plain text → lightweight editable DOCX; and common DOCX package metadata inspection. EPUB routes cover EPUB → Markdown, HTML, and plain text; Markdown/plain text → simple standards-oriented EPUB 3; and common Dublin Core package metadata editing. PPTX routes extract slide text to plain text or a slide-by-slide Markdown outline.
+Converts **SRT, WebVTT, and plain transcript text** in one workspace. SRT/WebVTT conversion preserves cue timing and text; plain-text export removes timestamps; text-to-subtitle output creates deterministic evenly timed cues and does not pretend to perform forced alignment from audio.
 
-P13 reuses the existing JSZip dependency and processes Office/eBook package contents locally. Its boundary is deliberately content-oriented: DOCX/PPTX extraction does not reproduce exact Word/PowerPoint layout, drawings, animations, charts, equations, or embedded media; generated DOCX files use a lightweight style set; EPUB conversion follows package spine reading order and does not reproduce fixed-layout positioning, DRM, or every CSS/media feature.
+Subtitle editing, shifting, drift correction, frame-rate timing conversion, validation, merging, splitting, and reading-speed analysis remain separate operations.
 
-### P14 — Developer & Security Completion
-P14 adds **13 public routes**, bringing Tiny Tools to **327**.
+### Archive Converter
 
-Structured-data routes add a path-aware JSON structural diff and recursively stable JSON key sorting/canonicalization. Security routes add local JWT signature verification for HS256/384/512 and RS256/384/512, PEM/X.509 certificate inspection, PKCS#10 CSR decoding, and SHA-256/384/512 Subresource Integrity generation. Web-security and publishing routes add a Content-Security-Policy builder, PWA web-app manifest generator, JSON-LD/schema markup generator, SERP snippet preview, URL slug generator, hreflang tag generator, and local HAR network-log viewer/summary.
+ZIP ↔ TAR remains one archive converter. TAR creation/extraction and GZIP compression/decompression remain separate archive operations.
 
-P14 keeps security claims narrow. JWT signature verification only proves the supplied key matches the JWS signature; it does not establish issuer trust, authorization, revocation, or claim validity. X.509 inspection does not build a trust chain or query revocation services. CSR decoding does not validate CA policy. CSP, JSON-LD, PWA, SERP, and hreflang generators produce standards-oriented local output but cannot guarantee browser, search-engine, social-platform, or deployment behavior. HAR files may contain sensitive request data and remain entirely local.
+### Legacy route compatibility
 
-### P15 — Math & Data Visualization
-P15 adds **13 public routes**, bringing Tiny Tools to **340**.
+Former pairwise routes such as `csv-to-json`, `xlsx-to-csv`, `docx-to-markdown`, `markdown-to-epub`, `heic-image-converter`, `audio-to-wav-converter`, `srt-to-vtt`, `create-pdf`, and `export-pdf` are no longer duplicated in the dashboard. Their old hashes are normalized to the appropriate canonical converter so existing Tiny Tools bookmarks continue to resolve.
 
-Graphing routes add a safe local function plotter and polynomial graph/root explorer. Math/statistics adds Gauss-Jordan linear-system solving, binomial and Poisson probabilities, t-based mean and Wilson proportion confidence intervals, precision-based sample-size estimation, one-sample and Welch t-tests, and chi-square goodness-of-fit/independence tests. Data visualization adds descriptive statistics with a box plot, histograms, scatter plots with Pearson correlation/least-squares trend lines, and a pasted-CSV line/scatter plotter.
+## Public-completeness phases
 
-P15 has no plotting-library dependency and does not use `eval` for function expressions. Charts are responsive local SVG. The function parser supports an explicit bounded expression grammar; statistical routines use standard numerical approximations and do not validate study design, sampling assumptions, causality, clinical significance, or publication requirements.
+The original 50-tool suite remains the hardened S-tier baseline. P1–P16 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, and subtitle workflows.
 
-### P16 — Subtitle & Media Completion
-P16 adds **12 public routes**, bringing Tiny Tools to **352**.
+After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters.
 
-Subtitle workflows add a cue editor, SRT ↔ WebVTT conversion, global time shifting, two-anchor drift resynchronization, frame-rate timing conversion, cleanup/validation, merging, splitting, and plain-text extraction. Transcript workflows add deterministic transcript → SRT/WebVTT cue generation and a reading-speed analyzer reporting characters per second, words per minute, overlaps, duration, and cue-level review flags.
+Current expansion-family counts after consolidation include:
 
-P16 stays dependency-free and text-based: subtitle files are parsed and generated locally without uploading content or introducing another media runtime. It targets ordinary SRT and WebVTT cue files rather than full ASS/SSA styling, WebVTT CSS/regions, SCC/EBU broadcast-caption formats, forced-alignment from audio, or professional delivery/QC specifications.
+- P1 dedicated PDF operations: **18** routes; create/export conversion entry points moved into Document Converter.
+- P2 device diagnostics: **16** routes.
+- P3 calculators: **46** routes.
+- P4 file/data/archive: **9** routes; pairwise CSV/JSON/XML/XLSX entries collapsed into Data Converter.
+- P5 image expansion: **19** routes; format-specific image converters collapsed into Image Converter.
+- P6 audio/video: **29** routes; Audio Converter replaces the WAV-only converter while Video Converter remains canonical.
+- P7 text/study: **22** routes.
+- P8 privacy/developer: **16** routes.
+- P9 everyday documents/planning: **13** routes.
+- P11 remaining gaps: **26** routes after YAML/TOML and Markdown format-pair routes moved into canonical converters.
+- P12 web/developer authoring: **18** routes.
+- P13 Office/eBook: **3** routes: Document Converter, DOCX metadata inspection, and EPUB metadata editing.
+- P14 developer/security: **13** routes.
+- P15 math/data visualization: **13** routes.
+- P16 subtitle/media: **9** routes after SRT/VTT/text pairwise conversion routes collapsed into Subtitle Converter.
 
 ## Tech stack
 
@@ -95,17 +93,16 @@ P16 stays dependency-free and text-based: subtitle files are parsed and generate
 - Vite
 - Tailwind CSS
 - Vitest
-- JSZip for local ZIP/package workflows including archives, Office Open XML, and EPUB
+- JSZip for local ZIP/package workflows including archives, Office Open XML, EPUB, and batch exports
 - Web Crypto for hashing, HMAC, AES-GCM, JWT signature verification, SRI hashes, and certificate fingerprints
 - Canvas, Web Audio/OfflineAudioContext, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
-- Dependency-free SVG graphing and numerical statistics for P15
-- Dependency-free SRT/WebVTT parsing, timing, validation, and transcript conversion for P16
+- Dependency-free SVG graphing and numerical statistics
+- Dependency-free SRT/WebVTT parsing and timing workflows
 - Local browser ML/OCR/background-removal runtimes for tools that require them
 - A shared dedicated local-first PDF workspace
-- Config-driven calculator formulas
-- Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-light text/study, privacy/developer, document/planning, P11/P12 authoring, P13 Office/eBook, P14 developer/security, P15 math/data, and P16 subtitle/transcript engines
 - Central idempotent public-catalog registration and full-catalog integrity tests
+
+No new runtime dependency or application backend is required by the unified converters.
 
 ## Local development
 
@@ -124,40 +121,41 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11–P16 catalogs and browser-tests the full **352-route** runtime catalog at desktop and mobile widths (**704 route renders**) before the later functional, capability, and compatibility gates.
+The historical R5 source certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends the currently published expansion catalogs and browser-tests the full **320-route** runtime catalog at desktop and mobile widths (**640 route renders**) before functional, capability, and compatibility gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook interchange opens and creates ZIP/XML packages locally through JSZip. P14 keys, certificates, policies, manifests, structured data, and HAR files are processed locally through deterministic code and Web Crypto. P15 equations, sample data, CSV data, statistics, and SVG plots remain local. P16 subtitle files, transcript text, cue timing, and readability analysis remain local. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook interchange opens and creates ZIP/XML packages locally through JSZip. Converter files are inspected, decoded, transformed, and exported in browser memory; browser-dependent codecs are exposed only when the runtime reports the necessary capability.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases and large ZIP/HAR/data/subtitle inputs are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12/P14/P15/P16 parsers and P13 Office/eBook converters deliberately document their supported subsets instead of claiming complete language, publishing, cryptographic-PKI, Word, PowerPoint, e-reader, statistical-package, professional-caption, SEO, or browser-policy semantics.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video and some compressed audio conversions are real-time browser exports; HEIC/HEIF and AVIF decoding/encoding depends on browser/OS support; large canvases and large ZIP/data/document inputs are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet/document conversion is deliberately content/value-oriented rather than a claim of full Microsoft Office rendering fidelity.
 
 ## Project structure
 
 ```text
 src/
-├── calculators/      P3 calculator catalog
+├── calculators/      Calculator catalog
 ├── components/       Shared application UI
-├── device/           P2 device task metadata
-├── everyday/         P9 document/planning metadata
-├── expansion/        P11 + P12 + P13 + P14 + P15 + P16 expansion metadata
-├── files/            P4 file-conversion metadata
-├── image/            P5 image metadata
-├── media/            P6 audio/video metadata
-├── pdf/              P1 PDF metadata/gateway routing
-├── privacy-dev/      P8 privacy/developer metadata
-├── text-study/       P7 text/study metadata
-├── registry/         Base registry, phase adapters, and central registration
+├── device/           Device diagnostics metadata
+├── everyday/         Document/planning metadata
+├── expansion/        P11–P16 expansion metadata
+├── files/            Data/archive/file metadata
+├── image/            Image metadata
+├── media/            Audio/video metadata
+├── pdf/              PDF metadata/gateway routing
+├── privacy-dev/      Privacy/developer metadata
+├── text-study/       Text/study metadata
+├── registry/         Registry, aliases, adapters, central registration
 ├── storage/          Local preferences/transfers
-├── tools/            Lazy-loaded tools/shared family shells
+├── tools/converters/ Unified upload-first converter workspaces
+├── tools/            Other lazy-loaded tool families
 ├── utilities/        Pure/shared processing helpers
 └── __tests__/        Regression and full-catalog integrity tests
 ```
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 through P16 now produce and certify a 352-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.
+**320 public routes** are published from the original baseline through P16 plus the converter-consolidation pass, preserving the fixed startup bundle budget, local-first architecture, legacy converter URL compatibility, and exhaustive desktop/mobile route acceptance.
