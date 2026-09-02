@@ -27,9 +27,10 @@ registerCalculatorTools();
 registerFileConversionTools();
 
 describe('P4 public file conversion catalog', () => {
-  it('contains exactly 18 unique public routes', () => {
-    expect(PUBLIC_FILE_CONVERSION_TASKS).toHaveLength(18);
-    expect(new Set(PUBLIC_FILE_CONVERSION_TASKS.map((task) => task.id)).size).toBe(18);
+  it('contains 9 unique routes after pairwise data conversion consolidation', () => {
+    expect(PUBLIC_FILE_CONVERSION_TASKS).toHaveLength(9);
+    expect(new Set(PUBLIC_FILE_CONVERSION_TASKS.map((task) => task.id)).size).toBe(9);
+    expect(PUBLIC_FILE_CONVERSION_TASKS.some((task)=>task.id==='data-converter')).toBe(true);
     for (const task of PUBLIC_FILE_CONVERSION_TASKS) {
       expect(TOOLS_REGISTRY.some((tool) => tool.id === task.id && tool.category === 'files')).toBe(true);
     }
@@ -40,6 +41,8 @@ describe('P4 public file conversion catalog', () => {
     expect(ids.has('7z-extractor')).toBe(false);
     expect(ids.has('docx-to-pdf')).toBe(false);
     expect(ids.has('pdf-to-docx')).toBe(false);
+    expect(ids.has('csv-to-json')).toBe(false);
+    expect(ids.has('xlsx-to-csv')).toBe(false);
   });
 });
 
