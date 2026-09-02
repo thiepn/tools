@@ -22,6 +22,7 @@ const EXTENSION_CATALOGS = [
   { phase: 'P15 math/data visualization', path: path.resolve(ROOT, 'src/expansion/publicP15Tasks.ts'), expected: 13, shape: 'tuple' },
   { phase: 'P16 subtitle/media completion', path: path.resolve(ROOT, 'src/expansion/publicP16Tasks.ts'), expected: 9, shape: 'tuple' },
   { phase: 'P17 file viewers/inspection', path: path.resolve(ROOT, 'src/expansion/publicP17Tasks.ts'), expected: 8, shape: 'tuple' },
+  { phase: 'P18 image enhancement/restoration', path: path.resolve(ROOT, 'src/expansion/publicP18Tasks.ts'), expected: 6, shape: 'tuple' },
 ];
 
 function readCatalogIds(catalog) {

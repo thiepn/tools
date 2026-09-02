@@ -3,15 +3,15 @@ import{TOOLS_REGISTRY,CATEGORIES,getToolById}from'../registry/tools';
 import{searchTools}from'../registry/search';
 import{registerAllPublicTools}from'../registry/register-all';
 registerAllPublicTools();
-const EXPECTED_TOOL_COUNT=328;
+const EXPECTED_TOOL_COUNT=334;
 describe('Tools Registry Verification',()=>{
- it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P17`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
+ it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P18`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique IDs with no duplicates',()=>{const ids=TOOLS_REGISTRY.map(t=>t.id);expect(new Set(ids).size).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique routes with no duplicates',()=>{const routes=TOOLS_REGISTRY.map(t=>t.route);expect(new Set(routes).size).toBe(EXPECTED_TOOL_COUNT)});
  it('ensures all tools belong to a registered category',()=>{const valid=new Set(CATEGORIES.map(c=>c.id));for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true)});
  it('ensures all tools have required metadata',()=>{for(const tool of TOOLS_REGISTRY){expect(tool.id).toBeTruthy();expect(tool.name).toBeTruthy();expect(tool.shortName).toBeTruthy();expect(tool.description).toBeTruthy();expect(tool.keywords.length).toBeGreaterThan(0);expect(tool.iconName).toBeTruthy();expect(typeof tool.component).toBe('object')}});
  it('finds every registered tool using getToolById',()=>{for(const tool of TOOLS_REGISTRY)expect(getToolById(tool.id)?.id).toBe(tool.id)});
- it('verifies established, consolidated converter, and viewer search intents through production ranking',()=>{
+ it('verifies established, converter, viewer, and restoration search intents through production ranking',()=>{
   expect(searchTools('diff').some(t=>t.id==='text-diff')).toBe(true);expect(searchTools('merge pdf').some(t=>t.id==='merge-pdf')).toBe(true);expect(searchTools('microphone test')[0]?.id).toBe('microphone-test');expect(searchTools('mortgage calculator')[0]?.id).toBe('mortgage-calculator');expect(searchTools('csv to excel')[0]?.id).toBe('data-converter');expect(searchTools('crop image')[0]?.id).toBe('crop-image');
   expect(searchTools('join audio')[0]?.id).toBe('audio-joiner');expect(searchTools('audio converter')[0]?.id).toBe('audio-converter');expect(searchTools('compress video')[0]?.id).toBe('video-compressor');expect(searchTools('video converter')[0]?.id).toBe('video-converter');expect(searchTools('video gif')[0]?.id).toBe('video-to-gif');expect(searchTools('burn subtitles')[0]?.id).toBe('subtitle-burner');
   expect(searchTools('readability checker')[0]?.id).toBe('readability-checker');expect(searchTools('markdown preview')[0]?.id).toBe('markdown-preview');expect(searchTools('flashcards')[0]?.id).toBe('flashcard-maker');expect(searchTools('spaced repetition')[0]?.id).toBe('spaced-repetition-planner');expect(searchTools('apa citation')[0]?.id).toBe('citation-formatter');
@@ -24,5 +24,6 @@ describe('Tools Registry Verification',()=>{
   expect(searchTools('function graph')[0]?.id).toBe('function-graph-plotter');expect(searchTools('binomial distribution')[0]?.id).toBe('binomial-distribution-calculator');expect(searchTools('confidence interval')[0]?.id).toBe('confidence-interval-calculator');expect(searchTools('histogram')[0]?.id).toBe('histogram-generator');expect(searchTools('csv plot')[0]?.id).toBe('csv-data-plotter');
   expect(searchTools('srt vtt')[0]?.id).toBe('subtitle-converter');expect(searchTools('subtitle shift')[0]?.id).toBe('subtitle-time-shifter');expect(searchTools('subtitle resync')[0]?.id).toBe('subtitle-resynchronizer');expect(searchTools('subtitle validator')[0]?.id).toBe('subtitle-cleaner-validator');expect(searchTools('subtitle cps')[0]?.id).toBe('subtitle-reading-speed-analyzer');
   expect(searchTools('docx viewer')[0]?.id).toBe('document-viewer');expect(searchTools('excel viewer')[0]?.id).toBe('spreadsheet-viewer');expect(searchTools('pptx viewer')[0]?.id).toBe('presentation-viewer');expect(searchTools('epub reader')[0]?.id).toBe('ebook-reader');expect(searchTools('json tree viewer')[0]?.id).toBe('structured-data-viewer');expect(searchTools('rar viewer')[0]?.id).toBe('archive-browser');expect(searchTools('svg inspector')[0]?.id).toBe('svg-viewer');expect(searchTools('font viewer')[0]?.id).toBe('font-viewer');
+  expect(searchTools('denoise image')[0]?.id).toBe('image-enhancer');expect(searchTools('object remover')[0]?.id).toBe('object-remover');expect(searchTools('old photo restoration')[0]?.id).toBe('old-photo-restorer');expect(searchTools('perspective correction')[0]?.id).toBe('perspective-corrector');expect(searchTools('deskew image')[0]?.id).toBe('auto-deskew-image');expect(searchTools('red eye remover')[0]?.id).toBe('red-eye-remover');
  });
 });

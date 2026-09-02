@@ -14,5 +14,6 @@ import{registerP14Tools}from'./p14-extension';
 import{registerP15Tools}from'./p15-extension';
 import{registerP16Tools}from'./p16-extension';
 import{registerP17Tools}from'./p17-extension';
-const REGISTRARS=[registerPdfPublicTools,registerDeviceDiagnosticTools,registerCalculatorTools,registerFileConversionTools,registerImageMicroTools,registerMediaMicroTools,registerTextStudyTools,registerPrivacyDevTools,registerEverydayTools,registerP11Tools,registerP12Tools,registerP13Tools,registerP14Tools,registerP15Tools,registerP16Tools,registerP17Tools];
+import{registerP18Tools}from'./p18-extension';
+const REGISTRARS=[registerPdfPublicTools,registerDeviceDiagnosticTools,registerCalculatorTools,registerFileConversionTools,registerImageMicroTools,registerMediaMicroTools,registerTextStudyTools,registerPrivacyDevTools,registerEverydayTools,registerP11Tools,registerP12Tools,registerP13Tools,registerP14Tools,registerP15Tools,registerP16Tools,registerP17Tools,registerP18Tools];
 export function registerAllPublicTools(){for(const register of REGISTRARS)register()}
