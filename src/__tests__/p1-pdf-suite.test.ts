@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATEGORIES, TOOLS_REGISTRY } from '../registry/tools';
 import { registerPdfPublicTools } from '../registry/pdf-extension';
+import { normalizeToolShellId } from '../registry/tool-shell-mode';
 import {
   PUBLIC_PDF_TASKS,
   buildPdfWorkspaceUrl,
@@ -16,38 +17,40 @@ const source = (file: string) => fs.readFileSync(path.resolve(process.cwd(), fil
 registerPdfPublicTools();
 
 describe('P1 public PDF suite', () => {
-  it('registers exactly 20 first-class public PDF task routes idempotently', () => {
-    expect(PUBLIC_PDF_TASKS).toHaveLength(20);
-    expect(TOOLS_REGISTRY.filter((tool) => tool.category === 'pdf')).toHaveLength(20);
+  it('registers 18 dedicated PDF manipulation routes idempotently after conversion consolidation', () => {
+    expect(PUBLIC_PDF_TASKS).toHaveLength(18);
+    expect(TOOLS_REGISTRY.filter((tool) => tool.category === 'pdf')).toHaveLength(18);
     expect(CATEGORIES.filter((category) => category.id === 'pdf')).toHaveLength(1);
 
     registerPdfPublicTools();
-    expect(TOOLS_REGISTRY.filter((tool) => tool.category === 'pdf')).toHaveLength(20);
+    expect(TOOLS_REGISTRY.filter((tool) => tool.category === 'pdf')).toHaveLength(18);
     expect(CATEGORIES.filter((category) => category.id === 'pdf')).toHaveLength(1);
   });
 
-  it('keeps Tiny Tools IDs and routes unique across the PDF task family', () => {
+  it('keeps Tiny Tools IDs and routes unique across the dedicated PDF task family', () => {
     const ids = PUBLIC_PDF_TASKS.map((task) => task.id);
     const hashes = PUBLIC_PDF_TASKS.map((task) => `${task.pdfTaskId}:${task.pdfHash}`);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.every((id) => /^[-a-z0-9]+$/.test(id))).toBe(true);
     expect(hashes.every(Boolean)).toBe(true);
+    expect(ids).not.toContain('create-pdf');
+    expect(ids).not.toContain('export-pdf');
   });
 
-  it('covers the highest-value general-public PDF intents with truthful discovery aliases', () => {
+  it('covers high-value PDF manipulation intents while conversion URLs resolve to the document converter', () => {
     expect(getPublicPdfTask('merge-pdf')?.pdfHash).toBe('#/merge');
     expect(getPublicPdfTask('compress-pdf')?.pdfTaskId).toBe('compress-pdf');
     expect(getPublicPdfTask('redact-pdf')?.pdfTaskId).toBe('mark-redaction');
     expect(getPublicPdfTask('scan-to-pdf')?.keywords).toContain('jpg to pdf');
-    expect(getPublicPdfTask('export-pdf')?.keywords).toEqual(expect.arrayContaining(['pdf to text', 'pdf to jpg', 'pdf to png', 'pdf to html']));
+    expect(normalizeToolShellId('create-pdf')).toBe('document-converter');
+    expect(normalizeToolShellId('export-pdf')).toBe('document-converter');
     expect(getPublicPdfTask('organize-pdf-pages')?.keywords).toEqual(expect.arrayContaining(['rotate pdf', 'delete pdf pages', 'extract pdf pages']));
     expect(getPublicPdfTask('watermark-pdf')?.keywords).toContain('page numbers pdf');
   });
 
-  it('resolves both direct and /tool/ Tiny Tools hashes to the PDF task ID', () => {
+  it('resolves direct and /tool/ Tiny Tools hashes lexically for PDF task IDs', () => {
     expect(readTinyToolsPdfTaskId('#/merge-pdf')).toBe('merge-pdf');
     expect(readTinyToolsPdfTaskId('#/tool/compress-pdf')).toBe('compress-pdf');
-    expect(readTinyToolsPdfTaskId('#/tool/export-pdf?from=search')).toBe('export-pdf');
   });
 
   it('uses the production PDF app on local dev and a same-origin sibling path in deployment', () => {
