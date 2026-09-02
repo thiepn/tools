@@ -2,7 +2,7 @@ export type FileConversionGroup='table'|'archive'|'inspect';
 export interface PublicFileConversionTask{id:string;name:string;shortName:string;description:string;keywords:string[];group:FileConversionGroup;featured:boolean}
 type Raw=[string,string,string,string,FileConversionGroup,string?,boolean?];
 const RAW:Raw[]=[
-['data-converter','Data & Spreadsheet Converter','Upload or paste CSV, JSON, XML, XLSX, YAML, or TOML and convert between compatible structured-data formats locally.','csv json xml xlsx yaml toml converter|spreadsheet converter|data converter|excel converter','table','Data Converter',true],
+['data-converter','Data & Spreadsheet Converter','Upload or paste CSV, JSON, XML, XLSX, YAML, or TOML and convert between compatible structured-data formats locally.','csv json xml xlsx yaml toml converter|spreadsheet converter|data converter|excel converter|convert json csv|json to csv|csv to json|csv to excel|excel to csv|csv to xlsx|xlsx to csv|json to xlsx|xlsx to json|xml to json|json to xml|xml to csv|csv to xml|yaml to json|json to yaml|toml to json|json to toml','table','Data Converter',true],
 ['csv-splitter','CSV Splitter','Split a large CSV into smaller valid CSV files while repeating the header row.','split csv|csv chunks|large csv splitter','table','Split CSV',true],
 ['csv-merger','CSV Merger','Merge multiple compatible CSV files into one clean file with one header row.','merge csv|combine csv files','table','Merge CSV',true],
 ['file-type-inspector','File Type Inspector','Inspect a local file using extension, MIME hint, signatures, size, and text/binary heuristics.','what file type|file inspector|mime type|magic bytes','inspect','File Inspector',true],
