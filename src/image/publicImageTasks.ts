@@ -18,7 +18,7 @@ const RAW:Raw[]=[
 ['background-changer','Image Background Changer','Remove a foreground background locally, then place the subject on a chosen solid-color background.','change photo background|replace background|white background|background color','Background Changer'],
 ['transparent-image-maker','Make Image Background Transparent','Create a transparent PNG using the existing local background-removal engine.','transparent background|remove background png|make png transparent','Transparent Background',true],
 ['contact-sheet-maker','Contact Sheet Maker','Lay multiple images out on a clean thumbnail grid and export one combined PNG sheet.','contact sheet|photo sheet|thumbnail sheet|image grid collage','Contact Sheet'],
-['image-upscaler','Image Upscaler','Upscale an image with high-quality browser resampling up to 4× without claiming AI-generated detail.','upscale image|enlarge photo|resize bigger|high quality upscale','Upscale Image'],
+['image-upscaler','Image Upscaler','Upscale an image up to 4× with staged high-quality browser resampling plus restrained local edge refinement, without claiming generative or AI-reconstructed detail.','upscale image|enlarge photo|resize bigger|high quality upscale|enhanced upscale|sharpen upscale','Upscale Image'],
 ['headshot-cropper','Headshot & Portrait Cropper','Create consistent portrait and headshot crops with guided framing and common square/portrait ratios.','headshot crop|portrait crop|linkedin photo|professional profile crop','Headshot Cropper'],
 ];
 export const PUBLIC_IMAGE_TASKS:PublicImageTask[]=RAW.map(([id,name,description,keys,shortName,featured])=>({id,name,shortName:shortName||name,description,keywords:keys.split('|'),featured}));
