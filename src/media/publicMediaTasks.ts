@@ -3,7 +3,7 @@ export interface PublicMediaTask{id:string;name:string;shortName:string;descript
 type Raw=[string,string,string,string?,boolean?];
 const A:Raw[]=[
 ['audio-joiner','Audio Joiner','Join audio files; export WAV.','combine audio',true],
-['audio-converter','Audio Converter','Convert common browser-decodable audio to WAV or AIFF PCM, plus compressed formats exposed by the current browser encoder.','audio converter mp3 wav wave aiff aif m4a aac ogg oga opus flac webm wma mp3 to wav wav to aiff aiff to wav flac to wav m4a to mp3',true],
+['audio-converter','Audio Converter','Convert common browser-decodable audio to guaranteed WAV, AIFF, or MP3 output, plus additional compressed formats exposed by the current browser encoder.','audio converter mp3 wav wave aiff aif m4a aac ogg oga opus flac webm wma mp3 to wav wav to mp3 wav to aiff aiff to wav aiff to mp3 flac to wav flac to mp3 m4a to mp3',true],
 ['audio-volume-changer','Audio Volume Changer','Change gain; export WAV.','louder'],
 ['audio-speed-changer','Audio Speed Changer','Change speed; changes pitch together with speed.','slow down'],
 ['audio-normalizer','Audio Normalizer','Normalize peaks and remove DC offset.','',true],
