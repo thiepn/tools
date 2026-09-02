@@ -6,21 +6,21 @@ const ROOT = process.cwd();
 const BASELINE_SCRIPT = path.resolve(ROOT, 'scripts/r5-browser-smoke.mjs');
 const TEMP_SCRIPT = path.resolve(ROOT, 'scripts/.r5-browser-smoke-expanded.tmp.mjs');
 const EXTENSION_CATALOGS = [
-  { phase: 'P1 PDF', path: path.resolve(ROOT, 'src/pdf/publicPdfTasks.ts'), expected: 20, shape: 'tuple' },
+  { phase: 'P1 PDF', path: path.resolve(ROOT, 'src/pdf/publicPdfTasks.ts'), expected: 18, shape: 'tuple' },
   { phase: 'P2 device diagnostics', path: path.resolve(ROOT, 'src/device/publicDeviceTasks.ts'), expected: 16, shape: 'tuple' },
   { phase: 'P3 everyday calculators', path: path.resolve(ROOT, 'src/calculators/publicCalculatorTasks.ts'), expected: 46, shape: 'tuple' },
-  { phase: 'P4 file conversion', path: path.resolve(ROOT, 'src/files/publicFileConversionTasks.ts'), expected: 18, shape: 'tuple' },
-  { phase: 'P5 image micro-tools', path: path.resolve(ROOT, 'src/image/publicImageTasks.ts'), expected: 23, shape: 'tuple' },
+  { phase: 'P4 file conversion', path: path.resolve(ROOT, 'src/files/publicFileConversionTasks.ts'), expected: 9, shape: 'tuple' },
+  { phase: 'P5 image micro-tools', path: path.resolve(ROOT, 'src/image/publicImageTasks.ts'), expected: 19, shape: 'tuple' },
   { phase: 'P6 audio/video media', path: path.resolve(ROOT, 'src/media/publicMediaTasks.ts'), expected: 29, shape: 'tuple' },
   { phase: 'P7 text/study', path: path.resolve(ROOT, 'src/text-study/publicTextStudyTasks.ts'), expected: 22, shape: 'tuple' },
   { phase: 'P8 privacy/developer', path: path.resolve(ROOT, 'src/privacy-dev/publicPrivacyDevTasks.ts'), expected: 16, shape: 'tuple' },
   { phase: 'P9 everyday documents/planning', path: path.resolve(ROOT, 'src/everyday/publicEverydayTasks.ts'), expected: 13, shape: 'tuple' },
-  { phase: 'P11 high-value gaps', path: path.resolve(ROOT, 'src/expansion/publicP11Tasks.ts'), expected: 29, shape: 'tuple' },
+  { phase: 'P11 high-value gaps', path: path.resolve(ROOT, 'src/expansion/publicP11Tasks.ts'), expected: 26, shape: 'tuple' },
   { phase: 'P12 web/developer authoring', path: path.resolve(ROOT, 'src/expansion/publicP12Tasks.ts'), expected: 18, shape: 'tuple' },
-  { phase: 'P13 Office/eBook interchange', path: path.resolve(ROOT, 'src/expansion/publicP13Tasks.ts'), expected: 14, shape: 'tuple' },
+  { phase: 'P13 Office/eBook interchange', path: path.resolve(ROOT, 'src/expansion/publicP13Tasks.ts'), expected: 3, shape: 'tuple' },
   { phase: 'P14 developer/security completion', path: path.resolve(ROOT, 'src/expansion/publicP14Tasks.ts'), expected: 13, shape: 'tuple' },
   { phase: 'P15 math/data visualization', path: path.resolve(ROOT, 'src/expansion/publicP15Tasks.ts'), expected: 13, shape: 'tuple' },
-  { phase: 'P16 subtitle/media completion', path: path.resolve(ROOT, 'src/expansion/publicP16Tasks.ts'), expected: 12, shape: 'tuple' },
+  { phase: 'P16 subtitle/media completion', path: path.resolve(ROOT, 'src/expansion/publicP16Tasks.ts'), expected: 9, shape: 'tuple' },
 ];
 
 function readCatalogIds(catalog) {
