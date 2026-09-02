@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **340 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, Office/eBook interchange, images, audio/video, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **352 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, file conversion, Office/eBook interchange, images, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -81,6 +81,13 @@ Graphing routes add a safe local function plotter and polynomial graph/root expl
 
 P15 has no plotting-library dependency and does not use `eval` for function expressions. Charts are responsive local SVG. The function parser supports an explicit bounded expression grammar; statistical routines use standard numerical approximations and do not validate study design, sampling assumptions, causality, clinical significance, or publication requirements.
 
+### P16 — Subtitle & Media Completion
+P16 adds **12 public routes**, bringing Tiny Tools to **352**.
+
+Subtitle workflows add a cue editor, SRT ↔ WebVTT conversion, global time shifting, two-anchor drift resynchronization, frame-rate timing conversion, cleanup/validation, merging, splitting, and plain-text extraction. Transcript workflows add deterministic transcript → SRT/WebVTT cue generation and a reading-speed analyzer reporting characters per second, words per minute, overlaps, duration, and cue-level review flags.
+
+P16 stays dependency-free and text-based: subtitle files are parsed and generated locally without uploading content or introducing another media runtime. It targets ordinary SRT and WebVTT cue files rather than full ASS/SSA styling, WebVTT CSS/regions, SCC/EBU broadcast-caption formats, forced-alignment from audio, or professional delivery/QC specifications.
+
 ## Tech stack
 
 - React 19
@@ -92,11 +99,12 @@ P15 has no plotting-library dependency and does not use `eval` for function expr
 - Web Crypto for hashing, HMAC, AES-GCM, JWT signature verification, SRI hashes, and certificate fingerprints
 - Canvas, Web Audio/OfflineAudioContext, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
 - Dependency-free SVG graphing and numerical statistics for P15
+- Dependency-free SRT/WebVTT parsing, timing, validation, and transcript conversion for P16
 - Local browser ML/OCR/background-removal runtimes for tools that require them
 - A shared dedicated local-first PDF workspace
 - Config-driven calculator formulas
 - Shared table/ZIP safety layers and shared image/audio/video processing engines
-- Dependency-light text/study, privacy/developer, document/planning, P11/P12 authoring, P13 Office/eBook, P14 developer/security, and P15 math/data engines
+- Dependency-light text/study, privacy/developer, document/planning, P11/P12 authoring, P13 Office/eBook, P14 developer/security, P15 math/data, and P16 subtitle/transcript engines
 - Central idempotent public-catalog registration and full-catalog integrity tests
 
 ## Local development
@@ -116,17 +124,17 @@ npm test
 npm run build
 ```
 
-The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11–P15 catalogs and browser-tests the full **340-route** runtime catalog at desktop and mobile widths (**680 route renders**) before the later functional, capability, and compatibility gates.
+The historical R5 source still certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends P1–P9 and P11–P16 catalogs and browser-tests the full **352-route** runtime catalog at desktop and mobile widths (**704 route renders**) before the later functional, capability, and compatibility gates.
 
 ## Privacy model
 
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook interchange opens and creates ZIP/XML packages locally through JSZip. P14 keys, certificates, policies, manifests, structured data, and HAR files are processed locally through deterministic code and Web Crypto. P15 equations, sample data, CSV data, statistics, and SVG plots remain local. Background removal uses the existing local model/fallback path rather than uploading images.
+Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook interchange opens and creates ZIP/XML packages locally through JSZip. P14 keys, certificates, policies, manifests, structured data, and HAR files are processed locally through deterministic code and Web Crypto. P15 equations, sample data, CSV data, statistics, and SVG plots remain local. P16 subtitle files, transcript text, cue timing, and readability analysis remain local. Background removal uses the existing local model/fallback path rather than uploading images.
 
 Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
 
 ## Browser limitations
 
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases and large ZIP/HAR/data inputs are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12/P14/P15 parsers and P13 Office/eBook converters deliberately document their supported subsets instead of claiming complete language, publishing, cryptographic-PKI, Word, PowerPoint, e-reader, statistical-package, SEO, or browser-policy semantics.
+Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; media decoders and MediaRecorder codecs differ; transformed video is a real-time browser export; video-to-audio depends on source codec support; HEIC/HEIF and AVIF decoding depends on browser/OS support; large canvases and large ZIP/HAR/data/subtitle inputs are memory-limited; local ML assets may need an initial static download; GZIP needs CompressionStream/DecompressionStream; and spreadsheet conversion is value-oriented rather than a full Excel rendering engine. Lightweight P7/P11/P12/P14/P15/P16 parsers and P13 Office/eBook converters deliberately document their supported subsets instead of claiming complete language, publishing, cryptographic-PKI, Word, PowerPoint, e-reader, statistical-package, professional-caption, SEO, or browser-policy semantics.
 
 ## Project structure
 
@@ -136,7 +144,7 @@ src/
 ├── components/       Shared application UI
 ├── device/           P2 device task metadata
 ├── everyday/         P9 document/planning metadata
-├── expansion/        P11 + P12 + P13 + P14 + P15 expansion metadata
+├── expansion/        P11 + P12 + P13 + P14 + P15 + P16 expansion metadata
 ├── files/            P4 file-conversion metadata
 ├── image/            P5 image metadata
 ├── media/            P6 audio/video metadata
@@ -152,4 +160,4 @@ src/
 
 ## Status
 
-The original 50 tools remain the hardened S-tier foundation. **P1 through P15 now produce and certify a 340-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.
+The original 50 tools remain the hardened S-tier foundation. **P1 through P16 now produce and certify a 352-route public catalog** while preserving truthful browser boundaries, shared-engine architecture, the fixed startup bundle budget, and exhaustive desktop/mobile route acceptance.
