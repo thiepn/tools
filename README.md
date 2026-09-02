@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **320 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, unified file conversion, images, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **328 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, calculators, unified file conversion, file viewing and inspection, images, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -64,13 +64,28 @@ TAR creation/extraction and standalone GZIP compression/decompression remain sep
 
 Former pairwise routes such as `csv-to-json`, `xlsx-to-csv`, `docx-to-markdown`, `markdown-to-epub`, `heic-image-converter`, `audio-to-wav-converter`, `srt-to-vtt`, `create-pdf`, and `export-pdf` are no longer duplicated in the dashboard. Their old hashes are normalized to the appropriate canonical converter so existing Tiny Tools bookmarks continue to resolve.
 
+## P17 — File Viewers & Inspection
+
+P17 adds eight local, upload-first viewers that complement conversion rather than duplicate it:
+
+- **Document Viewer** — DOCX, ODT, RTF, TXT, Markdown, and HTML with searchable extracted text, headings, and available metadata.
+- **Spreadsheet Viewer** — CSV, TSV, JSON/XML tables, XLS, XLSX, and ODS with worksheet navigation where available, search, sortable columns, and value-oriented inspection.
+- **Presentation Viewer** — PPTX and ODP with slide navigation and searchable slide text.
+- **EPUB Reader** — EPUB spine/chapter navigation, book metadata, search, and a local reading view.
+- **Structured Data Viewer** — JSON, XML, YAML, and TOML as expandable trees plus raw source and node/depth statistics.
+- **Archive Browser** — ZIP, TAR, TGZ/TAR.GZ, RAR, and 7Z inventory browsing with filtering, sizes, and safe-path handling.
+- **SVG Viewer & Inspector** — sanitized local preview, dimensions/viewBox, element inventory, warnings, and source inspection.
+- **Font Viewer & Character Map** — TTF, OTF, WOFF, and WOFF2 preview using the browser FontFace API, format/signature inspection, sample text, and a U+0020–U+00FF character map.
+
+These viewers deliberately avoid false fidelity claims. Office/OpenDocument previews are content-oriented; spreadsheet viewers do not reproduce macros/charts/pivot/layout state; presentation viewers do not reproduce animations or master-layout fidelity; EPUB scripts and DRM are not executed; and SVG active content is stripped from the preview. RAR/7Z browsing uses the same pinned local libarchive runtime as archive conversion.
+
 ## Public-completeness phases
 
-The original 50-tool suite remains the hardened S-tier baseline. P1–P16 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, and subtitle workflows.
+The original 50-tool suite remains the hardened S-tier baseline. P1–P17 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, subtitle workflows, and file viewing/inspection.
 
-After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increases coverage again without adding route sprawl.
+After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increased conversion breadth without route sprawl. P17 adds eight distinct viewer/inspection workflows, bringing the current catalog to **328 public routes**.
 
-Current expansion-family counts after consolidation remain:
+Current expansion-family counts:
 
 - P1 dedicated PDF operations: **18** routes.
 - P2 device diagnostics: **16** routes.
@@ -87,80 +102,4 @@ Current expansion-family counts after consolidation remain:
 - P14 developer/security: **13** routes.
 - P15 math/data visualization: **13** routes.
 - P16 subtitle/media: **9** routes.
-
-## Tech stack
-
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS
-- Vitest
-- JSZip for local ZIP/package workflows including archives, Office Open XML, EPUB, OpenDocument, and batch exports
-- Web Crypto for hashing, HMAC, AES-GCM, JWT signature verification, SRI hashes, and certificate fingerprints
-- Canvas, Web Audio/OfflineAudioContext, MediaRecorder/MediaStreams, Pointer Events, Gamepad, Fullscreen, Screen, CompressionStream/DecompressionStream, and Battery Status when available
-- Dependency-free SVG graphing and numerical statistics
-- Local subtitle parsing/generation for SRT, WebVTT, ASS/SSA, SBV, and TTML/DFXP
-- Local browser ML/OCR/background-removal runtimes for tools that require them
-- A shared dedicated local-first PDF workspace
-- Optional version-pinned, on-demand browser runtimes for legacy XLS, RAR/7Z reading, MP3 encoding, and HEIC/TIFF fallback decoding
-- Central idempotent public-catalog registration and full-catalog integrity tests
-
-The optional converter runtimes are not part of the initial application bundle and are fetched only for the formats that require them.
-
-## Local development
-
-Prerequisite: Node.js 22+.
-
-```bash
-npm ci
-npm run dev
-```
-
-## Validation
-
-```bash
-npm run typecheck
-npm test
-npm run build
-```
-
-The historical R5 source certifies the frozen 50-tool baseline first. The expansion-aware wrapper appends the currently published expansion catalogs and browser-tests the full **320-route** runtime catalog at desktop and mobile widths (**640 route renders**) before functional, capability, and compatibility gates.
-
-## Privacy model
-
-Tiny Tools has no application backend. User content is processed in browser memory or, for explicitly persistent tools such as the notepad and checklist, local browser storage. Image/media tools operate on local Blob/Canvas/Web Audio/MediaStream data. Office/eBook/OpenDocument interchange opens and creates ZIP/XML packages locally through JSZip. Converter files are decoded, transformed, and exported in browser memory. When an optional codec/parser runtime is required, the executable runtime is downloaded but the user's file is not uploaded to that runtime host.
-
-Currency conversion necessarily makes a small external request containing only the selected currency pair. It does not send the entered amount.
-
-## Browser limitations
-
-Capabilities vary by browser and operating system. Camera/microphone/screen/clipboard APIs require permissions; source media codecs still have to be decodable by the browser; transformed video and some compressed audio conversions are real-time browser exports; AVIF encoding and optional MediaRecorder formats vary by browser; large canvases and large archives/data/documents are memory-limited; local ML and optional conversion assets may need an initial static download; and spreadsheet/document conversion is deliberately content/value-oriented rather than a claim of full Microsoft Office or LibreOffice rendering fidelity.
-
-The suite targets generally used modern formats rather than every historical or specialist format. Examples intentionally outside the universal claim include legacy binary DOC/PPT, RAR/7Z **creation**, password-protected archives, DRM eBooks, professional broadcast captions, and arbitrary FFmpeg-grade video codec/container combinations.
-
-## Project structure
-
-```text
-src/
-├── calculators/      Calculator catalog
-├── components/       Shared application UI
-├── device/           Device diagnostics metadata
-├── everyday/         Document/planning metadata
-├── expansion/        P11–P16 expansion metadata
-├── files/            Data/archive/file metadata
-├── image/            Image metadata
-├── media/            Audio/video metadata
-├── pdf/              PDF metadata/gateway routing
-├── privacy-dev/      Privacy/developer metadata
-├── text-study/       Text/study metadata
-├── registry/         Registry, aliases, adapters, central registration
-├── storage/          Local preferences/transfers
-├── tools/converters/ Unified upload-first converter workspaces
-├── tools/            Other lazy-loaded tool families
-├── utilities/        Pure/shared processing helpers
-└── __tests__/        Regression and full-catalog integrity tests
-```
-
-## Status
-
-**320 public routes** are published from the original baseline through P16 plus converter consolidation. The mainstream-format expansion increases conversion breadth without reversing that consolidation, while preserving the fixed startup bundle budget, local-first architecture, legacy converter URL compatibility, and exhaustive desktop/mobile route acceptance.
+- P17 file viewers/inspection: **8** routes.
