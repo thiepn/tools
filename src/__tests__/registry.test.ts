@@ -3,9 +3,9 @@ import{TOOLS_REGISTRY,CATEGORIES,getToolById}from'../registry/tools';
 import{searchTools}from'../registry/search';
 import{registerAllPublicTools}from'../registry/register-all';
 registerAllPublicTools();
-const EXPECTED_TOOL_COUNT=340;
+const EXPECTED_TOOL_COUNT=352;
 describe('Tools Registry Verification',()=>{
- it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P15 expansion`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
+ it(`contains exactly ${EXPECTED_TOOL_COUNT} public tool routes after P16 expansion`,()=>{expect(TOOLS_REGISTRY.length).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique IDs with no duplicates',()=>{const ids=TOOLS_REGISTRY.map(t=>t.id);expect(new Set(ids).size).toBe(EXPECTED_TOOL_COUNT)});
  it('has unique routes with no duplicates',()=>{const routes=TOOLS_REGISTRY.map(t=>t.route);expect(new Set(routes).size).toBe(EXPECTED_TOOL_COUNT)});
  it('ensures all tools belong to a registered category',()=>{const valid=new Set(CATEGORIES.map(c=>c.id));for(const tool of TOOLS_REGISTRY)expect(valid.has(tool.category)).toBe(true)});
@@ -22,5 +22,6 @@ describe('Tools Registry Verification',()=>{
   expect(searchTools('docx markdown')[0]?.id).toBe('docx-to-markdown');expect(searchTools('markdown docx')[0]?.id).toBe('markdown-to-docx');expect(searchTools('epub markdown')[0]?.id).toBe('epub-to-markdown');expect(searchTools('epub metadata')[0]?.id).toBe('epub-metadata-editor');expect(searchTools('pptx text')[0]?.id).toBe('pptx-to-text');
   expect(searchTools('json structural diff')[0]?.id).toBe('json-structural-diff');expect(searchTools('jwt signature')[0]?.id).toBe('jwt-signature-verifier');expect(searchTools('x509 certificate')[0]?.id).toBe('x509-certificate-inspector');expect(searchTools('csp builder')[0]?.id).toBe('csp-builder');expect(searchTools('har viewer')[0]?.id).toBe('har-viewer');
   expect(searchTools('function graph')[0]?.id).toBe('function-graph-plotter');expect(searchTools('binomial distribution')[0]?.id).toBe('binomial-distribution-calculator');expect(searchTools('confidence interval')[0]?.id).toBe('confidence-interval-calculator');expect(searchTools('histogram')[0]?.id).toBe('histogram-generator');expect(searchTools('csv plot')[0]?.id).toBe('csv-data-plotter');
+  expect(searchTools('srt vtt')[0]?.id).toBe('srt-to-vtt');expect(searchTools('subtitle shift')[0]?.id).toBe('subtitle-time-shifter');expect(searchTools('subtitle resync')[0]?.id).toBe('subtitle-resynchronizer');expect(searchTools('subtitle validator')[0]?.id).toBe('subtitle-cleaner-validator');expect(searchTools('subtitle cps')[0]?.id).toBe('subtitle-reading-speed-analyzer');
  });
 });
