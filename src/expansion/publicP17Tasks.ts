@@ -1,7 +1,7 @@
 import type{ToolCategory}from'../types';
 export type P17ViewerKind='document'|'spreadsheet'|'presentation'|'ebook'|'structured'|'archive'|'svg'|'font';
 export interface PublicP17Task{id:string;name:string;shortName:string;description:string;keywords:string[];kind:P17ViewerKind;category:ToolCategory;featured:boolean}
-type Raw=[string,string,string,string,P17ViewerKind,ToolCategory,boolean?];
+type Raw=[string,string,string,string,string,P17ViewerKind,ToolCategory,boolean?];
 const RAW:Raw[]=[
 ['document-viewer','Document Viewer','Document Viewer','Open and inspect DOCX, ODT, RTF, TXT, Markdown, and HTML documents locally with searchable extracted content and metadata.','docx viewer|word viewer|odt viewer|rtf viewer|document reader|open docx|markdown viewer|html viewer','document','files',true],
 ['spreadsheet-viewer','Spreadsheet Viewer','Spreadsheet Viewer','Open CSV, TSV, JSON tables, XML tables, XLS, XLSX, and ODS locally with worksheet navigation, search, sorting, and row/column inspection.','excel viewer|xlsx viewer|xls viewer|ods viewer|csv viewer|spreadsheet reader|open excel|table viewer','spreadsheet','files',true],
