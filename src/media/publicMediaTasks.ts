@@ -3,7 +3,7 @@ export interface PublicMediaTask{id:string;name:string;shortName:string;descript
 type Raw=[string,string,string,string?,boolean?];
 const A:Raw[]=[
 ['audio-joiner','Audio Joiner','Join audio files; export WAV.','combine audio',true],
-['audio-to-wav-converter','Audio to WAV Converter','Convert browser-decodable audio to PCM WAV.','mp3',true],
+['audio-converter','Audio Converter','Upload a browser-decodable audio file and convert it to WAV or any compatible local MediaRecorder audio format exposed by the current browser.','audio converter mp3 wav m4a aac ogg opus flac webm',true],
 ['audio-volume-changer','Audio Volume Changer','Change gain; export WAV.','louder'],
 ['audio-speed-changer','Audio Speed Changer','Change speed; changes pitch together with speed.','slow down'],
 ['audio-normalizer','Audio Normalizer','Normalize peaks and remove DC offset.','',true],
@@ -18,7 +18,7 @@ const A:Raw[]=[
 const V:Raw[]=[
 ['merge-videos','Merge Videos','Join decodable clips with local real-time rendering.','combine clips',true],
 ['video-compressor','Video Compressor','Compress via local real-time resize and bitrate encoding.','reduce size',true],
-['video-converter','Video Converter','Convert to a MediaRecorder format supported by the current browser.','mp4 webm',true],
+['video-converter','Video Converter','Upload a browser-decodable video and convert it to a MediaRecorder container/codec supported by the current browser.','video converter mp4 webm mov m4v',true],
 ['video-to-audio','Video to Audio / WAV','Extract decodable video audio to PCM WAV.','',true],
 ['add-audio-to-video','Add Audio to Video','Mix another decoded audio track into video.','music'],
 ['add-text-to-video','Add Text to Video','Burn static text into video frames.','caption'],
@@ -28,7 +28,7 @@ const V:Raw[]=[
 ['webcam-video-recorder','Webcam Video Recorder','Record camera and microphone locally.','',true],
 ['add-logo-to-video','Add Image / Logo to Video','Overlay a local image or logo.','watermark'],
 ['subtitle-burner','Subtitle Burner','Burn SRT/WebVTT cues into video.','srt to video subtitles captions burn'],
-['video-to-gif','Video to GIF','Encode a short clip as animated GIF.','mp4 gif'],
+['video-to-gif','Video GIF Maker','Create a short animated GIF from a local video clip.','video gif maker animated gif'],
 ['video-speed-changer','Video Speed Changer','Change speed with real-time rendering.','slow motion'],
 ['crop-resize-video','Crop & Resize Video','Crop common ratios and resize.','vertical'],
 ['mute-video','Mute Video','Remove the source audio track.'],

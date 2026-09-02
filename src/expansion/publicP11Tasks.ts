@@ -4,9 +4,7 @@ export interface PublicP11Task{id:string;name:string;shortName:string;descriptio
 type Raw=[string,string,string,P11Engine,ToolCategory];
 const RAW:Raw[]=[
 ['yaml-formatter','YAML Formatter & Validator','yaml formatter','developer','developer'],
-['yaml-json-converter','YAML ↔ JSON Converter','yaml json','developer','developer'],
 ['toml-formatter','TOML Formatter & Validator','toml formatter','developer','developer'],
-['toml-json-converter','TOML ↔ JSON Converter','toml json','developer','developer'],
 ['sql-formatter','SQL Formatter & Minifier','sql formatter','developer','developer'],
 ['json-schema-validator','JSON Schema Validator','json schema','developer','developer'],
 ['jsonpath-tester','JSONPath Tester','jsonpath','developer','developer'],
@@ -15,7 +13,6 @@ const RAW:Raw[]=[
 ['cidr-subnet-calculator','CIDR / Subnet Calculator','subnet calculator','developer','developer'],
 ['user-agent-parser','User-Agent Parser','user agent','developer','developer'],
 ['utm-link-builder','UTM Link Builder','utm builder','developer','developer'],
-['markdown-html-converter','Markdown ↔ HTML Converter','markdown html','developer','text'],
 ['matrix-calculator','Matrix Calculator','matrix calculator','math','math'],
 ['combinations-permutations-calculator','Combinations & Permutations Calculator','ncr npr','math','math'],
 ['normal-distribution-calculator','Normal Distribution & Z-Score Calculator','normal z score','math','math'],

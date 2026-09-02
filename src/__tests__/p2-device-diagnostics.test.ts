@@ -23,10 +23,10 @@ describe('P2 public device diagnostics catalog', () => {
     expect(new Set(PUBLIC_DEVICE_TASKS.map((task) => task.id)).size).toBe(16);
   });
 
-  it('registers P2 idempotently after the P1 PDF family', () => {
+  it('registers P2 idempotently after the consolidated P1 PDF family', () => {
     registerDeviceDiagnosticTools();
     registerDeviceDiagnosticTools();
-    expect(TOOLS_REGISTRY).toHaveLength(86);
+    expect(TOOLS_REGISTRY).toHaveLength(84);
     expect(TOOLS_REGISTRY.filter((tool) => tool.category === 'device')).toHaveLength(16);
     expect(CATEGORIES.filter((category) => category.id === 'device')).toHaveLength(1);
   });

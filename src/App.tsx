@@ -10,6 +10,7 @@ import { TOOLS_REGISTRY, getToolById } from './registry/tools';
 import {
   getAppManagedRelatedToolIds,
   isAppManagedToolShell,
+  normalizeToolShellId,
 } from './registry/tool-shell-mode';
 import { consumePendingTransfer } from './storage/transfer';
 import { recordRecentTool } from './storage/preferences';
@@ -34,11 +35,14 @@ export default function App() {
     if (!cleanHash) return { view: 'dashboard' as const, toolId: null };
 
     if (cleanHash.startsWith('tool/')) {
-      const toolId = cleanHash.replace('tool/', '').split('?')[0].split('/')[0];
-      return { view: 'tool' as const, toolId };
+      const rawToolId = cleanHash.replace('tool/', '').split('?')[0].split('/')[0];
+      const toolId = normalizeToolShellId(rawToolId);
+      if (getToolById(toolId)) return { view: 'tool' as const, toolId };
+      return { view: 'dashboard' as const, toolId: null };
     }
 
-    const directTool = TOOLS_REGISTRY.find((tool) => tool.id === cleanHash);
+    const directId = normalizeToolShellId(cleanHash.split('?')[0].split('/')[0]);
+    const directTool = TOOLS_REGISTRY.find((tool) => tool.id === directId);
     if (directTool) return { view: 'tool' as const, toolId: directTool.id };
 
     return { view: 'dashboard' as const, toolId: null };
