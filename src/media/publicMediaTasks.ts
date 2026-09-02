@@ -3,7 +3,7 @@ export interface PublicMediaTask{id:string;name:string;shortName:string;descript
 type Raw=[string,string,string,string?,boolean?];
 const A:Raw[]=[
 ['audio-joiner','Audio Joiner','Join audio files; export WAV.','combine audio',true],
-['audio-converter','Audio Converter','Upload a browser-decodable audio file and convert it to WAV or any compatible local MediaRecorder audio format exposed by the current browser.','audio converter mp3 wav m4a aac ogg opus flac webm',true],
+['audio-converter','Audio Converter','Convert common browser-decodable audio to guaranteed WAV, AIFF, or MP3 output, plus additional compressed formats exposed by the current browser encoder.','audio converter mp3 wav wave aiff aif m4a aac ogg oga opus flac webm wma mp3 to wav wav to mp3 wav to aiff aiff to wav aiff to mp3 flac to wav flac to mp3 m4a to mp3',true],
 ['audio-volume-changer','Audio Volume Changer','Change gain; export WAV.','louder'],
 ['audio-speed-changer','Audio Speed Changer','Change speed; changes pitch together with speed.','slow down'],
 ['audio-normalizer','Audio Normalizer','Normalize peaks and remove DC offset.','',true],
@@ -18,7 +18,7 @@ const A:Raw[]=[
 const V:Raw[]=[
 ['merge-videos','Merge Videos','Join decodable clips with local real-time rendering.','combine clips',true],
 ['video-compressor','Video Compressor','Compress via local real-time resize and bitrate encoding.','reduce size',true],
-['video-converter','Video Converter','Upload a browser-decodable video and convert it to a MediaRecorder container/codec supported by the current browser.','video converter mp4 webm mov m4v',true],
+['video-converter','Video Converter','Convert common browser-decodable MP4, MOV/M4V, WebM, MKV, AVI, MPEG/MPG, 3GP, WMV, or FLV sources to a local MediaRecorder output supported by the current browser.','video converter mp4 webm mov m4v mkv avi mpeg mpg 3gp wmv flv mp4 to webm webm to mp4 mov to mp4 mkv to mp4 avi to mp4',true],
 ['video-to-audio','Video to Audio / WAV','Extract decodable video audio to PCM WAV.','',true],
 ['add-audio-to-video','Add Audio to Video','Mix another decoded audio track into video.','music'],
 ['add-text-to-video','Add Text to Video','Burn static text into video frames.','caption'],
