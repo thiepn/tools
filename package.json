@@ -8,10 +8,13 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
+    "build:verify": "node scripts/verify-production-build.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "browser:smoke": "node scripts/r5-browser-smoke-expanded.mjs",
+    "browser:navigation": "node scripts/navigation-reliability-smoke.mjs",
+    "browser:module-recovery": "node scripts/module-recovery-smoke.mjs",
     "browser:functional": "node scripts/r6-functional-smoke.mjs",
     "browser:capabilities": "node scripts/r7-capability-ci.mjs",
     "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs"

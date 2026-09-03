@@ -15,10 +15,22 @@ import {
 import { consumePendingTransfer } from './storage/transfer';
 import { recordRecentTool } from './storage/preferences';
 import { getDocumentMetadata, isTextEntryTarget } from './utilities/navigation';
+import { clearModuleLoadRecoveryAttempt } from './utilities/module-load-recovery';
 
 interface ActiveTransfer {
   toolId: string;
   value: string;
+}
+
+function ModuleRecoverySuccess({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Keep the one-reload guard until the requested route has actually rendered.
+    // If the replacement deployment is also broken, the marker remains set and
+    // the ErrorBoundary can stop rather than entering a refresh loop.
+    clearModuleLoadRecoveryAttempt();
+  }, []);
+
+  return <>{children}</>;
 }
 
 export default function App() {
@@ -191,11 +203,13 @@ export default function App() {
 
       <main id="main-content" ref={mainRef} tabIndex={-1} className="flex-1 focus:outline-none">
         {routeInfo.view === 'dashboard' || !activeToolDef || !ToolComponent ? (
-          <Dashboard
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onOpenSmartPaste={openSmartPaste}
-          />
+          <ModuleRecoverySuccess>
+            <Dashboard
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onOpenSmartPaste={openSmartPaste}
+            />
+          </ModuleRecoverySuccess>
         ) : (
           <ErrorBoundary key={activeToolDef.id} fallbackToolId={activeToolDef.id}>
             <Suspense
@@ -210,7 +224,7 @@ export default function App() {
                 </div>
               }
             >
-              {renderActiveTool()}
+              <ModuleRecoverySuccess>{renderActiveTool()}</ModuleRecoverySuccess>
             </Suspense>
           </ErrorBoundary>
         )}
