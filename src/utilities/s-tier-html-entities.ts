@@ -26,6 +26,6 @@ export function decodeHtmlEntitiesBasic(input:string):string{
  });
 }
 
-export function entityStats(input:string){const matches=input.match(/&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]+);/gi)??[];return{entities:matches.length,named:matches.filter(x=>!x.startsWith('&#')).length,numeric:matches.filter(x=>x.startsWith('&#')).length,unique:new Set(matches.map(x=>x.toLowerCase())).size};}
+export function entityStats(input:string){const matches:string[]=input.match(/&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]+);/gi)??[];return{entities:matches.length,named:matches.filter(x=>!x.startsWith('&#')).length,numeric:matches.filter(x=>x.startsWith('&#')).length,unique:new Set(matches.map(x=>x.toLowerCase())).size};}
 
 export function entityReference(){return[...NAMED_BY_CHAR.entries()].map(([char,name])=>({char,name:`&${name};`,decimal:`&#${char.codePointAt(0)};`,hex:`&#x${char.codePointAt(0)!.toString(16).toUpperCase()};`}));}
