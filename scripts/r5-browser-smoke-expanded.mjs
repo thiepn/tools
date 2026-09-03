@@ -24,13 +24,16 @@ const EXTENSION_CATALOGS = [
   { phase: 'P17 file viewers/inspection', path: path.resolve(ROOT, 'src/expansion/publicP17Tasks.ts'), expected: 8, shape: 'tuple' },
   { phase: 'P18 image enhancement/restoration', path: path.resolve(ROOT, 'src/expansion/publicP18Tasks.ts'), expected: 6, shape: 'tuple' },
   { phase: 'P19 network/browser diagnostics', path: path.resolve(ROOT, 'src/expansion/publicP19Tasks.ts'), expected: 9, shape: 'tuple' },
+  { phase: 'P20 final general utilities', path: path.resolve(ROOT, 'src/expansion/publicP20Tasks.ts'), expected: 8, shape: 'multiline-tuple' },
 ];
 
 function readCatalogIds(catalog) {
   const source = readFileSync(catalog.path, 'utf8');
   const pattern = catalog.shape === 'tuple'
     ? /^\s*\['([^']+)'/gm
-    : /^\s{2,4}(?:\{ )?id:\s*'([^']+)'/gm;
+    : catalog.shape === 'multiline-tuple'
+      ? /^\s*\[\s*\n\s*'([^']+)'/gm
+      : /^\s{2,4}(?:\{ )?id:\s*'([^']+)'/gm;
   return [...source.matchAll(pattern)].map((match) => match[1]);
 }
 
