@@ -7,8 +7,10 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && node scripts/write-build-generation.mjs",
     "build:verify": "node scripts/verify-production-build.mjs",
+    "build:retain-previous": "node scripts/retain-previous-generation.mjs",
+    "build:retention-test": "node scripts/retention-smoke.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -17,7 +19,8 @@
     "browser:module-recovery": "node scripts/module-recovery-smoke.mjs",
     "browser:functional": "node scripts/r6-functional-smoke.mjs",
     "browser:capabilities": "node scripts/r7-capability-ci.mjs",
-    "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs"
+    "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs",
+    "live:assets": "node scripts/live-asset-integrity.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

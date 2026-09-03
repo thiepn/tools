@@ -1,4 +1,5 @@
-const MODULE_LOAD_RECOVERY_KEY = 'tiny-tools:module-load-recovery:v1';
+export const MODULE_LOAD_RECOVERY_KEY = 'tiny-tools:module-load-recovery:v1';
+export const MODULE_LOAD_RECOVERY_QUERY_PARAM = '__tiny_tools_recovery';
 
 const MODULE_LOAD_ERROR_PATTERNS = [
   /failed to fetch dynamically imported module/i,
@@ -34,6 +35,39 @@ export function isModuleLoadError(error: unknown): boolean {
   return MODULE_LOAD_ERROR_PATTERNS.some((pattern) => pattern.test(description));
 }
 
+export function buildModuleLoadRecoveryUrl(
+  href: string,
+  token: string = Date.now().toString(36)
+): string {
+  const url = new URL(href);
+  url.searchParams.set(MODULE_LOAD_RECOVERY_QUERY_PARAM, token);
+  return url.href;
+}
+
+function hasUrlRecoveryAttempt(): boolean {
+  try {
+    return new URL(window.location.href).searchParams.has(MODULE_LOAD_RECOVERY_QUERY_PARAM);
+  } catch {
+    return false;
+  }
+}
+
+function clearUrlRecoveryAttempt(): void {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(MODULE_LOAD_RECOVERY_QUERY_PARAM)) return;
+    url.searchParams.delete(MODULE_LOAD_RECOVERY_QUERY_PARAM);
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`
+    );
+  } catch {
+    // The URL marker is only a fallback guard. If history mutation is blocked,
+    // leaving it in place is safer than risking a reload loop.
+  }
+}
+
 function getRecoveryStorage(): Storage | null {
   try {
     return window.sessionStorage;
@@ -42,7 +76,7 @@ function getRecoveryStorage(): Storage | null {
   }
 }
 
-export function hasModuleLoadRecoveryAttempt(): boolean {
+function hasStorageRecoveryAttempt(): boolean {
   const storage = getRecoveryStorage();
   if (!storage) return false;
   try {
@@ -52,15 +86,39 @@ export function hasModuleLoadRecoveryAttempt(): boolean {
   }
 }
 
-export function clearModuleLoadRecoveryAttempt(): void {
+function setStorageRecoveryAttempt(): boolean {
+  const storage = getRecoveryStorage();
+  if (!storage) return false;
+  try {
+    storage.setItem(
+      MODULE_LOAD_RECOVERY_KEY,
+      JSON.stringify({ href: window.location.href, attemptedAt: Date.now() })
+    );
+    return storage.getItem(MODULE_LOAD_RECOVERY_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+function clearStorageRecoveryAttempt(): void {
   const storage = getRecoveryStorage();
   if (!storage) return;
   try {
     storage.removeItem(MODULE_LOAD_RECOVERY_KEY);
   } catch {
-    // Storage can be blocked in hardened/private browser contexts. Recovery is
-    // intentionally best-effort rather than risking a reload loop.
+    // URL-based recovery remains available when storage access is blocked.
   }
+}
+
+export function hasModuleLoadRecoveryAttempt(): boolean {
+  // Check the URL first because it remains available when sessionStorage is
+  // blocked by private/hardened browser settings.
+  return hasUrlRecoveryAttempt() || hasStorageRecoveryAttempt();
+}
+
+export function clearModuleLoadRecoveryAttempt(): void {
+  clearStorageRecoveryAttempt();
+  clearUrlRecoveryAttempt();
 }
 
 export function isModuleLoadRecoveryScheduled(): boolean {
@@ -68,24 +126,31 @@ export function isModuleLoadRecoveryScheduled(): boolean {
 }
 
 export function attemptModuleLoadRecovery(error: unknown): boolean {
-  if (!isModuleLoadError(error) || reloadScheduled) return false;
+  if (!isModuleLoadError(error) || reloadScheduled || hasModuleLoadRecoveryAttempt()) {
+    return false;
+  }
 
-  const storage = getRecoveryStorage();
-  if (!storage) return false;
-
+  // sessionStorage is useful as a redundant guard, but it is no longer required.
+  // The URL marker survives the reload even in browsers that completely block
+  // storage and also cache-busts the document URL so the latest index is fetched.
+  const storageMarked = setStorageRecoveryAttempt();
+  let recoveryUrl: string;
   try {
-    if (storage.getItem(MODULE_LOAD_RECOVERY_KEY) !== null) return false;
-    storage.setItem(
-      MODULE_LOAD_RECOVERY_KEY,
-      JSON.stringify({ href: window.location.href, attemptedAt: Date.now() })
-    );
+    recoveryUrl = buildModuleLoadRecoveryUrl(window.location.href);
   } catch {
+    if (storageMarked) clearStorageRecoveryAttempt();
     return false;
   }
 
   reloadScheduled = true;
-  window.location.reload();
-  return true;
+  try {
+    window.location.replace(recoveryUrl);
+    return true;
+  } catch {
+    reloadScheduled = false;
+    if (storageMarked) clearStorageRecoveryAttempt();
+    return false;
+  }
 }
 
 export function installVitePreloadErrorRecovery(): () => void {

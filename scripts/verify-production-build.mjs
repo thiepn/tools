@@ -6,6 +6,7 @@ const ROOT = process.cwd();
 const DIST = path.resolve(ROOT, 'dist');
 const SRC = path.resolve(ROOT, 'src');
 const MANIFEST_PATH = path.join(DIST, '.vite', 'manifest.json');
+const GENERATION_PATH = path.join(DIST, 'build-generation.json');
 const EXPECTED_BASE = '/tools/';
 const EXPECTED_TOOL_COUNT = 343;
 const SOURCE_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js', '.mjs'];
@@ -74,6 +75,19 @@ async function walkSource(directory) {
   return output;
 }
 
+async function walkDistPublic(directory = DIST, relativeBase = '') {
+  const output = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const relative = path.posix.join(relativeBase, entry.name);
+    if (relative === '.vite' || relative.startsWith('.vite/')) continue;
+    if (relative === 'build-generation.json' || relative === 'retained-generation.json') continue;
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) output.push(...await walkDistPublic(target, relative));
+    else if (entry.isFile()) output.push(relative);
+  }
+  return output;
+}
+
 function distPathFromPublicUrl(assetUrl) {
   const normalized = assetUrl.split(/[?#]/, 1)[0];
   if (normalized.startsWith(EXPECTED_BASE)) {
@@ -104,6 +118,59 @@ async function verifyIndex() {
     const file = distPathFromPublicUrl(asset);
     if (!file || !await exists(file)) fail(`${label} does not exist in dist: ${asset}`);
   }
+}
+
+async function verifyBuildGeneration() {
+  if (!await exists(GENERATION_PATH)) {
+    fail('build-generation.json is missing; npm run build must record the exact deployable generation.');
+    return 0;
+  }
+
+  let generation;
+  try {
+    generation = JSON.parse(await readFile(GENERATION_PATH, 'utf8'));
+  } catch (error) {
+    fail(`build-generation.json is not valid JSON: ${error.message}`);
+    return 0;
+  }
+
+  if (generation.schemaVersion !== 1) fail(`Unsupported build-generation schema: ${generation.schemaVersion}`);
+  if (generation.base !== EXPECTED_BASE) fail(`build-generation base must be ${EXPECTED_BASE}; received ${generation.base}`);
+  if (typeof generation.entry !== 'string' || !generation.entry.startsWith(EXPECTED_BASE)) {
+    fail(`build-generation entry is malformed: ${generation.entry}`);
+  }
+  if (!Array.isArray(generation.files) || generation.files.length === 0) {
+    fail('build-generation files must be a non-empty array.');
+    return 0;
+  }
+
+  const declared = new Set();
+  for (const file of generation.files) {
+    if (typeof file !== 'string' || !file) {
+      fail('build-generation contains a non-string/empty file path.');
+      continue;
+    }
+    const normalized = file.replaceAll('\\', '/');
+    if (normalized.startsWith('/') || normalized.split('/').includes('..') || normalized.startsWith('.vite/')) {
+      fail(`build-generation contains unsafe/non-public file path: ${file}`);
+      continue;
+    }
+    if (declared.has(normalized)) fail(`build-generation contains duplicate file: ${normalized}`);
+    declared.add(normalized);
+    if (!await exists(path.join(DIST, ...normalized.split('/')))) {
+      fail(`build-generation references missing file: ${normalized}`);
+    }
+  }
+
+  const actual = new Set((await walkDistPublic()).sort());
+  for (const file of actual) if (!declared.has(file)) fail(`Public build file is missing from build-generation.json: ${file}`);
+  for (const file of declared) if (!actual.has(file)) fail(`build-generation.json declares a non-current public file: ${file}`);
+
+  const entryRelative = generation.entry.slice(EXPECTED_BASE.length);
+  if (!declared.has(entryRelative)) fail(`build-generation entry is not included in its file set: ${entryRelative}`);
+  if (!declared.has('index.html')) fail('build-generation does not include index.html.');
+
+  return declared.size;
 }
 
 async function verifyManifest() {
@@ -214,6 +281,7 @@ async function verifyRegisteredTools() {
 }
 
 await verifyIndex();
+const generationFiles = await verifyBuildGeneration();
 const manifestBySource = await verifyManifest();
 const { dynamicImports, registryLazyImports } = await verifySourceDynamicImports(manifestBySource);
 const registeredTools = await verifyRegisteredTools();
@@ -229,4 +297,5 @@ console.log(`- ${registeredTools} registered public tool routes audited`);
 console.log(`- ${registryLazyImports.length} registry lazy-import sites resolved to emitted manifest chunks`);
 console.log(`- ${dynamicImports.length} relative source dynamic imports resolved case-sensitively`);
 console.log(`- ${checkedFiles.size} manifest-emitted JS/CSS/asset outputs exist`);
+console.log(`- ${generationFiles} public files are recorded exactly in build-generation.json`);
 console.log(`- index entry assets are pinned under ${EXPECTED_BASE}`);
