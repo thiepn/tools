@@ -53,10 +53,12 @@ const oldAssertion = "if (state.uniqueTools !== 50) findings.push(`dashboard exp
 const newAssertion = `if (state.uniqueTools !== ${expectedRuntimeTools}) findings.push(\`dashboard exposes \${state.uniqueTools}/${expectedRuntimeTools} tool links\`);`;
 const oldToolIds = 'const toolIds = await getToolIds();';
 const newToolIds = `const toolIds = [...await getToolIds(), ...${JSON.stringify(extensionIds)}];`;
-for (const required of [oldAssertion, oldToolIds]) if (!baselineSource.includes(required)) throw new Error('R5 baseline structure changed; review the expansion wrapper before continuing.');
-const patchedSource = baselineSource.replace(oldAssertion,newAssertion).replace(oldToolIds,newToolIds)
+const oldWaitDefault = 'async function waitFor(check, label, timeoutMs = 12_000) {';
+const newWaitDefault = 'async function waitFor(check, label, timeoutMs = 25_000) {';
+for (const required of [oldAssertion, oldToolIds, oldWaitDefault]) if (!baselineSource.includes(required)) throw new Error('R5 baseline structure changed; review the expansion wrapper before continuing.');
+const patchedSource = baselineSource.replace(oldAssertion,newAssertion).replace(oldToolIds,newToolIds).replace(oldWaitDefault,newWaitDefault)
   .replace("console.log('- 50/50 routes rendered at 1440px');", `console.log('- ${expectedRuntimeTools}/${expectedRuntimeTools} routes rendered at 1440px');`)
   .replace("console.log('- 50/50 routes rendered at 320px');", `console.log('- ${expectedRuntimeTools}/${expectedRuntimeTools} routes rendered at 320px');`)
   .replace("console.log('- dashboard exposes all 50 tools at both viewports');", `console.log('- dashboard exposes all ${expectedRuntimeTools} tools at both viewports');`);
-if (patchedSource===baselineSource||patchedSource.includes(oldAssertion)||patchedSource.includes(oldToolIds)) throw new Error('Unable to apply the expansion-aware R5 transformations.');
+if (patchedSource===baselineSource||patchedSource.includes(oldAssertion)||patchedSource.includes(oldToolIds)||patchedSource.includes(oldWaitDefault)) throw new Error('Unable to apply the expansion-aware R5 transformations.');
 try { writeFileSync(TEMP_SCRIPT,patchedSource,'utf8');const result=spawnSync(process.execPath,[TEMP_SCRIPT],{cwd:ROOT,stdio:'inherit',env:process.env});if(result.error)throw result.error;process.exitCode=result.status??1; } finally { try{rmSync(TEMP_SCRIPT,{force:true});}catch{} }
