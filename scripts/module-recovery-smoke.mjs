@@ -13,6 +13,7 @@ const DEBUG_PORT = 9228;
 const BASE_PATH = '/tools/';
 const BASE_URL = `http://${HOST}:${PORT}${BASE_PATH}`;
 const RECOVERY_KEY = 'tiny-tools:module-load-recovery:v1';
+const RECOVERY_PARAM = '__tiny_tools_recovery';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const MIME = new Map([
@@ -129,8 +130,7 @@ if (!entryUrl || !entryUrl.startsWith(BASE_PATH)) {
   throw new Error(`Expected a ${BASE_PATH} production entry script; received ${entryUrl ?? 'none'}.`);
 }
 const entryRelative = entryUrl.slice(BASE_PATH.length);
-const entryPath = path.join(DIST, entryRelative);
-const currentEntry = await readFile(entryPath, 'utf8');
+const currentEntry = await readFile(path.join(DIST, entryRelative), 'utf8');
 const qrChunk = currentEntry.match(/QrStudioTool-[A-Za-z0-9_-]+\.js/)?.[0];
 if (!qrChunk) throw new Error('Could not identify the QR Studio production chunk in the main entry.');
 
@@ -142,13 +142,7 @@ if (versionAEntry === currentEntry || versionBEntry === currentEntry) {
   throw new Error('Unable to synthesize stale version entry bundles.');
 }
 
-const scenario = {
-  mode: 'recover',
-  generation: 'A',
-  documentRequests: 0,
-  staleRequests: 0,
-};
-
+const scenario = { mode: 'recover', generation: 'A', documentRequests: 0, staleRequests: 0 };
 function resetScenario(mode) {
   scenario.mode = mode;
   scenario.generation = 'A';
@@ -158,10 +152,9 @@ function resetScenario(mode) {
 
 function resolveDistPath(requestPath) {
   if (!requestPath.startsWith(BASE_PATH)) return null;
-  const relative = requestPath.slice(BASE_PATH.length);
-  const candidate = path.resolve(DIST, relative);
-  const safe = path.relative(DIST, candidate);
-  if (safe.startsWith('..') || path.isAbsolute(safe)) return null;
+  const candidate = path.resolve(DIST, requestPath.slice(BASE_PATH.length));
+  const relative = path.relative(DIST, candidate);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
   return candidate;
 }
 
@@ -171,18 +164,12 @@ const server = createServer(async (request, response) => {
     const pathname = decodeURIComponent(url.pathname);
     const headers = { 'Cache-Control': 'no-store' };
 
-    if (pathname === '/favicon.ico') {
-      response.writeHead(204, headers).end();
-      return;
-    }
-
+    if (pathname === '/favicon.ico') return void response.writeHead(204, headers).end();
     if (pathname === '/tools' || pathname === BASE_PATH) {
       scenario.documentRequests += 1;
       response.writeHead(200, { ...headers, 'Content-Type': 'text/html; charset=utf-8' });
-      response.end(html);
-      return;
+      return void response.end(html);
     }
-
     if (pathname === `${BASE_PATH}${entryRelative}`) {
       const body = scenario.generation === 'A'
         ? versionAEntry
@@ -190,31 +177,22 @@ const server = createServer(async (request, response) => {
           ? currentEntry
           : versionBEntry;
       response.writeHead(200, { ...headers, 'Content-Type': 'text/javascript; charset=utf-8' });
-      response.end(body);
-      return;
+      return void response.end(body);
     }
-
     if (pathname.endsWith(`/${staleA}`)) {
       scenario.staleRequests += 1;
       scenario.generation = 'B';
       response.writeHead(404, { ...headers, 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end('Version A chunk was removed by deployment B.');
-      return;
+      return void response.end('Version A chunk was removed by deployment B.');
     }
-
     if (pathname.endsWith(`/${staleB}`)) {
       scenario.staleRequests += 1;
       response.writeHead(404, { ...headers, 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end('Version B chunk is also unavailable.');
-      return;
+      return void response.end('Version B chunk is also unavailable.');
     }
 
     const file = resolveDistPath(pathname);
-    if (!file) {
-      response.writeHead(404, headers).end('Not found');
-      return;
-    }
-
+    if (!file) return void response.writeHead(404, headers).end('Not found');
     const info = await stat(file);
     const target = info.isDirectory() ? path.join(file, 'index.html') : file;
     response.writeHead(200, {
@@ -227,7 +205,6 @@ const server = createServer(async (request, response) => {
     else response.writeHead(500).end('Server error');
   }
 });
-
 await new Promise((resolve, reject) => {
   server.once('error', reject);
   server.listen(PORT, HOST, resolve);
@@ -235,34 +212,25 @@ await new Promise((resolve, reject) => {
 
 const chromeBinary = findChrome();
 const profile = await mkdtemp(path.join(tmpdir(), 'tiny-tools-module-recovery-'));
-const chrome = spawn(
-  chromeBinary,
-  [
-    '--headless=new',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-background-networking',
-    '--disable-component-update',
-    '--disable-sync',
-    '--metrics-recording-only',
-    `--remote-debugging-port=${DEBUG_PORT}`,
-    `--user-data-dir=${profile}`,
-    'about:blank',
-  ],
-  { stdio: ['ignore', 'ignore', 'pipe'] }
-);
-
+const chrome = spawn(chromeBinary, [
+  '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--no-default-browser-check',
+  '--disable-background-networking', '--disable-component-update', '--disable-sync', '--metrics-recording-only',
+  `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${profile}`, 'about:blank',
+], { stdio: ['ignore', 'ignore', 'pipe'] });
 let chromeStderr = '';
 chrome.stderr.on('data', (chunk) => { chromeStderr += chunk.toString(); });
 
-async function withTarget(run) {
+async function withTarget({ blockSessionStorage = false } = {}, run) {
   const target = await createTarget();
   const cdp = new Cdp(target.webSocketDebuggerUrl);
   try {
     await cdp.open();
     await Promise.all([cdp.send('Page.enable'), cdp.send('Runtime.enable')]);
+    if (blockSessionStorage) {
+      await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `Object.defineProperty(window, 'sessionStorage', { configurable: true, get() { throw new DOMException('sessionStorage blocked for test', 'SecurityError'); } });`,
+      });
+    }
     return await run(cdp);
   } finally {
     cdp.close();
@@ -270,51 +238,66 @@ async function withTarget(run) {
   }
 }
 
-try {
-  await waitFor(async () => (await fetch(`http://${HOST}:${DEBUG_PORT}/json/version`).catch(() => null))?.ok, 'Chrome DevTools endpoint', 15_000);
-
+async function runRecoverScenario({ blockSessionStorage = false } = {}) {
   resetScenario('recover');
-  await withTarget(async (cdp) => {
+  await withTarget({ blockSessionStorage }, async (cdp) => {
     await cdp.send('Page.navigate', { url: `${BASE_URL}#/tool/qr-studio` });
     await waitFor(
       () => evaluate(cdp, `document.readyState === 'complete' && Boolean(document.querySelector('[data-tool-id="qr-studio"]'))`),
-      'automatic stale-chunk recovery to QR Studio'
+      blockSessionStorage ? 'storage-blocked stale-chunk recovery' : 'automatic stale-chunk recovery to QR Studio'
     );
-
-    const state = await evaluate(cdp, `({
+    const state = await evaluate(cdp, `(() => ({
       hash: location.hash,
-      marker: sessionStorage.getItem(${JSON.stringify(RECOVERY_KEY)}),
+      queryMarker: new URL(location.href).searchParams.get(${JSON.stringify(RECOVERY_PARAM)}),
+      storageMarker: (() => { try { return sessionStorage.getItem(${JSON.stringify(RECOVERY_KEY)}); } catch { return 'BLOCKED'; } })(),
       hasFallback: document.body.innerText.includes('Tiny Tools could not load this tool')
-    })`);
+    }))()`);
     if (state.hash !== '#/tool/qr-studio') throw new Error(`Recovered route changed unexpectedly: ${state.hash}`);
-    if (state.marker !== null) throw new Error('Recovery marker was not cleared after the replacement chunk rendered successfully.');
+    if (state.queryMarker !== null) throw new Error('Recovery URL marker was not cleared after successful render.');
+    if (!blockSessionStorage && state.storageMarker !== null) throw new Error('sessionStorage marker was not cleared after successful render.');
+    if (blockSessionStorage && state.storageMarker !== 'BLOCKED') throw new Error('Storage-blocked scenario did not actually block sessionStorage.');
     if (state.hasFallback) throw new Error('Error fallback remained visible after successful recovery.');
     if (scenario.documentRequests !== 2) throw new Error(`Expected exactly one automatic reload; saw ${scenario.documentRequests - 1}.`);
     if (scenario.staleRequests !== 1) throw new Error(`Expected one stale version-A chunk request; saw ${scenario.staleRequests}.`);
   });
-  console.log('✓ version A stale chunk triggered exactly one reload and recovered on version B');
+}
 
+async function runPersistentScenario({ blockSessionStorage = false } = {}) {
   resetScenario('persistent');
-  await withTarget(async (cdp) => {
+  await withTarget({ blockSessionStorage }, async (cdp) => {
     await cdp.send('Page.navigate', { url: `${BASE_URL}#/tool/qr-studio` });
     await waitFor(
       () => evaluate(cdp, `document.body.innerText.includes('Tiny Tools could not load this tool') && document.body.innerText.includes('Reload Tiny Tools')`),
-      'persistent module failure fallback'
+      blockSessionStorage ? 'storage-blocked persistent module failure fallback' : 'persistent module failure fallback'
     );
-    await sleep(1_500);
-
-    const state = await evaluate(cdp, `({
-      marker: sessionStorage.getItem(${JSON.stringify(RECOVERY_KEY)}),
+    await sleep(1_000);
+    const state = await evaluate(cdp, `(() => ({
+      queryMarker: new URL(location.href).searchParams.get(${JSON.stringify(RECOVERY_PARAM)}),
+      storageMarker: (() => { try { return sessionStorage.getItem(${JSON.stringify(RECOVERY_KEY)}); } catch { return 'BLOCKED'; } })(),
       details: Boolean(document.querySelector('details')),
       returnLink: Boolean(document.querySelector('a[href="#/"]'))
-    })`);
-    if (!state.marker) throw new Error('Persistent failure lost its one-reload guard marker.');
+    }))()`);
+    if (!state.queryMarker) throw new Error('Persistent failure lost its URL one-reload guard marker.');
+    if (!blockSessionStorage && !state.storageMarker) throw new Error('Persistent failure lost its storage guard marker.');
+    if (blockSessionStorage && state.storageMarker !== 'BLOCKED') throw new Error('Storage-blocked persistent scenario did not block sessionStorage.');
     if (!state.details) throw new Error('Persistent failure did not expose technical diagnostics.');
     if (!state.returnLink) throw new Error('Persistent failure did not expose Return to All Tools.');
     if (scenario.documentRequests !== 2) throw new Error(`Persistent failure entered a reload loop (${scenario.documentRequests} document requests).`);
     if (scenario.staleRequests !== 2) throw new Error(`Expected one missing chunk per simulated version; saw ${scenario.staleRequests}.`);
   });
+}
+
+try {
+  await waitFor(async () => (await fetch(`http://${HOST}:${DEBUG_PORT}/json/version`).catch(() => null))?.ok, 'Chrome DevTools endpoint', 15_000);
+
+  await runRecoverScenario();
+  console.log('✓ version A stale chunk triggers exactly one cache-busting reload and recovers on version B');
+  await runPersistentScenario();
   console.log('✓ a second missing version-B chunk stops reloading and shows diagnostics');
+  await runRecoverScenario({ blockSessionStorage: true });
+  console.log('✓ recovery still succeeds when sessionStorage is completely blocked');
+  await runPersistentScenario({ blockSessionStorage: true });
+  console.log('✓ URL guard still prevents reload loops when sessionStorage is completely blocked');
   console.log('\nModule recovery deployment-upgrade smoke PASSED');
 } catch (error) {
   if (chromeStderr.trim()) console.error(`Chrome stderr (tail):\n${chromeStderr.slice(-3000)}`);
