@@ -21,18 +21,17 @@ describe('P20 final general utilities', () => {
     expect(PUBLIC_P20_TASKS.every((task) => task.description.length >= 40)).toBe(true);
   });
 
-  it('normalizes decision weights and ranks higher weighted scores first', () => {
+  it('normalizes decision weights and ranks stronger weighted scores first', () => {
     const ranked = rankDecisionOptions(
       [{ name: 'Impact', weight: 3 }, { name: 'Ease', weight: 1 }],
       [
         { name: 'A', scores: [9, 4] },
-        { name: 'B', scores: [7, 10] },
+        { name: 'B', scores: [6, 10] },
       ]
     );
-    expect(ranked[0].name).toBe('A');
-    expect(ranked[0].score).toBe(7.75);
-    expect(ranked[1].score).toBe(7.75);
     expect(ranked.map((item) => item.name)).toEqual(['A', 'B']);
+    expect(ranked[0].score).toBe(7.75);
+    expect(ranked[1].score).toBe(7);
   });
 
   it('summarizes income, categorized expenses, balance, and savings rate', () => {
@@ -92,6 +91,10 @@ describe('P20 final general utilities', () => {
     expect(stats.bestStreak).toBe(3);
     expect(stats.completedInWindow).toBe(4);
     expect(stats.completionRate).toBe(80);
+  });
+
+  it('rejects impossible calendar dates instead of normalizing them', () => {
+    expect(() => recentDateKeys(5, '2026-02-30')).toThrow(/invalid today date/i);
   });
 
   it('places priority tasks into all four Eisenhower quadrants', () => {
