@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import {
   access,
   copyFile,
+  cp,
+  appendFile,
   mkdir,
   mkdtemp,
   readFile,
@@ -17,6 +19,9 @@ const ROOT = process.cwd();
 const DIST = path.resolve(process.env.TINY_TOOLS_DIST_DIR || path.join(ROOT, 'dist'));
 const PREVIOUS_SITE_OVERRIDE = process.env.TINY_TOOLS_PREVIOUS_SITE_DIR
   ? path.resolve(process.env.TINY_TOOLS_PREVIOUS_SITE_DIR)
+  : null;
+const ROLLBACK_DIR = process.env.TINY_TOOLS_ROLLBACK_DIR
+  ? path.resolve(process.env.TINY_TOOLS_ROLLBACK_DIR)
   : null;
 const GENERATION_NAME = 'build-generation.json';
 const RETAINED_NAME = 'retained-generation.json';
@@ -96,11 +101,17 @@ async function acquirePreviousSite() {
   const listResponse = await fetchWithRetry(listUrl, { headers }, 'Listing previous Pages artifacts');
   const payload = await listResponse.json();
   const currentSha = process.env.GITHUB_SHA;
-  const artifact = (payload.artifacts ?? []).find((candidate) =>
-    candidate?.name === ARTIFACT_NAME &&
-    !candidate?.expired &&
-    (!currentSha || candidate?.workflow_run?.head_sha !== currentSha)
-  );
+  const candidates = (payload.artifacts ?? [])
+    .filter((candidate) =>
+      candidate?.name === ARTIFACT_NAME &&
+      !candidate?.expired &&
+      (!currentSha || candidate?.workflow_run?.head_sha !== currentSha)
+    )
+    .sort((a, b) => {
+      const byCreated = String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''));
+      return byCreated || Number(b.id ?? 0) - Number(a.id ?? 0);
+    });
+  const artifact = candidates[0];
 
   if (!artifact) return null;
 
@@ -167,6 +178,20 @@ async function writeRetainedManifest(data) {
   await writeFile(path.join(DIST, RETAINED_NAME), `${JSON.stringify(data, null, 2)}\n`, 'utf8');
 }
 
+async function setWorkflowOutput(name, value) {
+  const output = process.env.GITHUB_OUTPUT;
+  if (!output) return;
+  await appendFile(output, `${name}=${value}\n`, 'utf8');
+}
+
+async function prepareRollbackSite(site) {
+  if (!ROLLBACK_DIR) return false;
+  await rm(ROLLBACK_DIR, { recursive: true, force: true });
+  await mkdir(path.dirname(ROLLBACK_DIR), { recursive: true });
+  await cp(site, ROLLBACK_DIR, { recursive: true, force: true, errorOnExist: false });
+  return true;
+}
+
 const acquired = await acquirePreviousSite();
 if (!acquired) {
   await writeRetainedManifest({
@@ -178,11 +203,16 @@ if (!acquired) {
     files: [],
     copiedFiles: 0,
   });
+  await setWorkflowOutput('rollback_available', 'false');
   console.log('No previous Pages artifact exists; current generation will deploy without retained assets.');
   process.exit(0);
 }
 
 try {
+  const rollbackPrepared = await prepareRollbackSite(acquired.site);
+  await setWorkflowOutput('rollback_available', rollbackPrepared ? 'true' : 'false');
+  if (rollbackPrepared) await setWorkflowOutput('rollback_path', ROLLBACK_DIR);
+
   const previous = await readPreviousGeneration(acquired.site);
   const uniqueFiles = [...new Set(previous.files)].sort();
   const available = [];
@@ -220,6 +250,7 @@ try {
 
   console.log(`Retained ${available.length} previous-generation assets (${copied} copied, ${available.length - copied} already shared with the current build).`);
   if (previous.legacyMigration) console.log('Previous artifact predates build-generation metadata; one-time bounded migration copied its assets directory.');
+  if (rollbackPrepared) console.log(`Prepared last-known-good rollback site at ${ROLLBACK_DIR}.`);
 } finally {
   await acquired.cleanup();
 }

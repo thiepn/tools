@@ -8,6 +8,7 @@ const SCRIPT = path.resolve(ROOT, 'scripts/retain-previous-generation.mjs');
 const temp = await mkdtemp(path.join(tmpdir(), 'tiny-tools-retention-smoke-'));
 const current = path.join(temp, 'current');
 const previous = path.join(temp, 'previous');
+const rollback = path.join(temp, 'rollback');
 
 try {
   await mkdir(path.join(current, 'assets'), { recursive: true });
@@ -18,6 +19,7 @@ try {
   await writeFile(path.join(previous, 'assets/previous-hash.js'), 'previous');
   await writeFile(path.join(previous, 'assets/shared-hash.js'), 'shared');
   await writeFile(path.join(previous, 'assets/ancient-retained-hash.js'), 'must not propagate');
+  await writeFile(path.join(previous, 'index.html'), '<!doctype html><title>previous</title>');
   await writeFile(
     path.join(previous, 'build-generation.json'),
     JSON.stringify({
@@ -37,6 +39,7 @@ try {
       ...process.env,
       TINY_TOOLS_DIST_DIR: current,
       TINY_TOOLS_PREVIOUS_SITE_DIR: previous,
+      TINY_TOOLS_ROLLBACK_DIR: rollback,
     },
   });
   if (result.error) throw result.error;
@@ -56,6 +59,11 @@ try {
   }
   if (ancientExists) throw new Error('Retention became recursive; an older retained generation leaked forward.');
 
+  const rollbackIndex = await readFile(path.join(rollback, 'index.html'), 'utf8');
+  const rollbackAncient = await readFile(path.join(rollback, 'assets/ancient-retained-hash.js'), 'utf8');
+  if (!rollbackIndex.includes('previous')) throw new Error('Rollback site did not preserve the previous index.');
+  if (rollbackAncient !== 'must not propagate') throw new Error('Rollback site was not a full copy of the last-known-good deployment.');
+
   const retained = JSON.parse(await readFile(path.join(current, 'retained-generation.json'), 'utf8'));
   if (retained.sourceCommit !== 'previous-commit') throw new Error('Retained-generation metadata lost the previous commit.');
   if (retained.copiedFiles !== 1) throw new Error(`Expected one newly copied asset, got ${retained.copiedFiles}.`);
@@ -67,6 +75,7 @@ try {
   console.log('- previous current-generation assets are preserved');
   console.log('- shared hashed assets are not overwritten');
   console.log('- retained generations do not grow recursively');
+  console.log('- a full last-known-good rollback site is prepared separately');
 } finally {
   await rm(temp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
