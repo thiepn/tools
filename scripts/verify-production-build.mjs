@@ -8,7 +8,7 @@ const SRC = path.resolve(ROOT, 'src');
 const MANIFEST_PATH = path.join(DIST, '.vite', 'manifest.json');
 const GENERATION_PATH = path.join(DIST, 'build-generation.json');
 const EXPECTED_BASE = '/tools/';
-const EXPECTED_TOOL_COUNT = 343;
+const EXPECTED_TOOL_COUNT = 351;
 const SOURCE_EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js', '.mjs'];
 
 const failures = [];
