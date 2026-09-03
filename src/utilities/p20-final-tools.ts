@@ -163,7 +163,8 @@ export function numberToEnglishWords(value: string | number | bigint): string {
   const fractionalWords = fractionalRaw
     ? ` point ${fractionalRaw.split('').map((digit) => SMALL_WORDS[Number(digit)]).join(' ')}`
     : '';
-  return `${negative && integer !== 0n ? 'minus ' : ''}${integerWords.join(' ')}${fractionalWords}`;
+  const hasNonZeroValue = integer !== 0n || /[1-9]/.test(fractionalRaw ?? '');
+  return `${negative && hasNonZeroValue ? 'minus ' : ''}${integerWords.join(' ')}${fractionalWords}`;
 }
 
 const WORD_VALUES = new Map<string, bigint>([
@@ -423,8 +424,13 @@ export function bestTextColor(background: string): '#000000' | '#FFFFFF' {
 function dateKeyToDay(key: string): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
   if (!match) return null;
-  const value = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isFinite(value) ? Math.floor(value / 86_400_000) : null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const date = Number(match[3]);
+  const value = Date.UTC(year, month - 1, date);
+  const parsed = new Date(value);
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== date) return null;
+  return Math.floor(value / 86_400_000);
 }
 
 function dayToDateKey(day: number): string {
