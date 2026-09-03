@@ -42,6 +42,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify production chunk graph
+        run: npm run build:verify
+
       - name: Check R9 live harness syntax
         run: node --check scripts/r9-live-site-smoke.mjs
 
@@ -59,7 +62,13 @@ jobs:
           if (!script || !stylesheet) {
             throw new Error('Could not identify initial JS/CSS assets from dist/index.html');
           }
-          const resolveAsset = (asset) => path.join('dist', asset.replace(/^\.\//, '').replace(/^\//, ''));
+          const resolveAsset = (asset) => {
+            const parsed = new URL(asset, 'https://example.invalid/tools/');
+            if (!parsed.pathname.startsWith('/tools/')) {
+              throw new Error(`Initial asset escaped /tools/: ${asset}`);
+            }
+            return path.join('dist', parsed.pathname.slice('/tools/'.length));
+          };
           const js = fs.readFileSync(resolveAsset(script));
           const css = fs.readFileSync(resolveAsset(stylesheet));
           const sizes = {
@@ -87,6 +96,12 @@ jobs:
 
       - name: Chromium route acceptance
         run: npm run browser:smoke
+
+      - name: Chromium navigation reliability
+        run: npm run browser:navigation
+
+      - name: Chromium stale-deployment recovery
+        run: npm run browser:module-recovery
 
       - name: Chromium functional acceptance
         run: npm run browser:functional
