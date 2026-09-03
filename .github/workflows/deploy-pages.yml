@@ -137,12 +137,14 @@ jobs:
         with:
           name: github-pages-rollback
           path: ${{ steps.retain_previous.outputs.rollback_path }}
+          retention-days: 90
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+          retention-days: 90
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
