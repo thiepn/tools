@@ -1,6 +1,6 @@
 # Tiny Tools
 
-Tiny Tools is a privacy-first public utility suite with **343 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, network/browser diagnostics, calculators, unified file conversion, file viewing and inspection, image enhancement/restoration, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
+Tiny Tools is a privacy-first public utility suite with **351 task routes** for text, study, privacy/security, developer tasks, PDFs, device diagnostics, network/browser diagnostics, calculators, unified file conversion, file viewing and inspection, image enhancement/restoration, audio/video, subtitles, everyday documents, planning, productivity, math, statistics, data visualization, design, web, time, and daily work.
 
 The application is a static React + TypeScript + Vite site. User files and content are processed locally in the browser whenever technically possible rather than sent to an application backend.
 
@@ -110,11 +110,26 @@ P19 adds nine diagnostic routes. Four make explicit, user-triggered external net
 
 External diagnostic routes do not auto-run when opened. Their interfaces disclose that Cloudflare receives the connection information required to serve the probe. The local five routes do not make diagnostic network requests. Speed results are browser-to-test-endpoint estimates and are not advertised as ISP-certified measurements; codec results are browser-declared MIME capability rather than proof that every profile/resolution/DRM stream will work.
 
+## P20 — Final General Utilities
+
+P20 is a deliberately small closing pass: eight broadly understandable utilities that fill useful everyday gaps without adding low-value clones of existing Tiny Tools.
+
+- **Weighted Decision Matrix** — compare alternatives across user-defined weighted criteria, normalize weights automatically, and rank the results.
+- **Monthly Budget Planner** — total monthly income and categorized expenses, calculate remaining cash and savings rate, and visualize category shares locally.
+- **Number ↔ Words Converter** — convert signed numbers to English short-scale words or parse standard English number words back into a numeric value.
+- **Screen PPI & Pixel Density Calculator** — calculate physical pixel density, pixel pitch, megapixels, and simplified aspect ratio from resolution and panel diagonal.
+- **Download & Transfer Time Calculator** — estimate theoretical file transfer duration across decimal/binary size units and bit/byte throughput units.
+- **Color Palette & Harmony Generator** — generate complementary, analogous, triadic, tetradic, split-complementary, and monochromatic palettes from a base color.
+- **Habit Consistency Tracker** — track one habit in the browser with recent-day completion, current/best streaks, and completion rate.
+- **Eisenhower Priority Matrix** — classify tasks by urgency/importance into do, schedule, delegate, and eliminate/defer quadrants and export the action plan.
+
+These tools remain intentionally bounded. The budget planner is a worksheet rather than financial advice; transfer time is a theoretical throughput estimate; color harmony is a design starting point rather than an accessibility guarantee; and habit data is stored only in the current browser when localStorage is available.
+
 ## Public-completeness phases
 
-The original 50-tool suite remains the hardened S-tier baseline. P1–P19 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, subtitle workflows, file viewing/inspection, image restoration, and network/browser diagnostics.
+The original 50-tool suite remains the hardened S-tier baseline. P1–P20 expanded it across PDFs, diagnostics, calculators, files, images, media, text/study, privacy/developer utilities, everyday documents, Office/eBook interchange, web authoring, security, statistics/visualization, subtitle workflows, file viewing/inspection, image restoration, network/browser diagnostics, and a final set of general-purpose planning/design helpers.
 
-After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increased conversion breadth without route sprawl. P17 added eight distinct viewer/inspection workflows for **328 routes**. P18 added six restoration workflows while upgrading the existing upscaler in place for **334 routes**. P19 adds nine network/browser diagnostics, bringing the current catalog to **343 public routes**.
+After P16 the catalog reached 352 routes. The converter-consolidation pass then reduced unnecessary route duplication to **320 public routes** while increasing the number of useful conversion combinations available inside the canonical converters. The mainstream-format expansion increased conversion breadth without route sprawl. P17 added eight distinct viewer/inspection workflows for **328 routes**. P18 added six restoration workflows while upgrading the existing upscaler in place for **334 routes**. P19 added nine network/browser diagnostics for **343 routes**. P20 adds eight final general utilities, bringing the current catalog to **351 public routes**.
 
 Current expansion-family counts:
 
@@ -136,3 +151,4 @@ Current expansion-family counts:
 - P17 file viewers/inspection: **8** routes.
 - P18 image enhancement/restoration: **6** routes.
 - P19 network/browser diagnostics: **9** routes.
+- P20 final general utilities: **8** routes.
