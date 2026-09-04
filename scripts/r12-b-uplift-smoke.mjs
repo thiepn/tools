@@ -166,18 +166,21 @@ async function main() {
       if ((index + 1) % 20 === 0 || index === ids.length - 1) console.log(`✓ ${index + 1}/${ids.length}`);
     }
 
-    await cdp.send('Page.navigate', { url: `${BASE_URL}#/tool/basic-calculator` });
-    await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[data-s-tier-workbench="basic-calculator"]'))`), 'representative calculator workbench');
+    const representativeId = 'savings-goal-calculator';
+    await cdp.send('Page.navigate', { url: `${BASE_URL}#/tool/${representativeId}` });
+    await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('[data-s-tier-workbench="${representativeId}"]'))`), 'representative calculator workbench');
     const representative = await evaluate(cdp, `(() => {
-      const wb = document.querySelector('[data-s-tier-workbench="basic-calculator"]');
+      const wb = document.querySelector('[data-s-tier-workbench="${representativeId}"]');
       const tab = [...wb.querySelectorAll('[role="tab"]')].find((button) => /Batch & sensitivity/i.test(button.textContent || ''));
       tab?.click();
       return Boolean(tab);
     })()`);
     if (!representative) throw new Error('Representative batch/sensitivity tab is missing.');
-    await sleep(120);
-    const hasLab = await evaluate(cdp, `(() => { const wb=document.querySelector('[data-s-tier-workbench="basic-calculator"]'); return /Batch runner/.test(wb?.innerText||'') && /Sensitivity sweep/.test(wb?.innerText||''); })()`);
-    if (!hasLab) throw new Error('Representative calculator does not expose batch + sensitivity functions.');
+    await waitFor(
+      () => evaluate(cdp, `(() => { const wb=document.querySelector('[data-s-tier-workbench="${representativeId}"]'); return /Batch runner/.test(wb?.innerText||'') && /Sensitivity sweep/.test(wb?.innerText||''); })()`),
+      'representative batch and sensitivity surfaces',
+      5000,
+    );
 
     console.log('R12 B→S browser acceptance PASSED');
     console.log(`- ${ids.length}/${ids.length} former B-tier routes mount the expert workspace`);
