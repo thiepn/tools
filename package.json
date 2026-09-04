@@ -23,6 +23,7 @@
     "browser:full-audit": "node scripts/r11-full-catalog-audit.mjs",
     "browser:b-to-s": "node scripts/r12-b-uplift-smoke.mjs",
     "browser:a-to-s": "node scripts/r13-a-uplift-smoke.mjs",
+    "browser:strict-audit": "node scripts/r14-strict-catalog-audit.mjs",
     "live:assets": "node scripts/live-asset-integrity.mjs"
   },
   "dependencies": {
