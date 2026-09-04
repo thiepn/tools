@@ -20,7 +20,8 @@
     "browser:functional": "node scripts/r6-functional-smoke.mjs",
     "browser:capabilities": "node scripts/r7-capability-ci.mjs",
     "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs",
-    "browser:full-audit": "node scripts/r11-full-catalog-audit-expanded.mjs",
+    "browser:full-audit": "node scripts/r11-full-catalog-audit.mjs",
+    "browser:b-to-s": "node scripts/r12-b-uplift-smoke.mjs",
     "live:assets": "node scripts/live-asset-integrity.mjs"
   },
   "dependencies": {
