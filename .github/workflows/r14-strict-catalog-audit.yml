@@ -1,0 +1,44 @@
+name: R14 strict 351-tool audit
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  strict-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check strict audit harness syntax
+        run: node --check scripts/r14-strict-catalog-audit.mjs
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Audit all 351 tools under R14 strict contract
+        run: npm run browser:strict-audit
+      - name: Upload R14 audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r14-strict-audit-report
+          path: artifacts/r14-strict-audit.*
+          if-no-files-found: warn
+          retention-days: 90
