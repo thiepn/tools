@@ -22,6 +22,7 @@
     "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs",
     "browser:full-audit": "node scripts/r11-full-catalog-audit.mjs",
     "browser:b-to-s": "node scripts/r12-b-uplift-smoke.mjs",
+    "browser:a-to-s": "node scripts/r13-a-uplift-smoke.mjs",
     "live:assets": "node scripts/live-asset-integrity.mjs"
   },
   "dependencies": {
