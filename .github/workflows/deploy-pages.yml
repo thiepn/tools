@@ -121,6 +121,9 @@ jobs:
       - name: Chromium compatibility acceptance
         run: npm run browser:compatibility
 
+      - name: Chromium full 351-tool intent audit
+        run: npm run browser:full-audit
+
       - name: Retain previous production asset generation
         id: retain_previous
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

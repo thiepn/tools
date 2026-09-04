@@ -17,6 +17,99 @@ interface ToolShellProps {
   children: React.ReactNode;
 }
 
+type NameableControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLButtonElement;
+
+function humanizeControlToken(value: string | null | undefined): string {
+  if (!value) return '';
+  return value
+    .replace(/^(?:tiny[-_ ]tools[-_ ]*)/i, '')
+    .replace(/(?:[-_ ]?(?:input|textarea|select|button|btn|control|field))$/i, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^./, (character) => character.toUpperCase());
+}
+
+function hasAccessibleName(control: NameableControl): boolean {
+  if (control.getAttribute('aria-label')?.trim()) return true;
+  if (control.getAttribute('aria-labelledby')?.trim()) return true;
+  if (control.id && document.querySelector(`label[for="${CSS.escape(control.id)}"]`)) return true;
+  if (control.closest('label')) return true;
+  if (control instanceof HTMLButtonElement && control.textContent?.trim()) return true;
+  return false;
+}
+
+function nearestContextText(control: NameableControl): string {
+  const siblingCandidates = [control.previousElementSibling, control.parentElement?.previousElementSibling];
+  for (const candidate of siblingCandidates) {
+    const text = candidate?.textContent?.replace(/\s+/g, ' ').trim();
+    if (text && text.length <= 80) return text;
+  }
+  const parentText = control.parentElement?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  if (parentText && parentText.length <= 80) return parentText;
+  return '';
+}
+
+function iconButtonName(control: HTMLButtonElement): string {
+  const svg = control.querySelector('svg');
+  const classes = svg?.getAttribute('class') ?? '';
+  const icon = classes.match(/\blucide-([a-z0-9-]+)/i)?.[1] ?? '';
+  const known: Record<string, string> = {
+    plus: 'Add item',
+    minus: 'Decrease value',
+    trash: 'Remove item',
+    'trash-2': 'Remove item',
+    x: 'Close',
+    copy: 'Copy',
+    download: 'Download',
+    upload: 'Upload',
+    play: 'Play',
+    pause: 'Pause',
+    'rotate-ccw': 'Reset',
+    'rotate-cw': 'Rotate',
+    shuffle: 'Shuffle',
+    eraser: 'Erase',
+    eye: 'Show',
+    'eye-off': 'Hide',
+  };
+  return known[icon] ?? (icon ? humanizeControlToken(icon) : 'Tool action');
+}
+
+function fallbackControlName(control: NameableControl): string {
+  const placeholder = control.getAttribute('placeholder')?.trim();
+  if (placeholder) return placeholder.replace(/\.{3}$/g, '').trim();
+  const title = control.getAttribute('title')?.trim();
+  if (title) return title;
+  const token = humanizeControlToken(control.id || control.getAttribute('name'));
+  if (token) return token;
+  const context = nearestContextText(control);
+  if (context) return context.replace(/[:•·]+$/g, '').trim();
+  if (control instanceof HTMLButtonElement) return iconButtonName(control);
+  if (control instanceof HTMLSelectElement) return 'Select option';
+  if (control instanceof HTMLTextAreaElement) return control.readOnly ? 'Output text' : 'Text input';
+  const type = control.type.toLowerCase();
+  if (type === 'file') return control.multiple ? 'Choose files' : 'Choose file';
+  if (type === 'color') return 'Color';
+  if (type === 'range') return 'Value';
+  if (type === 'date') return 'Date';
+  if (type === 'time') return 'Time';
+  if (type === 'datetime-local') return 'Date and time';
+  if (type === 'checkbox') return 'Option';
+  if (type === 'number') return 'Number';
+  return 'Text input';
+}
+
+function ensureFallbackAccessibleNames(root: HTMLElement): void {
+  const controls = root.querySelectorAll<NameableControl>('input, textarea, select, button');
+  for (const control of controls) {
+    if (control instanceof HTMLInputElement && control.type === 'hidden') continue;
+    if (hasAccessibleName(control)) continue;
+    control.setAttribute('aria-label', fallbackControlName(control));
+    control.dataset.accessibleNameFallback = 'true';
+  }
+}
+
 export const ToolShell: React.FC<ToolShellProps> = ({
   toolId,
   title,
@@ -27,12 +120,15 @@ export const ToolShell: React.FC<ToolShellProps> = ({
   children,
 }) => {
   const canonicalToolId = normalizeToolShellId(toolId);
+  const registryTool = TOOLS_REGISTRY.find((tool) => tool.id === canonicalToolId);
+  const displayTitle = registryTool?.name ?? title;
   const [isFavorite, setIsFavorite] = useState(
     () => getStoredPreferences().favorites.includes(canonicalToolId)
   );
   const [showTransferMenu, setShowTransferMenu] = useState(false);
   const transferMenuRef = useRef<HTMLDivElement>(null);
   const transferButtonRef = useRef<HTMLButtonElement>(null);
+  const toolContentRef = useRef<HTMLDivElement>(null);
 
   const categoryPresentation = getCategoryPresentation(category);
   const titleId = `tool-title-${canonicalToolId}`;
@@ -83,6 +179,15 @@ export const ToolShell: React.FC<ToolShellProps> = ({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [showTransferMenu]);
+
+  useEffect(() => {
+    const root = toolContentRef.current;
+    if (!root) return;
+    ensureFallbackAccessibleNames(root);
+    const observer = new MutationObserver(() => ensureFallbackAccessibleNames(root));
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [canonicalToolId, children]);
 
   const relatedTools = TOOLS_REGISTRY.filter((tool) => relatedToolIds.includes(tool.id));
 
@@ -189,7 +294,7 @@ export const ToolShell: React.FC<ToolShellProps> = ({
             id={titleId}
             className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100"
           >
-            {title}
+            {displayTitle}
           </h1>
           <span
             className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wider border ${categoryPresentation.badge.bg} ${categoryPresentation.badge.text} ${categoryPresentation.badge.border}`}
@@ -205,7 +310,7 @@ export const ToolShell: React.FC<ToolShellProps> = ({
         </p>
       </header>
 
-      <div className="tt-tool-content w-full min-w-0 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 sm:p-6 shadow-xs">
+      <div ref={toolContentRef} className="tt-tool-content w-full min-w-0 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-4 sm:p-6 shadow-xs">
         {children}
       </div>
 
