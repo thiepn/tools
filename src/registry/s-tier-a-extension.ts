@@ -23,10 +23,8 @@ export function applySTierAUplift(): void {
       'live trace',
       MARKER,
       'reproducibility fingerprint',
-      'quality report',
       'control map',
       'repeatability check',
-      'markdown report',
     ])];
 
     tool.component = lazy(async () => {
