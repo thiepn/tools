@@ -1,0 +1,5 @@
+import React,{useEffect,useState,type ComponentType}from'react';
+import{createPortal}from'react-dom';
+import{StrictAStudio}from'./StrictAStudio';
+type Props={toolId:string;Base:ComponentType<{initialText?:string}>;initialText?:string};
+export function StrictARouteWrapper({toolId,Base,initialText}:Props){const[target,setTarget]=useState<HTMLElement|null>(null);useEffect(()=>{let cancelled=false,observer:MutationObserver|null=null;const find=()=>{if(cancelled)return true;const shell=document.querySelector<HTMLElement>(`[data-tool-id="${CSS.escape(toolId)}"]`),content=shell?.querySelector<HTMLElement>('.tt-tool-content')||null;if(!content)return false;setTarget(content);return true};if(!find()){observer=new MutationObserver(()=>{if(find())observer?.disconnect()});observer.observe(document.body,{childList:true,subtree:true})}return()=>{cancelled=true;observer?.disconnect();setTarget(null)}},[toolId]);return <><Base initialText={initialText}/>{target?createPortal(<div className="mt-6"><StrictAStudio toolId={toolId}/></div>,target):null}</>}
