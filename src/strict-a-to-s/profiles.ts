@@ -14,7 +14,8 @@ subtitle:set(`subtitle-editor subtitle-converter`),
 };
 const LABEL:Record<StrictAFamily,string>={
 'content-code':'semantic correctness & interoperability lab',security:'cryptographic trust & integrity lab',productivity:'workflow precision & recovery lab','capture-media':'production fidelity & export lab',pdf:'document integrity & page-operations lab',device:'measurement repeatability lab',calculation:'auditable model & sensitivity lab','file-view':'structure, limits & integrity lab',subtitle:'timing, format & accessibility lab'};
+const ACRONYMS:Record<string,string>={pdf:'PDF',json:'JSON',yaml:'YAML',sql:'SQL',xml:'XML',url:'URL',jwt:'JWT',x509:'X.509',sri:'SRI',csp:'CSP',svg:'SVG',ppi:'PPI'};
 export type StrictAProfile={id:StrictAToSId;family:StrictAFamily;label:string;focus:string};
-const human=(id:string)=>id.split('-').map(x=>({pdf:'PDF',json:'JSON',yaml:'YAML',sql:'SQL',xml:'XML',url:'URL',jwt:'JWT',x509:'X.509',sri:'SRI',csp:'CSP',svg:'SVG',ppi:'PPI'}[x]??x.charAt(0).toUpperCase()+x.slice(1))).join(' ');
+const human=(id:string)=>id.split('-').map(x=>ACRONYMS[x]??x.charAt(0).toUpperCase()+x.slice(1)).join(' ');
 export function getStrictAProfile(id:string):StrictAProfile|undefined{if(!STRICT_A_TO_S_TARGETS.includes(id as StrictAToSId))return;const hit=(Object.entries(FAMILY)as[StrictAFamily,Set<string>][]).find(([,s])=>s.has(id));if(!hit)throw new Error(`Missing R17 specialist family for ${id}`);return{id:id as StrictAToSId,family:hit[0],label:LABEL[hit[0]],focus:`${human(id)} — S-tier specialist verification`}}
 export const STRICT_A_PROFILES=STRICT_A_TO_S_TARGETS.map(id=>getStrictAProfile(id)!);
