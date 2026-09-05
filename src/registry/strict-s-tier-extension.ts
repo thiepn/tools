@@ -44,7 +44,8 @@ const DESCRIPTION:Record<string,string>={
 export function applyStrictSTierUpgrades():void{
  for(const tool of TOOLS_REGISTRY){
   if(!STRICT_S_TIER_TARGET_SET.has(tool.id)||tool.keywords.includes(MARKER))continue;
-  tool.description=DESCRIPTION[tool.id]??tool.description;
+  const strictDescription=DESCRIPTION[tool.id];
+  if(strictDescription&&!tool.description.includes(strictDescription))tool.description=`${tool.description.replace(/\s+$/,'')} ${strictDescription}`;
   tool.keywords=[...new Set([...tool.keywords,MARKER,'advanced workflow','edge case validation','exportable results','local first'])];
   if(tool.id==='currency-converter'){tool.component=Currency;continue}
   if(tool.id==='pwa-manifest-generator'){tool.component=Pwa;continue}
