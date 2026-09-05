@@ -1,0 +1,49 @@
+name: R18 final independent certification
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify-all-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check R18 harness syntax
+        run: node --check scripts/r18-final-certification.mjs
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Run independent 351-tool rerank and certification
+        run: node scripts/r18-final-certification.mjs
+      - name: Upload R18 certification report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: r18-final-certification
+          path: |
+            artifacts/r18-final-certification.json
+            artifacts/r18-final-certification.md
+          if-no-files-found: warn
