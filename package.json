@@ -25,6 +25,7 @@
     "browser:a-to-s": "node scripts/r13-a-uplift-smoke.mjs",
     "browser:strict-audit": "node scripts/r14-strict-catalog-audit.mjs",
     "browser:strict-b-to-s": "node scripts/r16-strict-b-to-s-smoke.mjs",
+    "browser:strict-a-to-s": "node scripts/r17-strict-a-to-s-smoke.mjs",
     "live:assets": "node scripts/live-asset-integrity.mjs"
   },
   "dependencies": {
