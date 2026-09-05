@@ -1,7 +1,7 @@
 {
   "name": "tiny-tools",
   "private": true,
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "A privacy-first collection of 351 public browser utility routes with unified file conversion, local viewers, image enhancement and restoration, network/browser diagnostics, PDFs, device diagnostics, calculators, media, study, privacy, security, developer, planning, math, statistics, design, web, and everyday tools.",
   "type": "module",
   "engines": { "node": ">=22" },
@@ -24,6 +24,7 @@
     "browser:b-to-s": "node scripts/r12-b-uplift-smoke.mjs",
     "browser:a-to-s": "node scripts/r13-a-uplift-smoke.mjs",
     "browser:strict-audit": "node scripts/r14-strict-catalog-audit.mjs",
+    "browser:strict-b-to-s": "node scripts/r16-strict-b-to-s-smoke.mjs",
     "live:assets": "node scripts/live-asset-integrity.mjs"
   },
   "dependencies": {
