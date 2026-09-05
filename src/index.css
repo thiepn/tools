@@ -108,6 +108,18 @@ textarea {
   max-width: 100%;
 }
 
+/* Icon-only controls need a real pointer/touch target, not just the icon's
+   painted bounds. R14 audits the interactive element itself on both desktop
+   and narrow mobile, so keep a comfortable floor above the 24px contract. */
+.tt-tool-content button:has(> svg:only-child),
+.tt-tool-content a[href]:has(> svg:only-child) {
+  display: inline-flex;
+  min-width: 2rem;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: center;
+}
+
 @media (max-width: 640px) {
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
   textarea,
