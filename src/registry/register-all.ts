@@ -20,5 +20,6 @@ import{registerP20Tools}from'./p20-extension';
 import{applySTierBUplift}from'./s-tier-b-extension';
 import{applySTierAUplift}from'./s-tier-a-extension';
 import{applyStrictSTierUpgrades}from'./strict-s-tier-extension';
+import{applyStrictBToSUpgrades}from'./strict-b-to-s-extension';
 const REGISTRARS=[registerPdfPublicTools,registerDeviceDiagnosticTools,registerCalculatorTools,registerFileConversionTools,registerImageMicroTools,registerMediaMicroTools,registerTextStudyTools,registerPrivacyDevTools,registerEverydayTools,registerP11Tools,registerP12Tools,registerP13Tools,registerP14Tools,registerP15Tools,registerP16Tools,registerP17Tools,registerP18Tools,registerP19Tools,registerP20Tools];
-export function registerAllPublicTools(){for(const register of REGISTRARS)register();applySTierBUplift();applySTierAUplift();applyStrictSTierUpgrades()}
+export function registerAllPublicTools(){for(const register of REGISTRARS)register();applySTierBUplift();applySTierAUplift();applyStrictSTierUpgrades();applyStrictBToSUpgrades()}
