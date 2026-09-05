@@ -3,8 +3,8 @@ import{STRICT_S_TIER_TARGET_SET}from'../strict-s-tier/manifest';
 import{TOOLS_REGISTRY}from'./tools';
 
 const MARKER='strict s-tier core upgrade';
-const Currency=lazy(()=>import('../tools/strict-s-tier/StrictCurrencyConverter'));
-const Pwa=lazy(()=>import('../tools/strict-s-tier/StrictPwaManifest'));
+const CurrencyCore=lazy(()=>import('../tools/strict-s-tier/StrictCurrencyConverter'));
+const PwaCore=lazy(()=>import('../tools/strict-s-tier/StrictPwaManifest'));
 
 const DESCRIPTION:Record<string,string>={
 'refresh-rate-test':'Measure browser-visible display cadence over timed sessions with median, P95, jitter, stability, repeatability evidence, and CSV export.',
@@ -41,14 +41,21 @@ const DESCRIPTION:Record<string,string>={
 'currency-converter':'Convert major currencies with explicit network consent, cached ECB reference rates, manual offline rates, source timestamps, and no background fetch on route load.',
 };
 
+function strictWithA(toolId:string,Core:ComponentType<{initialText?:string}>){
+ return lazy(async()=>{const{STierARouteWrapper}=await import('../tools/s-tier-a/STierARouteWrapper');const Wrapped:ComponentType<{initialText?:string}>=(props)=>createElement(STierARouteWrapper,{toolId,Base:Core,initialText:props.initialText});return{default:Wrapped}})
+}
+function strictWithB(toolId:string,Core:ComponentType<{initialText?:string}>){
+ return lazy(async()=>{const{STierBRouteWrapper}=await import('../tools/s-tier-b/STierBRouteWrapper');const Wrapped:ComponentType<{initialText?:string}>=(props)=>createElement(STierBRouteWrapper,{toolId,Base:Core,initialText:props.initialText});return{default:Wrapped}})
+}
+
 export function applyStrictSTierUpgrades():void{
  for(const tool of TOOLS_REGISTRY){
   if(!STRICT_S_TIER_TARGET_SET.has(tool.id)||tool.keywords.includes(MARKER))continue;
   const strictDescription=DESCRIPTION[tool.id];
   if(strictDescription&&!tool.description.includes(strictDescription))tool.description=`${tool.description.replace(/\s+$/,'')} ${strictDescription}`;
   tool.keywords=[...new Set([...tool.keywords,MARKER,'advanced workflow','edge case validation','exportable results','local first'])];
-  if(tool.id==='currency-converter'){tool.component=Currency;continue}
-  if(tool.id==='pwa-manifest-generator'){tool.component=Pwa;continue}
+  if(tool.id==='currency-converter'){tool.component=strictWithA(tool.id,CurrencyCore);continue}
+  if(tool.id==='pwa-manifest-generator'){tool.component=strictWithB(tool.id,PwaCore);continue}
   const Base=tool.component,toolId=tool.id;
   tool.component=lazy(async()=>{const{StrictSTierRouteWrapper}=await import('../tools/strict-s-tier/StrictSTierRouteWrapper');const Wrapped:ComponentType<{initialText?:string}>=(props)=>createElement(StrictSTierRouteWrapper,{toolId,Base,initialText:props.initialText});return{default:Wrapped}})
  }
