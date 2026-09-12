@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <link rel="manifest" href="/tools/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/tools/icon-192.png" />
     <meta name="theme-color" content="#171717" />
     <meta name="application-name" content="Tiny Tools" />
     <title>Tiny Tools - Small tools. Zero friction.</title>
@@ -19,9 +19,9 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      if ('serviceWorker' in navigator && location.protocol === 'https:') {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./service-worker.js', { scope: './' }).catch(error => {
+          navigator.serviceWorker.register('/tools/service-worker.js', { scope: '/tools/' }).catch(error => {
             console.warn('Tiny Tools service worker registration failed.', error);
           });
         }, { once: true });
