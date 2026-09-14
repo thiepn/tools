@@ -1,0 +1,60 @@
+name: Temporary Lantern Vale Phase 6 Assets
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-lantern-phase6-assets.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acquire verified CC0 monster subset
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$PWD/lantern_vale_phase6_assets"
+          mkdir -p "$root/models" "$root/licenses"
+          base='https://raw.githubusercontent.com/yerdaulet-damir/liminal/main/client/public/models'
+          for f in monster.glb monster_BlueDemon.gltf monster_Demon.gltf monster_Orc.gltf; do
+            curl -L --fail --retry 3 "$base/$f" -o "$root/models/$f"
+          done
+          curl -L --fail --retry 3 'https://raw.githubusercontent.com/yerdaulet-damir/liminal/main/ASSETS.md' -o "$root/licenses/liminal-ASSETS.md"
+          cat > "$root/licenses/Quaternius-Ultimate-Monsters-CC0.txt" <<'EOF'
+Source: Quaternius — Ultimate Monsters
+Official page: https://quaternius.com/packs/ultimatemonsters.html
+License: CC0 1.0
+Official pack page states 50 fully animated monsters and License CC0.
+Subset mirrored from yerdaulet-damir/liminal, whose ASSETS.md records these monster files as Quaternius Ultimate Monsters / CC0 1.0.
+EOF
+          python3 - <<'PY'
+          import json, pathlib, urllib.request
+          root=pathlib.Path('lantern_vale_phase6_assets/models')
+          base='https://raw.githubusercontent.com/yerdaulet-damir/liminal/main/client/public/models/'
+          for p in root.glob('*.gltf'):
+              d=json.loads(p.read_text())
+              uris=[]
+              for section in ('buffers','images'):
+                  for item in d.get(section,[]):
+                      u=item.get('uri')
+                      if u and not u.startswith('data:') and u not in uris:
+                          uris.append(u)
+              for u in uris:
+                  dest=root/pathlib.Path(u).name
+                  if not dest.exists():
+                      urllib.request.urlretrieve(base+u, dest)
+              print(p.name, 'external_uris=', uris)
+          PY
+          sha256sum "$root"/models/* "$root"/licenses/* > "$root/SHA256SUMS.txt"
+          find "$root" -type f -printf '%P\t%s bytes\n' | sort
+      - name: Upload phase 6 monster assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: lantern-vale-phase6-cc0-monsters
+          path: lantern_vale_phase6_assets
+          if-no-files-found: error
+          retention-days: 1
