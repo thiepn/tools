@@ -23,7 +23,7 @@ jobs:
           for f in Barbarian Knight Mage Ranger Rogue Rogue_Hooded; do
             curl -L --fail --retry 3 "$base/Characters/gltf/${f}.glb" -o "$root/characters/${f}.glb"
           done
-          for f in barbarian knight mage ranger rogue rogue_hooded; do
+          for f in barbarian knight mage ranger rogue; do
             curl -L --fail --retry 3 "$base/Characters/gltf/${f}_texture.png" -o "$root/characters/${f}_texture.png"
           done
           curl -L --fail --retry 3 "$base/Animations/gltf/Rig_Medium/Rig_Medium_General.glb" -o "$root/animations/Rig_Medium_General.glb"
