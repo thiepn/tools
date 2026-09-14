@@ -27,10 +27,11 @@ jobs:
           cp package/build/three.module.js "$root/vendor/three/three.module.js"
           cp package/examples/jsm/loaders/GLTFLoader.js "$root/vendor/three/addons/loaders/GLTFLoader.js"
           cp package/examples/jsm/utils/SkeletonUtils.js "$root/vendor/three/addons/utils/SkeletonUtils.js"
+          cp package/examples/jsm/utils/BufferGeometryUtils.js "$root/vendor/three/addons/utils/BufferGeometryUtils.js"
           cp package/LICENSE "$root/licenses/Three.js-MIT.txt"
           cp package/package.json "$root/licenses/Three.js-package.json"
           cd "$root"
-          sha256sum vendor/three/three.module.js vendor/three/addons/loaders/GLTFLoader.js vendor/three/addons/utils/SkeletonUtils.js licenses/* > SHA256SUMS.txt
+          sha256sum vendor/three/three.module.js vendor/three/addons/loaders/GLTFLoader.js vendor/three/addons/utils/SkeletonUtils.js vendor/three/addons/utils/BufferGeometryUtils.js licenses/* > SHA256SUMS.txt
           find . -type f -printf '%P\t%s bytes\n' | sort
       - name: Upload exact vendored runtime
         uses: actions/upload-artifact@v4
