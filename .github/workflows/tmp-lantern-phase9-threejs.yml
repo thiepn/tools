@@ -1,0 +1,41 @@
+name: Temporary Lantern Vale Phase 9 Three.js Vendor
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-lantern-phase9-threejs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Package exact Three.js 0.186.0 runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$PWD/lantern_vale_phase9_threejs"
+          mkdir -p "$root/vendor/three/addons/loaders" "$root/vendor/three/addons/utils" "$root/licenses"
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          npm pack three@0.186.0 >/tmp/three-pack-name.txt
+          tarball=$(tail -n1 /tmp/three-pack-name.txt)
+          tar -xzf "$tarball"
+          cp package/build/three.module.js "$root/vendor/three/three.module.js"
+          cp package/examples/jsm/loaders/GLTFLoader.js "$root/vendor/three/addons/loaders/GLTFLoader.js"
+          cp package/examples/jsm/utils/SkeletonUtils.js "$root/vendor/three/addons/utils/SkeletonUtils.js"
+          cp package/LICENSE "$root/licenses/Three.js-MIT.txt"
+          cp package/package.json "$root/licenses/Three.js-package.json"
+          cd "$root"
+          sha256sum vendor/three/three.module.js vendor/three/addons/loaders/GLTFLoader.js vendor/three/addons/utils/SkeletonUtils.js licenses/* > SHA256SUMS.txt
+          find . -type f -printf '%P\t%s bytes\n' | sort
+      - name: Upload exact vendored runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: lantern-vale-phase9-threejs-0.186.0
+          path: lantern_vale_phase9_threejs
+          if-no-files-found: error
+          retention-days: 1
