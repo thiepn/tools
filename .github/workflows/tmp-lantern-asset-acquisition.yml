@@ -21,7 +21,6 @@ jobs:
           root="$PWD/lantern_vale_approved"
           mkdir -p "$root"
 
-          # Kenney mirrors preserve original pack structure + License.txt.
           git clone --depth 1 --filter=blob:none --sparse https://github.com/markoahmataj/CozyFarm.git /tmp/cozy
           cd /tmp/cozy
           git sparse-checkout set \
@@ -30,13 +29,11 @@ jobs:
           cp -a 'CozyFarmAssets/CozyFarmAssets/kenney_nature-kit' "$root/kenney_nature_kit"
           cp -a 'CozyFarmAssets/CozyFarmAssets/kenney_fantasy-town-kit' "$root/kenney_fantasy_town_kit"
 
-          # Quaternius public Standard distribution, including its license evidence.
           git clone --depth 1 --filter=blob:none --sparse https://github.com/agentkaerf/FreeModels.git /tmp/free
           cd /tmp/free
-          git sparse-checkout set 'Stylized Nature MegaKit[Standard]'
+          git sparse-checkout set --skip-checks 'Stylized Nature MegaKit[Standard]'
           cp -a 'Stylized Nature MegaKit[Standard]' "$root/quaternius_stylized_nature_megakit_standard"
 
-          # 3DAssets.dev exposes pack JSON manifests with permanent GLB URLs.
           for slug in lantern-watch bellroot-fen-floodward-marches; do
             out="$root/3dassets_${slug}"
             mkdir -p "$out/models"
