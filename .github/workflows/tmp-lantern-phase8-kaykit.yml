@@ -1,0 +1,41 @@
+name: Temporary Lantern Vale Phase 8 KayKit Acquisition
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-lantern-phase8-kaykit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acquire KayKit Adventurers CC0 presentation subset
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$PWD/lantern_vale_phase8_kaykit"
+          mkdir -p "$root/characters" "$root/animations" "$root/licenses"
+          base='https://raw.githubusercontent.com/rcbiscuitsbelfast-prog/viber3d/main/Assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE'
+          for f in Barbarian Knight Mage Ranger Rogue Rogue_Hooded; do
+            curl -L --fail --retry 3 "$base/Characters/gltf/${f}.glb" -o "$root/characters/${f}.glb"
+          done
+          for f in barbarian knight mage ranger rogue rogue_hooded; do
+            curl -L --fail --retry 3 "$base/Characters/gltf/${f}_texture.png" -o "$root/characters/${f}_texture.png"
+          done
+          curl -L --fail --retry 3 "$base/Animations/gltf/Rig_Medium/Rig_Medium_General.glb" -o "$root/animations/Rig_Medium_General.glb"
+          curl -L --fail --retry 3 "$base/Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb" -o "$root/animations/Rig_Medium_MovementBasic.glb"
+          curl -L --fail --retry 3 "$base/License.txt" -o "$root/licenses/KayKit-Adventurers-CC0.txt"
+          curl -L --fail --retry 3 "$base/assets.json" -o "$root/licenses/KayKit-Adventurers-assets.json"
+          find "$root" -type f -print0 | sort -z | xargs -0 sha256sum > "$root/SHA256SUMS.txt"
+          find "$root" -type f -printf '%P\t%s bytes\n' | sort
+      - name: Upload Phase 8 character assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: lantern-vale-phase8-kaykit-cc0
+          path: lantern_vale_phase8_kaykit
+          if-no-files-found: error
+          retention-days: 1
