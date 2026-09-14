@@ -14,22 +14,56 @@ jobs:
   acquire:
     runs-on: ubuntu-latest
     steps:
-      - name: Acquire approved CC0 Tier-1 assets
+      - name: Acquire full approved CC0 pack set
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p lantern_vale_tier1/kenney_nature
-          base='https://raw.githubusercontent.com/markoahmataj/CozyFarm/main/CozyFarmAssets/CozyFarmAssets/kenney_nature-kit'
-          curl -L --fail --retry 3 "$base/License.txt" -o lantern_vale_tier1/kenney_nature/License.txt
-          for f in bridge_wood tree_default tree_oak plant_bush rock_largeA sign ground_pathStraight; do
-            curl -L --fail --retry 3 "$base/Models/${f}.glb" -o "lantern_vale_tier1/kenney_nature/${f}.glb"
+          root="$PWD/lantern_vale_approved"
+          mkdir -p "$root"
+
+          # Kenney mirrors preserve original pack structure + License.txt.
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/markoahmataj/CozyFarm.git /tmp/cozy
+          cd /tmp/cozy
+          git sparse-checkout set \
+            'CozyFarmAssets/CozyFarmAssets/kenney_nature-kit' \
+            'CozyFarmAssets/CozyFarmAssets/kenney_fantasy-town-kit'
+          cp -a 'CozyFarmAssets/CozyFarmAssets/kenney_nature-kit' "$root/kenney_nature_kit"
+          cp -a 'CozyFarmAssets/CozyFarmAssets/kenney_fantasy-town-kit' "$root/kenney_fantasy_town_kit"
+
+          # Quaternius public Standard distribution, including its license evidence.
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/agentkaerf/FreeModels.git /tmp/free
+          cd /tmp/free
+          git sparse-checkout set 'Stylized Nature MegaKit[Standard]'
+          cp -a 'Stylized Nature MegaKit[Standard]' "$root/quaternius_stylized_nature_megakit_standard"
+
+          # 3DAssets.dev exposes pack JSON manifests with permanent GLB URLs.
+          for slug in lantern-watch bellroot-fen-floodward-marches; do
+            out="$root/3dassets_${slug}"
+            mkdir -p "$out/models"
+            curl -L --fail --retry 3 "https://3dassets.dev/api/v1/packs/${slug}" -o "$out/manifest.json"
+            jq -r '.. | strings | select(test("^https://cdn\\.3dassets\\.dev/assets/[0-9]+/v[0-9]+/model\\.glb$"))' "$out/manifest.json" | sort -u > "$out/model_urls.txt"
+            test -s "$out/model_urls.txt"
+            while IFS= read -r url; do
+              id=$(printf '%s' "$url" | sed -E 's#https://cdn\.3dassets\.dev/assets/([0-9]+)/v[0-9]+/model\.glb#\1#')
+              curl -L --fail --retry 3 "$url" -o "$out/models/asset_${id}.glb"
+            done < "$out/model_urls.txt"
           done
-          sha256sum lantern_vale_tier1/kenney_nature/* > lantern_vale_tier1/SHA256SUMS.txt
-          find lantern_vale_tier1 -type f -maxdepth 2 -printf '%P\t%s bytes\n' | sort
-      - name: Upload exact Tier-1 bundle
+
+          cd "$root"
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          printf 'files\t%s\n' "$(find . -type f | wc -l)" > ACQUISITION_SUMMARY.tsv
+          printf 'bytes\t%s\n' "$(du -sb . | cut -f1)" >> ACQUISITION_SUMMARY.tsv
+          printf 'kenney_nature_glb\t%s\n' "$(find kenney_nature_kit -iname '*.glb' | wc -l)" >> ACQUISITION_SUMMARY.tsv
+          printf 'kenney_fantasy_town_glb\t%s\n' "$(find kenney_fantasy_town_kit -iname '*.glb' | wc -l)" >> ACQUISITION_SUMMARY.tsv
+          printf 'quaternius_gltf\t%s\n' "$(find quaternius_stylized_nature_megakit_standard -iname '*.gltf' | wc -l)" >> ACQUISITION_SUMMARY.tsv
+          printf 'lantern_watch_glb\t%s\n' "$(find 3dassets_lantern-watch/models -iname '*.glb' | wc -l)" >> ACQUISITION_SUMMARY.tsv
+          printf 'bellroot_fen_glb\t%s\n' "$(find 3dassets_bellroot-fen-floodward-marches/models -iname '*.glb' | wc -l)" >> ACQUISITION_SUMMARY.tsv
+          cat ACQUISITION_SUMMARY.tsv
+
+      - name: Upload full approved asset archive
         uses: actions/upload-artifact@v4
         with:
-          name: lantern-vale-tier1-cc0
-          path: lantern_vale_tier1
+          name: lantern-vale-approved-cc0-full
+          path: lantern_vale_approved
           if-no-files-found: error
           retention-days: 1
