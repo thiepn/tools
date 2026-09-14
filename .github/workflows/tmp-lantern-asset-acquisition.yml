@@ -1,0 +1,35 @@
+name: Temporary Lantern Vale Asset Acquisition
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-lantern-asset-acquisition.yml'
+      - 'tmp-lantern-assets-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acquire approved CC0 Tier-1 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p lantern_vale_tier1/kenney_nature
+          base='https://raw.githubusercontent.com/markoahmataj/CozyFarm/main/CozyFarmAssets/CozyFarmAssets/kenney_nature-kit'
+          curl -L --fail --retry 3 "$base/License.txt" -o lantern_vale_tier1/kenney_nature/License.txt
+          for f in bridge_wood tree_default tree_oak plant_bush rock_largeA sign ground_pathStraight; do
+            curl -L --fail --retry 3 "$base/Models/${f}.glb" -o "lantern_vale_tier1/kenney_nature/${f}.glb"
+          done
+          sha256sum lantern_vale_tier1/kenney_nature/* > lantern_vale_tier1/SHA256SUMS.txt
+          find lantern_vale_tier1 -type f -maxdepth 2 -printf '%P\t%s bytes\n' | sort
+      - name: Upload exact Tier-1 bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: lantern-vale-tier1-cc0
+          path: lantern_vale_tier1
+          if-no-files-found: error
+          retention-days: 1
