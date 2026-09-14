@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/tmp-lantern-phase6-assets.yml'
+      - 'tmp-lantern-phase6-assets-trigger.txt'
 
 permissions:
   contents: read
