@@ -1,0 +1,37 @@
+name: Temporary Lantern Vale Phase 10 Browser
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-lantern-phase10-browser.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download standalone Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$PWD/lantern_vale_phase10_browser"
+          mkdir -p "$root"
+          export PLAYWRIGHT_BROWSERS_PATH="$root/pw-browsers"
+          npx -y playwright@1.57.0 install chromium
+          printf 'Playwright 1.57.0 standalone Chromium transport for Lantern Vale Phase 10 runtime certification.\n' > "$root/README.txt"
+          find "$root/pw-browsers" -maxdepth 3 -type f -name 'chrome' -o -name 'headless_shell' | sort > "$root/EXECUTABLES.txt"
+          echo '--- executables ---'
+          cat "$root/EXECUTABLES.txt"
+          echo '--- size ---'
+          du -sh "$root/pw-browsers"
+      - name: Upload standalone browser
+        uses: actions/upload-artifact@v4
+        with:
+          name: lantern-vale-phase10-playwright-chromium
+          path: lantern_vale_phase10_browser
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 6
