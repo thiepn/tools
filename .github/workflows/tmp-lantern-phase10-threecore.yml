@@ -1,0 +1,37 @@
+name: Temporary Lantern Vale Phase 10 Three Core
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-lantern-phase10-threecore.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package-core:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Package exact Three.js r186 core module
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$PWD/lantern_vale_phase10_threecore"
+          mkdir -p "$root"
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          npm pack three@0.186.0 >/tmp/three-pack-phase10.txt
+          tarball=$(tail -n1 /tmp/three-pack-phase10.txt)
+          tar -xzf "$tarball"
+          cp package/build/three.core.js "$root/three.core.js"
+          cp package/LICENSE "$root/Three.js-MIT.txt"
+          sha256sum "$root/three.core.js" "$root/Three.js-MIT.txt" > "$root/SHA256SUMS.txt"
+          ls -lh "$root"
+      - name: Upload exact core module
+        uses: actions/upload-artifact@v4
+        with:
+          name: lantern-vale-phase10-three-core-r186
+          path: lantern_vale_phase10_threecore
+          if-no-files-found: error
+          retention-days: 1
