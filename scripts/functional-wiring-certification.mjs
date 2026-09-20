@@ -142,8 +142,8 @@ async function main(){
         await waitFor(()=>ev(cdp,`Boolean(document.querySelector('[data-tool-id="${row.id}"] .tt-tool-content'))`),`${row.id} mount`);
         await ev(cdp,`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
         const before=await ev(cdp,SNAP);
-        if(row.category==='device'||row.category==='pdf'||row.id==='screen-recorder'){
-          result.mode=row.id==='screen-recorder'?'delegated-recorder-certification':'delegated-browser-certification';
+        if(row.category==='device'||row.category==='pdf'||row.id==='screen-recorder'||row.id==='gzip-compress'||row.id==='gzip-decompress'){
+          result.mode=row.id==='screen-recorder'?'delegated-recorder-certification':(row.id==='gzip-compress'||row.id==='gzip-decompress')?'delegated-files-certification':'delegated-browser-certification';
         }else{
           if(before?.files?.length){
             result.file=await attachFirstFile(cdp,row,before,fixtures);
