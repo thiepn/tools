@@ -6,8 +6,8 @@ export interface VideoAudioExtractionOptions {
 }
 
 function waitForMedia(video: HTMLVideoElement, eventName: 'loadedmetadata' | 'canplay', timeoutMs = 8000): Promise<void> {
-  if (eventName === 'loadedmetadata' && video.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
-  if (eventName === 'canplay' && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve();
+  if (eventName === 'loadedmetadata' && video.readyState >= 1) return Promise.resolve();
+  if (eventName === 'canplay' && video.readyState >= 3) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => { cleanup(); reject(new Error(`Timed out waiting for video ${eventName}.`)); }, timeoutMs);
     const cleanup = () => { window.clearTimeout(timer); video.removeEventListener(eventName, ready); video.removeEventListener('error', failed); };
