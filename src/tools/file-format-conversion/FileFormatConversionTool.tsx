@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import JSZip from 'jszip';
 import { Download, FileArchive, FileSearch } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
+import { downloadBlobFile } from '../../utilities/download';
 import { getPublicFileConversionTask, PUBLIC_FILE_CONVERSION_TASKS } from '../../files/publicFileConversionTasks';
 import {
   createTar,
@@ -33,12 +34,7 @@ function readTaskId(hash: string): string | null {
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadBlobFile(filename, blob);
 }
 
 function downloadBytes(bytes: Uint8Array, filename: string, type = 'application/octet-stream'): void {

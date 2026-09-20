@@ -18,6 +18,7 @@ import {
   formatDuplicateReportText,
 } from '../../utilities/duplicate-finder';
 import { copyToClipboard } from '../../utilities/clipboard';
+import { downloadTextFile } from '../../utilities/download';
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -34,6 +35,7 @@ export const DuplicateFinderTool: React.FC = () => {
   const [report, setReport] = useState<DuplicateScanReport | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFilesSelected = async (files: FileList | File[]) => {
     const list = Array.from(files);
@@ -113,13 +115,11 @@ export const DuplicateFinderTool: React.FC = () => {
 
   const handleExportJson = () => {
     if (!report) return;
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `duplicate-files-report-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(
+      `duplicate-files-report-${Date.now()}.json`,
+      JSON.stringify(report, null, 2),
+      'application/json'
+    );
   };
 
   const handleCopyReport = async () => {
@@ -141,15 +141,7 @@ export const DuplicateFinderTool: React.FC = () => {
             if (e.dataTransfer.files) handleFilesSelected(e.dataTransfer.files);
           }}
           className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center hover:border-indigo-500 transition-colors bg-white dark:bg-slate-950/50 cursor-pointer"
-          onClick={() => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.multiple = true;
-            input.onchange = (e: any) => {
-              if (e.target.files) handleFilesSelected(e.target.files);
-            };
-            input.click();
-          }}
+          onClick={() => fileInputRef.current?.click()}
         >
           <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-3">
             <FolderSearch className="w-5 h-5" />
@@ -160,6 +152,17 @@ export const DuplicateFinderTool: React.FC = () => {
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-4">
             Detects exact binary duplicates using in-browser SHA-256 Web Crypto hashing. Fast two-stage size grouping. No file data leaves your device.
           </p>
+
+          <input
+            ref={fileInputRef}
+            data-testid="duplicate-file-input"
+            type="file"
+            multiple
+            className="sr-only"
+            onChange={(event) => {
+              if (event.target.files) void handleFilesSelected(event.target.files);
+            }}
+          />
 
           <div className="flex justify-center gap-2">
             <span className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 pointer-events-none">
