@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState}from'react';
 import JSZip from'jszip';
 import{Camera,Download,Film,Loader2,ShieldCheck,Square,Upload}from'lucide-react';
 import{ToolShell}from'../../components/tool-shell/ToolShell';
+import{downloadBlobFile}from'../../utilities/download';
 import{getPublicMediaTask,PUBLIC_MEDIA_TASKS}from'../../media/publicMediaTasks';
 import{audioBufferToWavBlob}from'../../utilities/audio-recorder';
 import{encodeGif}from'../../utilities/gif-maker';
@@ -10,7 +11,7 @@ import{calculateRecommendedVideoBitrate}from'../../utilities/video-toolkit';
 
 type LoadedVideo={file:File;video:HTMLVideoElement;url:string;duration:number;width:number;height:number};
 function currentTaskId(){const clean=window.location.hash.replace(/^#\/?/,'').split('?')[0];return clean.startsWith('tool/')?clean.slice(5).split('/')[0]:clean.split('/')[0];}
-function download(blob:Blob,name:string){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);}
+function download(blob:Blob,name:string){downloadBlobFile(name,blob);}
 function seek(video:HTMLVideoElement,time:number){return new Promise<void>((resolve,reject)=>{const duration=Number.isFinite(video.duration)?video.duration:Math.max(0,time),target=Math.max(0,Math.min(Math.max(0,duration-.001),time));if(Math.abs(video.currentTime-target)<.015){resolve();return;}const timer=window.setTimeout(()=>{cleanup();reject(new Error('Timed out while seeking the video.'));},6000),cleanup=()=>{clearTimeout(timer);video.removeEventListener('seeked',ok);video.removeEventListener('error',bad);},ok=()=>{cleanup();resolve();},bad=()=>{cleanup();reject(new Error('The video could not seek to that frame.'));};video.addEventListener('seeked',ok,{once:true});video.addEventListener('error',bad,{once:true});video.currentTime=target;});}
 function loadVideo(file:File):Promise<LoadedVideo>{return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),video=document.createElement('video');video.preload='auto';video.playsInline=true;video.src=url;video.onloadedmetadata=()=>resolve({file,video,url,duration:Number.isFinite(video.duration)?video.duration:0,width:video.videoWidth||1280,height:video.videoHeight||720});video.onerror=()=>{URL.revokeObjectURL(url);reject(new Error(`This browser could not decode ${file.name}.`));};});}
 function releaseVideos(items:LoadedVideo[]){for(const item of items){item.video.pause();item.video.removeAttribute('src');item.video.load();URL.revokeObjectURL(item.url);}}

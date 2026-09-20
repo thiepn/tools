@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Video, Mic, MicOff, Square, Play, Pause, RotateCcw, Download, Trash2, ShieldCheck, Circle, AlertCircle } from 'lucide-react';
 import { ToolShell } from '../../components/tool-shell/ToolShell';
+import { downloadBlobFile } from '../../utilities/download';
 import { calculateElapsedRecordingSeconds, formatRecordingDuration, formatByteSize, generateRecordingFilename, getMediaRecorderOptions, getSupportedVideoMimeType, stopAllMediaTracks, type RecordingMeta } from '../../utilities/screen-recorder';
 
 type RecordingQuality='balanced'|'high';
@@ -23,7 +24,7 @@ export const ScreenRecorderTool:React.FC=()=>{
  }catch(error:any){console.error('Failed to start recording:',error);setErrorMessage(error?.name==='NotAllowedError'?'Screen capture permission was cancelled or denied.':error?.message||'Failed to capture screen.');stopAllMediaTracks(displayRef.current,micRef.current);setIsRecording(false);}};
  const handlePauseResume=()=>{const recorder=recorderRef.current;if(!recorder)return;if(isPaused){if(recorder.state==='paused')recorder.resume();if(pauseStartedRef.current!==null)pausedTotalRef.current+=performance.now()-pauseStartedRef.current;pauseStartedRef.current=null;setIsPaused(false);timerRef.current=window.setInterval(refreshElapsed,250);}else{if(recorder.state==='recording')recorder.pause();refreshElapsed();pauseStartedRef.current=performance.now();setIsPaused(true);clearTimer();}};
  const handleDiscard=()=>{if(recordingUrlRef.current){URL.revokeObjectURL(recordingUrlRef.current);recordingUrlRef.current=null;}setRecordingMeta(null);setElapsedSeconds(0);chunksRef.current=[];};
- const handleDownload=()=>{if(!recordingMeta)return;const link=document.createElement('a');link.href=recordingMeta.url;link.download=generateRecordingFilename(recordingMeta.mimeType,recordingMeta.recordedAt);link.click();};
+ const handleDownload=()=>{if(!recordingMeta)return;downloadBlobFile(generateRecordingFilename(recordingMeta.mimeType,recordingMeta.recordedAt),recordingMeta.blob);};
 
  return <ToolShell toolId="screen-recorder" title="Screen Recorder" description="Record your screen, tab, or app window locally with accurate active-time tracking, optional microphone audio, and selectable recording quality." category="media" relatedToolIds={['audio-recorder','image-annotator','timer-stopwatch']}>
   <div className="space-y-6">

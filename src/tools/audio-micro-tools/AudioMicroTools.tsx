@@ -1,12 +1,13 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{Download,Loader2,Music,ShieldCheck,Upload}from'lucide-react';
 import{ToolShell}from'../../components/tool-shell/ToolShell';
+import{downloadBlobFile}from'../../utilities/download';
 import{getPublicMediaTask,PUBLIC_MEDIA_TASKS}from'../../media/publicMediaTasks';
 import{analyzeAudioBuffer,audioBufferToWavBlob,decodeAudioBlob,findActiveAudioRange,trimAudioBuffer}from'../../utilities/audio-recorder';
 import{dbToGain,downmixChannels,joinedAudioDuration,playbackRateForSemitones,reverseSamples,sanitizeMediaBaseName,softNoiseGateSample}from'../../utilities/media-micro-tools';
 
 function taskId(){const clean=window.location.hash.replace(/^#\/?/,'').split('?')[0];return clean.startsWith('tool/')?clean.slice(5).split('/')[0]:clean.split('/')[0];}
-function download(blob:Blob,name:string){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function download(blob:Blob,name:string){downloadBlobFile(name,blob);}
 function createLike(ctx:BaseAudioContext,source:AudioBuffer,channels=source.numberOfChannels,length=source.length){return ctx.createBuffer(Math.max(1,channels),Math.max(1,length),source.sampleRate);}
 function copyBuffer(ctx:BaseAudioContext,source:AudioBuffer){const out=createLike(ctx,source);for(let c=0;c<source.numberOfChannels;c++)out.copyToChannel(source.getChannelData(c),c);return out;}
 function joinBuffers(ctx:BaseAudioContext,buffers:AudioBuffer[]){if(!buffers.length)throw new Error('Choose audio files first.');const rate=buffers[0].sampleRate,channels=Math.max(...buffers.map(b=>b.numberOfChannels)),length=buffers.reduce((n,b)=>n+b.length,0),out=ctx.createBuffer(channels,length,rate);let offset=0;for(const b of buffers){for(let c=0;c<channels;c++){const src=b.getChannelData(Math.min(c,b.numberOfChannels-1));out.getChannelData(c).set(src,offset);}offset+=b.length;}return out;}

@@ -40,7 +40,7 @@ jobs:
         run: npm run browser:health
       - name: Verify health report completeness
         run: |
-          node -e "const fs=require('fs');const p='artifacts/tool-health/tool-health.json';if(!fs.existsSync(p))throw new Error('tool-health.json missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.summary?.total!==351)throw new Error('expected 351 tools');if(r.runsPerTool<2)throw new Error('expected at least two R11 scans');if(!r.r18Executed)throw new Error('R18 evidence pass missing');if(!r.phase4DeviceExecuted)throw new Error('Phase 4 device certification missing');if(!r.phase5FilesExecuted)throw new Error('Phase 5 files certification missing');console.log(r.summary)"
+          node -e "const fs=require('fs');const p='artifacts/tool-health/tool-health.json';if(!fs.existsSync(p))throw new Error('tool-health.json missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.summary?.total!==351)throw new Error('expected 351 tools');if(r.runsPerTool<2)throw new Error('expected at least two R11 scans');if(!r.r18Executed)throw new Error('R18 evidence pass missing');if(!r.phase4DeviceExecuted)throw new Error('Phase 4 device certification missing');if(!r.phase5FilesExecuted)throw new Error('Phase 5 files certification missing');if(!r.phase6MediaExecuted)throw new Error('Phase 6 media certification missing');console.log(r.summary)"
       - name: Publish summary
         if: always()
         run: |
