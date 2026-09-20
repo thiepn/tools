@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer as createViteServer } from 'vite';
@@ -15,6 +15,7 @@ const BASE_PATH = '/tools/';
 const BASE_URL = `http://${HOST}:${PORT}${BASE_PATH}`;
 const EXPECTED_TOOLS = 351;
 const VIEWPORT = { width: 1280, height: 900, mobile: false };
+const EVIDENCE_DIR = process.env.TOOL_HEALTH_EVIDENCE_DIR ? path.resolve(ROOT, process.env.TOOL_HEALTH_EVIDENCE_DIR) : null;
 
 const MIME = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -403,6 +404,13 @@ async function auditTool(tool) {
     if (mutation.missingNames.length > 8) findings.push(`${mutation.missingNames.length - 8} additional visible controls lack accessible names`);
 
     findings.push(...errors);
+    let screenshot = null;
+    if (findings.length && EVIDENCE_DIR) {
+      await mkdir(EVIDENCE_DIR, { recursive: true });
+      const capture = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+      screenshot = path.join(EVIDENCE_DIR, `${tool.id}.png`);
+      await writeFile(screenshot, Buffer.from(capture.data, 'base64'));
+    }
     return {
       id: tool.id,
       category: tool.category,
@@ -411,6 +419,7 @@ async function auditTool(tool) {
       mutated: mutation.mutated,
       fileInputs: mutation.fileInputs,
       enabledButtons: mutation.enabledButtons,
+      screenshot,
     };
   } finally {
     cdp.close();

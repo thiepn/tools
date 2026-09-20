@@ -10,8 +10,10 @@ Phase 1 adds a persistent, registry-driven health scan for the complete Tiny Too
 2. One R18 evidence pass to exercise safe primary actions, desktop/mobile rendering, and interaction depth.
 3. Cross-run stability analysis to flag flaky tools.
 4. Normalization of findings into Phase 1 failure codes.
-5. Failure clustering across tools and categories.
-6. Machine-readable and human-readable health reports.
+5. Observable-response checks for safely triggered primary actions.
+6. Automatic screenshots for tools with runtime-audit findings.
+7. Failure clustering across tools and categories.
+8. Machine-readable and human-readable health reports.
 
 The implementation intentionally reuses the proven R11/R18 Chromium/CDP infrastructure rather than maintaining a second browser harness.
 
@@ -26,6 +28,7 @@ Generated under `artifacts/tool-health/`:
 - `tool-health-run-1.json`, `tool-health-run-2.json`, ... — individual stability runs.
 - `r11-run-*.log` — raw runtime-audit diagnostics.
 - `r18.log` — safe-action/mobile evidence log.
+- `failed-tools/run-*/<tool-id>.png` — automatic viewport screenshots for tools with R11 findings.
 
 ## Status semantics
 
