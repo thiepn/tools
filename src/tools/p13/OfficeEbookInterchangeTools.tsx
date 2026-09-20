@@ -2,10 +2,11 @@ import React,{useMemo,useState}from'react';
 import{BookOpen,Download,FileText,Upload}from'lucide-react';
 import{ToolShell}from'../../components/tool-shell/ToolShell';
 import{getPublicP13Task,PUBLIC_P13_TASKS}from'../../expansion/publicP13Tasks';
+import{downloadBlobFile}from'../../utilities/download';
 import{createDocx,createEpub,editEpubMetadata,extractDocx,extractEpub,extractPptx,inspectDocxMetadata,inspectEpubMetadata,safeFilename,type BookMetadata}from'../../utilities/p13-office';
 
 function currentId(){const clean=window.location.hash.replace(/^#\/?/,'').split('?')[0];return clean.startsWith('tool/')?clean.slice(5).split('/')[0]:clean.split('/')[0]}
-function download(data:BlobPart,name:string,type:string){const url=URL.createObjectURL(new Blob([data],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function download(data:BlobPart,name:string,type:string){downloadBlobFile(name,new Blob([data],{type}))}
 const DEFAULT_MD='# Tiny Tools Document\n\nA **local-first** document generated entirely in your browser.\n\n- No upload\n- Simple headings\n- Portable content';
 const EMPTY_META:BookMetadata={title:'Tiny Tools Book',creator:'',language:'en',identifier:'',publisher:'',description:''};
 
