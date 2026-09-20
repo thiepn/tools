@@ -29,7 +29,7 @@ async function fetchResponse(url, label, attempts = 4) {
       const response = await fetch(url, {
         redirect: 'follow',
         headers: {
-          'Accept': url.includes('api.github.com') ? 'application/vnd.github+json' : '*/*',
+          'Accept': String(url).includes('api.github.com') ? 'application/vnd.github+json' : '*/*',
           'User-Agent': 'tiny-tools-phase7-pdf-certification',
         },
       });
