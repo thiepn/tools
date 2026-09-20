@@ -1,0 +1,36 @@
+name: Phase 3 calculator and math contracts
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase3-calculator-math-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deterministic-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Run 72-route deterministic calculator/math contracts
+        run: npm run test:phase3
+      - name: Run full unit regression
+        run: npm test
