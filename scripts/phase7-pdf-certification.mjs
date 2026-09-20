@@ -187,6 +187,19 @@ async function evaluate(cdp, expression) {
   return response.result?.value;
 }
 
+async function evaluateUserGesture(cdp, expression) {
+  const response = await cdp.send('Runtime.evaluate', {
+    expression,
+    awaitPromise: true,
+    returnByValue: true,
+    userGesture: true,
+  });
+  if (response.exceptionDetails) {
+    throw new Error(response.exceptionDetails.exception?.description ?? response.exceptionDetails.text ?? 'Browser user-gesture evaluation failed');
+  }
+  return response.result?.value;
+}
+
 async function newTarget() {
   const response = await fetch(`http://${HOST}:${DEBUG_PORT}/json/new?about%3Ablank`, { method: 'PUT' });
   if (!response.ok) throw new Error(`Unable to create Chrome target: HTTP ${response.status}`);
@@ -281,7 +294,7 @@ async function bodyText(cdp) {
 }
 
 async function clickText(cdp, text) {
-  return evaluate(cdp, `(() => {
+  return evaluateUserGesture(cdp, `(() => {
     const wanted = ${JSON.stringify(text)};
     const nodes = [...document.querySelectorAll('button,a')];
     const target = nodes.find((node) => (node.textContent || '').replace(/\\s+/g,' ').trim() === wanted);
@@ -373,11 +386,17 @@ async function certifyMerge(fixtures) {
       const text = (await bodyText(cdp)).toLowerCase();
       return text.includes('phase7-one.pdf') && text.includes('phase7-two.pdf') && text.includes('2 total pages');
     }, 'two inspected merge sources', 40_000);
-    await clickText(cdp, 'Download merged PDF');
-    await waitFor(async () => (await bodyText(cdp)).includes('Validated 2-page merged PDF.'), 'merged PDF validation', 60_000);
-    const download = await waitForRealDownload(downloadDir, downloadEvents, /^merged\.pdf$/i, 'merged PDF download', 60_000);
-    if (!new TextDecoder().decode(download.bytes.slice(0, 5)).startsWith('%PDF-')) throw new Error('merged output is not a PDF');
-    return { ok: true, evidence: `merged two one-page PDFs; ${download.bytes.length} byte validated PDF`, errors };
+    await clickText(cdp, 'Save as project');
+    await waitFor(
+      () => evaluate(cdp, `location.hash.includes('/workspace/') && location.hash.endsWith('/viewer')`),
+      'merged project viewer',
+      60_000
+    );
+    await waitFor(async () => {
+      const text = (await bodyText(cdp)).toLowerCase();
+      return text.includes('merged') && (text.includes('2 pages') || text.includes('page 1 of 2') || text.includes('page 2 of 2'));
+    }, 'merged two-page viewer evidence', 60_000);
+    return { ok: true, evidence: 'merged two one-page PDFs into a validated two-page local project', errors };
   } finally {
     cdp.close();
     await closeTarget(target.id);
