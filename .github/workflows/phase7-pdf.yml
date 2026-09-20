@@ -1,0 +1,59 @@
+name: Phase 7 PDF production certification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase7-pdf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pdf-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Run Phase 7 PDF route contracts
+        run: npm run test:phase7
+      - name: Run full unit regression
+        run: npm test
+      - name: Build Tiny Tools production site
+        run: npm run build
+      - name: Verify Tiny Tools production build
+        run: npm run build:verify
+      - name: Preflight PDF Everything production
+        run: |
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 https://thiepn.github.io/pdf/ > /dev/null
+      - name: Run five-workflow PDF production certification
+        run: npm run browser:pdf
+      - name: Verify Phase 7 coverage
+        run: |
+          node -e "const fs=require('fs');const p='artifacts/phase7-pdf-certification/pdf-certification.json';if(!fs.existsSync(p))throw new Error('PDF certification missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.familyTotal!==18)throw new Error('expected 18 PDF routes');if(r.summary?.total!==5)throw new Error('expected 5 Phase 7 targets');if(r.summary?.FAIL)throw new Error('PDF certification contains failures');if(r.summary?.PASS!==5)throw new Error('expected 5 PASS');console.log(r.summary)"
+      - name: Publish summary
+        if: always()
+        run: |
+          test -f artifacts/phase7-pdf-certification/pdf-certification.md && cat artifacts/phase7-pdf-certification/pdf-certification.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload Phase 7 evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase7-pdf-certification
+          path: artifacts/phase7-pdf-certification/
+          if-no-files-found: error
