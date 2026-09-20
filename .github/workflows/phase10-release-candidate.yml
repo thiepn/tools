@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: phase10-rc-${ github.ref }}
+  group: phase10-rc-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
       - name: Checkout exact candidate head
         uses: actions/checkout@v7
         with:
-          ref: ${ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
 
       - name: Set up Node
@@ -77,9 +77,9 @@ jobs:
 
       - name: Deterministic production build A
         env:
-          TINY_TOOLS_BUILD_TIMESTAMP: ${ env.RC_BUILD_TIMESTAMP }}
-          TINY_TOOLS_BUILD_COMMIT: ${ env.RC_SOURCE_SHA }}
-          SOURCE_DATE_EPOCH: ${ env.RC_SOURCE_DATE_EPOCH }}
+          TINY_TOOLS_BUILD_TIMESTAMP: ${{ env.RC_BUILD_TIMESTAMP }}
+          TINY_TOOLS_BUILD_COMMIT: ${{ env.RC_SOURCE_SHA }}
+          SOURCE_DATE_EPOCH: ${{ env.RC_SOURCE_DATE_EPOCH }}
         run: |
           set -euo pipefail
           rm -rf dist "$RUNNER_TEMP/tiny-tools-rc-a" "$RUNNER_TEMP/tiny-tools-rc-b"
@@ -89,9 +89,9 @@ jobs:
 
       - name: Deterministic production build B
         env:
-          TINY_TOOLS_BUILD_TIMESTAMP: ${ env.RC_BUILD_TIMESTAMP }}
-          TINY_TOOLS_BUILD_COMMIT: ${ env.RC_SOURCE_SHA }}
-          SOURCE_DATE_EPOCH: ${ env.RC_SOURCE_DATE_EPOCH }}
+          TINY_TOOLS_BUILD_TIMESTAMP: ${{ env.RC_BUILD_TIMESTAMP }}
+          TINY_TOOLS_BUILD_COMMIT: ${{ env.RC_SOURCE_SHA }}
+          SOURCE_DATE_EPOCH: ${{ env.RC_SOURCE_DATE_EPOCH }}
         run: |
           set -euo pipefail
           rm -rf dist
@@ -142,8 +142,8 @@ jobs:
 
       - name: Generate RC manifest and public checksums
         env:
-          RC_SOURCE_SHA: ${ env.RC_SOURCE_SHA }}
-          RC_BUILD_TIMESTAMP: ${ env.RC_BUILD_TIMESTAMP }}
+          RC_SOURCE_SHA: ${{ env.RC_SOURCE_SHA }}
+          RC_BUILD_TIMESTAMP: ${{ env.RC_BUILD_TIMESTAMP }}
           PHASE10_RC_OUT: artifacts/phase10-rc
         run: npm run rc:certify
 
@@ -187,7 +187,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: ${ env.RC_NAME || 'phase10-release-candidate' }}
+          name: ${{ env.RC_NAME || 'phase10-release-candidate' }}
           path: |
             artifacts/phase10-rc/
             artifacts/tool-health/tool-health.json
