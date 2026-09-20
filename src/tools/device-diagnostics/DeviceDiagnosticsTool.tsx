@@ -511,9 +511,11 @@ function ToneGeneratorDiagnostic() {
   const [volume, setVolume] = useState(0.12);
   const [waveform, setWaveform] = useState<OscillatorType>('sine');
   const [active, setActive] = useState(false);
+  const [error, setError] = useState('');
   const contextRef = useRef<AudioContext | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
   const gainRef = useRef<GainNode | null>(null);
+
   const stop = useCallback(() => {
     try { oscillatorRef.current?.stop(); } catch {}
     oscillatorRef.current = null;
@@ -522,29 +524,44 @@ function ToneGeneratorDiagnostic() {
     gainRef.current = null;
     setActive(false);
   }, []);
+
   useEffect(() => stop, [stop]);
   useEffect(() => { if (oscillatorRef.current) oscillatorRef.current.frequency.setTargetAtTime(frequency, contextRef.current?.currentTime ?? 0, 0.01); }, [frequency]);
   useEffect(() => { if (gainRef.current) gainRef.current.gain.setTargetAtTime(volume, contextRef.current?.currentTime ?? 0, 0.01); }, [volume]);
   useEffect(() => { if (oscillatorRef.current) oscillatorRef.current.type = waveform; }, [waveform]);
-  const start = () => {
+
+  const startTone = () => {
     if (active) return;
-    const context = new AudioContext();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.frequency.value = frequency;
-    oscillator.type = waveform;
-    gain.gain.value = volume;
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    contextRef.current = context;
-    oscillatorRef.current = oscillator;
-    gainRef.current = gain;
-    setActive(true);
+    setError('');
+    const AudioContextCtor = globalThis.AudioContext;
+    if (typeof AudioContextCtor !== 'function') {
+      setError('Web Audio output is unavailable in this browser session.');
+      return;
+    }
+    try {
+      const context = new AudioContextCtor();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.frequency.value = frequency;
+      oscillator.type = waveform;
+      gain.gain.value = volume;
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start();
+      contextRef.current = context;
+      oscillatorRef.current = oscillator;
+      gainRef.current = gain;
+      setActive(true);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Audio output could not be started.');
+      stop();
+    }
   };
+
   return (
     <section className={panel}>
       <div className="grid gap-4 sm:grid-cols-3"><label className="text-xs font-semibold">Frequency<input className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-2" type="number" min="20" max="20000" value={frequency} onChange={(event) => setFrequency(Math.min(20000, Math.max(20, Number(event.target.value) || 20)))} /></label><label className="text-xs font-semibold">Waveform<select className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-2" value={waveform} onChange={(event) => setWaveform(event.target.value as OscillatorType)}><option value="sine">Sine</option><option value="square">Square</option><option value="triangle">Triangle</option><option value="sawtooth">Sawtooth</option></select></label><label className="text-xs font-semibold">Level: {Math.round(volume * 100)}%<input className="mt-3 w-full" type="range" min="0.01" max="0.4" step="0.01" value={volume} onChange={(event) => setVolume(Number(event.target.value))} /></label></div>
-      <div className="mt-4 flex gap-2"><button className={button} onClick={start} disabled={active}><Play className="h-4 w-4" />Start tone</button><button className={secondaryButton} onClick={stop} disabled={!active}><Square className="h-4 w-4" />Stop</button></div>
+      <div className="mt-4 flex gap-2"><button className={button} onClick={startTone} disabled={active}><Play className="h-4 w-4" />Start tone</button><button className={secondaryButton} onClick={stop} disabled={!active}><Square className="h-4 w-4" />Stop</button></div>
+      {error && <div className="mt-3"><Unsupported>{error}</Unsupported></div>}
       <p className={`mt-3 ${muted}`}>Keep the output level low, especially with headphones and high frequencies. Browser and hardware frequency response may differ from the requested oscillator frequency.</p>
     </section>
   );
