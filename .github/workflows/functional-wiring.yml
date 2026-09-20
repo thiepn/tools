@@ -38,22 +38,31 @@ jobs:
         id: wiring
         continue-on-error: true
         run: npm run browser:functional-wiring
+      - name: Exercise real media processing
+        id: media
+        continue-on-error: true
+        run: npm run browser:real-media
       - name: Upload functional evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: functional-wiring-351
-          path: artifacts/functional-wiring/
+          path: |
+            artifacts/functional-wiring/
+            artifacts/real-media/
           if-no-files-found: error
-      - name: Enforce 351-route functional wiring gate
+      - name: Enforce functional correctness gates
         run: |
           node <<'NODE'
           const fs=require('fs');
-          const p='artifacts/functional-wiring/functional-wiring.json';
-          if(!fs.existsSync(p)) throw new Error('functional-wiring.json missing');
-          const r=JSON.parse(fs.readFileSync(p,'utf8')),s=r.summary||{};
-          if(s.total!==351||s.PASS!==351||s.INCONCLUSIVE!==0||s.FAIL!==0){
-            throw new Error(`Functional wiring gate failed: ${JSON.stringify(s)}`);
+          const read=(p)=>{if(!fs.existsSync(p))throw new Error(p+' missing');return JSON.parse(fs.readFileSync(p,'utf8'));};
+          const wiring=read('artifacts/functional-wiring/functional-wiring.json').summary||{};
+          if(wiring.total!==351||wiring.PASS!==351||wiring.INCONCLUSIVE!==0||wiring.FAIL!==0){
+            throw new Error(`Functional wiring gate failed: ${JSON.stringify(wiring)}`);
           }
-          console.log(s);
+          const media=read('artifacts/real-media/real-media.json').summary||{};
+          if(media.total!==26||media.PASS!==26||media.FAIL!==0){
+            throw new Error(`Real media gate failed: ${JSON.stringify(media)}`);
+          }
+          console.log({wiring,media});
           NODE
