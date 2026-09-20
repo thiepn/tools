@@ -21,6 +21,8 @@
     "browser:capabilities": "node scripts/r7-capability-ci.mjs",
     "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs",
     "browser:full-audit": "node scripts/r11-full-catalog-audit.mjs",
+    "browser:health": "node scripts/phase1-tool-health.mjs",
+    "tools:health": "npm run build && npm run build:verify && npm run browser:health",
     "browser:b-to-s": "node scripts/r12-b-uplift-smoke.mjs",
     "browser:a-to-s": "node scripts/r13-a-uplift-smoke.mjs",
     "browser:strict-audit": "node scripts/r14-strict-catalog-audit.mjs",
