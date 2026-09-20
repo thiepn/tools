@@ -47,7 +47,8 @@
     "browser:final": "node scripts/phase9-final-certification.mjs",
     "rc:compare-builds": "node scripts/phase10-compare-builds.mjs",
     "rc:certify": "node scripts/phase10-release-candidate.mjs",
-    "test:phase10": "vitest run src/__tests__/phase10-release-contract.test.ts"
+    "test:phase10": "vitest run src/__tests__/phase10-release-contract.test.ts",
+    "browser:real-media": "node scripts/real-media-processing-certification.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
