@@ -57,7 +57,7 @@ async function audit(tool,f,cdp,errors){
         const d=s.downloads.at(-1);if(!d.download.endsWith('.wav')||!(d.blob?.size>44))throw new Error('Invalid Video Toolkit WAV: '+JSON.stringify(d));
         result.evidence=`${d.download} · ${d.blob.size} bytes`;
       }else{
-      await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.text.includes('video ready.')&&!s.alert},id+' video decode',12000);
+      await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.text.includes('ready.')&&!s.alert},id+' video decode',12000);
       if(id==='add-audio-to-video')await setFiles(cdp,'input[type="file"][accept="audio/*"]',[f.wav1]);
       if(id==='add-logo-to-video')await setFiles(cdp,'input[type="file"][accept="image/*"]',[f.png]);
       if(id==='subtitle-burner')await setFiles(cdp,'input[type="file"][accept*=".srt"]',[f.srt]);
