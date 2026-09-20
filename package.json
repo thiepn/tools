@@ -43,7 +43,10 @@
     "test:phase8": "vitest run src/__tests__/phase8-image-contracts.test.ts",
     "browser:image": "node scripts/phase8-image-certification.mjs",
     "test:phase9": "vitest run src/__tests__/phase9-final-coverage.test.ts",
-    "browser:final": "node scripts/phase9-final-certification.mjs"
+    "browser:final": "node scripts/phase9-final-certification.mjs",
+    "rc:compare-builds": "node scripts/phase10-compare-builds.mjs",
+    "rc:certify": "node scripts/phase10-release-candidate.mjs",
+    "test:phase10": "vitest run src/__tests__/phase10-release-contract.test.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
