@@ -1,0 +1,59 @@
+name: Functional correctness wiring
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: functional-wiring-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-wiring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Deterministic regression suite
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Exercise production tool wiring
+        id: wiring
+        continue-on-error: true
+        run: npm run browser:functional-wiring
+      - name: Upload functional evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: functional-wiring-351
+          path: artifacts/functional-wiring/
+          if-no-files-found: error
+      - name: Enforce 351-route functional wiring gate
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='artifacts/functional-wiring/functional-wiring.json';
+          if(!fs.existsSync(p)) throw new Error('functional-wiring.json missing');
+          const r=JSON.parse(fs.readFileSync(p,'utf8')),s=r.summary||{};
+          if(s.total!==351||s.PASS!==351||s.INCONCLUSIVE!==0||s.FAIL!==0){
+            throw new Error(`Functional wiring gate failed: ${JSON.stringify(s)}`);
+          }
+          console.log(s);
+          NODE
