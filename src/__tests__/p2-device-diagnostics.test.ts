@@ -107,7 +107,7 @@ describe('P2 controller and battery helpers', () => {
   it('formats finite and unknown battery time estimates without inventing values', () => {
     expect(formatDurationSeconds(5400)).toBe('1h 30m');
     expect(formatDurationSeconds(600)).toBe('10m');
-    expect(formatDurationSeconds(Infinity)).toBe('Unknown');
+    expect(formatDurationSeconds(Infinity)).toBe('Not applicable');
     expect(formatDurationSeconds(Number.NaN)).toBe('Unknown');
   });
 });
