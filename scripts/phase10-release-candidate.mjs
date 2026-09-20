@@ -8,6 +8,7 @@ const DIST = path.resolve(ROOT, 'dist');
 const OUT = path.resolve(ROOT, process.env.PHASE10_RC_OUT || 'artifacts/phase10-rc');
 const HEALTH = path.resolve(ROOT, process.env.PHASE10_HEALTH_REPORT || 'artifacts/tool-health/tool-health.json');
 const REPRO = path.join(OUT, 'reproducibility.json');
+const FUNCTIONAL = path.resolve(ROOT, process.env.PHASE10_FUNCTIONAL_REPORT || 'artifacts/functional-wiring/functional-wiring.json');
 
 const EXPECTED_TOOLS = 351;
 const EXPECTED_BASE = '/tools/';
@@ -72,11 +73,12 @@ async function bundleMetrics() {
   return { assets: { script, stylesheet }, sizes, budgets: BUDGETS };
 }
 
-const [{ raw: packageRaw, value: pkg }, { raw: lockRaw, value: lock }, { value: health }, { value: generation }, { value: repro }] =
+const [{ raw: packageRaw, value: pkg }, { raw: lockRaw, value: lock }, { raw: healthRaw, value: health }, { raw: functionalRaw, value: functional }, { value: generation }, { value: repro }] =
   await Promise.all([
     readJson(path.join(ROOT, 'package.json'), 'package.json'),
     readJson(path.join(ROOT, 'package-lock.json'), 'package-lock.json'),
     readJson(HEALTH, 'tool-health.json'),
+    readJson(FUNCTIONAL, 'functional-wiring.json'),
     readJson(path.join(DIST, 'build-generation.json'), 'build-generation.json'),
     readJson(REPRO, 'reproducibility.json'),
   ]);
@@ -113,6 +115,11 @@ assert(health.summary?.BROKEN === 0, `Expected 0 BROKEN; received ${health.summa
 assert(health.summary?.BLOCKED === 0, `Expected 0 BLOCKED; received ${health.summary?.BLOCKED}.`);
 assert(health.summary?.FLAKY === 0, `Expected 0 FLAKY; received ${health.summary?.FLAKY}.`);
 assert(health.runsPerTool >= 2, 'Health report must include at least two catalog passes.');
+
+assert(functional.summary?.total === EXPECTED_TOOLS, `Expected ${EXPECTED_TOOLS} tools in functional wiring report.`);
+assert(functional.summary?.PASS === EXPECTED_TOOLS, `Expected ${EXPECTED_TOOLS} functional wiring PASS; received ${functional.summary?.PASS}.`);
+assert(functional.summary?.INCONCLUSIVE === 0, `Expected 0 INCONCLUSIVE functional wiring routes; received ${functional.summary?.INCONCLUSIVE}.`);
+assert(functional.summary?.FAIL === 0, `Expected 0 FAIL functional wiring routes; received ${functional.summary?.FAIL}.`);
 
 for (const field of [
   'r18Executed',
@@ -162,7 +169,6 @@ assert(publicArtifactFingerprintSha256 === repro.left.fingerprintSha256 || repro
 
 const shortSha = sourceCommit.slice(0, 12);
 const rcId = `tiny-tools-v${pkg.version}-rc-${shortSha}`;
-const healthRaw = await readFile(HEALTH);
 
 const report = {
   schemaVersion: 1,
@@ -184,8 +190,10 @@ const report = {
     packageJsonSha256: sha256(packageRaw),
     packageLockSha256: sha256(lockRaw),
     toolHealthSha256: sha256(healthRaw),
+    functionalWiringSha256: sha256(functionalRaw),
   },
   health: health.summary,
+  functionalWiring: functional.summary,
   families: health.familyHealth,
   evidence: {
     runsPerTool: health.runsPerTool,
@@ -196,6 +204,7 @@ const report = {
     phase7Pdf: health.phase7PdfExecuted,
     phase8Image: health.phase8ImageExecuted,
     phase9Final: health.phase9FinalExecuted,
+    functionalWiring351: true,
   },
   bundle,
 };
@@ -227,6 +236,7 @@ await writeFile(
 - BLOCKED: **${health.summary.BLOCKED}**
 - FLAKY: **${health.summary.FLAKY}**
 - Runtime catalog passes/tool: **${health.runsPerTool}**
+- Production functional wiring: **${functional.summary.PASS}/${functional.summary.total} PASS**
 
 ## Initial bundle
 
@@ -240,6 +250,7 @@ await writeFile(
 - package.json: \`${report.sourceIntegrity.packageJsonSha256}\`
 - package-lock.json: \`${report.sourceIntegrity.packageLockSha256}\`
 - tool-health.json: \`${report.sourceIntegrity.toolHealthSha256}\`
+- functional-wiring.json: \`${report.sourceIntegrity.functionalWiringSha256}\`
 
 This artifact is eligible for release-candidate packaging. Promotion to production still requires the final release decision and main-branch deployment workflow.
 `
