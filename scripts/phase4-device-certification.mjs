@@ -514,7 +514,9 @@ function fixtureExpression(id) {
 
       if (id === 'ipv4-ipv6-test') {
         installFetch();
-        click(/^Test IPv4 \/ IPv6$/);
+        const ipButton = [...root.querySelectorAll('button')].find((node) => (node.textContent || '').trim() === 'Test IPv4 / IPv6');
+        if (!ipButton) throw new Error('IPv4 / IPv6 test button missing');
+        ipButton.click();
         await until(() => body().includes('Dual-stack (IPv4 + IPv6)'), 'dual-stack result');
         return { ok: true, message: 'mock IPv4 and IPv6 reachability classified' };
       }
