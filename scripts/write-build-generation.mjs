@@ -29,11 +29,29 @@ const files = (await walk(DIST)).sort();
 if (!files.includes('index.html')) throw new Error('dist/index.html was not discovered in the build generation.');
 if (files.length === 0) throw new Error('Production build generation is empty.');
 
+function deterministicBuildTime() {
+  const explicit = process.env.TINY_TOOLS_BUILD_TIMESTAMP?.trim();
+  if (explicit) {
+    const parsed = Date.parse(explicit);
+    if (!Number.isFinite(parsed)) throw new Error(`TINY_TOOLS_BUILD_TIMESTAMP is invalid: ${explicit}`);
+    return new Date(parsed).toISOString();
+  }
+
+  const epoch = process.env.SOURCE_DATE_EPOCH?.trim();
+  if (epoch) {
+    const seconds = Number(epoch);
+    if (!Number.isFinite(seconds) || seconds < 0) throw new Error(`SOURCE_DATE_EPOCH is invalid: ${epoch}`);
+    return new Date(seconds * 1000).toISOString();
+  }
+
+  return new Date().toISOString();
+}
+
 const generation = {
   schemaVersion: 1,
   base: EXPECTED_BASE,
-  commit: process.env.GITHUB_SHA || null,
-  generatedAt: new Date().toISOString(),
+  commit: process.env.TINY_TOOLS_BUILD_COMMIT || process.env.GITHUB_SHA || null,
+  generatedAt: deterministicBuildTime(),
   entry,
   files,
 };

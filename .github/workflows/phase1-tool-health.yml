@@ -1,0 +1,54 @@
+name: Phase 1 tool health
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase1-health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Run complete 351-tool health scan
+        id: health
+        continue-on-error: true
+        run: npm run browser:health
+      - name: Verify health report completeness
+        run: |
+          node -e "const fs=require('fs');const p='artifacts/tool-health/tool-health.json';if(!fs.existsSync(p))throw new Error('tool-health.json missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.summary?.total!==351)throw new Error('expected 351 tools');if(r.runsPerTool<2)throw new Error('expected at least two R11 scans');if(!r.r18Executed)throw new Error('R18 evidence pass missing');if(!r.phase4DeviceExecuted)throw new Error('Phase 4 device certification missing');if(!r.phase5FilesExecuted)throw new Error('Phase 5 files certification missing');if(!r.phase6MediaExecuted)throw new Error('Phase 6 media certification missing');if(!r.phase7PdfExecuted)throw new Error('Phase 7 PDF production certification missing');if(!r.phase8ImageExecuted)throw new Error('Phase 8 image certification missing');if(!r.phase9FinalExecuted)throw new Error('Phase 9 final singleton certification missing');console.log(r.summary)"
+      - name: Publish summary
+        if: always()
+        run: |
+          test -f artifacts/tool-health/tool-health.md && cat artifacts/tool-health/tool-health.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload Phase 1 health artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase1-tool-health
+          path: artifacts/tool-health/
+          if-no-files-found: error

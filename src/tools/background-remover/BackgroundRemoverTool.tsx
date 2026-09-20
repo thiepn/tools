@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState}from'react';
 import{Copy,Download,Eraser,Paintbrush,RotateCcw,Scissors,Upload}from'lucide-react';
 import{ToolShell}from'../../components/tool-shell/ToolShell';
 import{copyImageToClipboard}from'../../utilities/clipboard';
+import{downloadBlobFile}from'../../utilities/download';
 import{applyCircularMaskBrush,refineAlphaMaskRgba,removeBackgroundLocal,type BackgroundStyle,type MaskBrushMode}from'../../utilities/background-remover';
 
 const loadImage=(src:string)=>new Promise<HTMLImageElement>((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('Image decode failed'));img.src=src;});
@@ -17,7 +18,7 @@ export const BackgroundRemoverTool:React.FC=()=>{
  const brushAt=(clientX:number,clientY:number)=>{const c=canvasRef.current,original=originalRef.current;if(!c||!original)return;const ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)return;const r=c.getBoundingClientRect(),x=(clientX-r.left)*c.width/r.width,y=(clientY-r.top)*c.height/r.height,current=ctx.getImageData(0,0,c.width,c.height),next=applyCircularMaskBrush(current.data,original,c.width,c.height,[{x,y}],brushSize,brushMode);ctx.putImageData(new ImageData(next,c.width,c.height),0,0);};
  const undoRefine=()=>setUndo(u=>{const last=u.at(-1),c=canvasRef.current;if(last&&c)c.getContext('2d')?.putImageData(last,0,0);return u.slice(0,-1);});
  const outputCanvas=()=>{const source=canvasRef.current;if(!source)return null;if(background==='transparent')return source;const c=document.createElement('canvas');c.width=source.width;c.height=source.height;const ctx=c.getContext('2d');if(!ctx)return source;ctx.fillStyle=background==='white'?'#fff':background==='black'?'#000':customColor;ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(source,0,0);return c;};
- const download=()=>{const c=outputCanvas();if(!c)return;c.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`background-removed-${Date.now()}.png`;a.click();URL.revokeObjectURL(url);},'image/png');};
+ const download=()=>{const c=outputCanvas();if(!c)return;c.toBlob(blob=>{if(blob)downloadBlobFile(`background-removed-${Date.now()}.png`,blob);},'image/png');};
  const copy=()=>{const c=outputCanvas();c?.toBlob(blob=>{if(blob)void copyImageToClipboard(blob);},'image/png');};
  return <ToolShell toolId="background-remover" title="Image Background Remover" description="Local neural background removal with nondestructive smoothing, feathering, and deterministic restore/erase refinement." category="image" relatedToolIds={['image-annotator','image-collage','image-optimizer']}>
   <div className="space-y-5"><div className="flex flex-wrap gap-2"><label className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer inline-flex items-center gap-1"><Upload className="w-4 h-4"/>Select image<input hidden type="file" accept="image/*" onChange={e=>e.target.files?.[0]&&selectFile(e.target.files[0])}/></label>{file&&<button type="button" disabled={processing} onClick={process} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold inline-flex items-center gap-1"><Scissors className="w-4 h-4"/>{processing?'Processing…':'Remove background'}</button>}<span className="text-xs self-center text-neutral-500">{status}</span></div>

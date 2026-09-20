@@ -31,6 +31,7 @@ import {
   generateOptimizedFilename,
 } from '../../utilities/image-optimizer';
 import { setPendingImageTransfer, consumePendingImageTransfer } from '../../storage/transfer';
+import { downloadBlobFile } from '../../utilities/download';
 
 interface ImageOptimizerToolProps {
   initialText?: string;
@@ -298,13 +299,7 @@ export const ImageOptimizerTool: React.FC<ImageOptimizerToolProps> = () => {
   // Download Trigger
   const handleDownload = () => {
     if (!processedResult || !metadata) return;
-    const filename = generateOptimizedFilename(metadata.name, outputFormat);
-    const link = document.createElement('a');
-    link.href = processedResult.url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadBlobFile(generateOptimizedFilename(metadata.name, outputFormat), processedResult.blob);
   };
 
   // Tool Chaining: Send to Image Annotator

@@ -10,20 +10,22 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     // Fallback below
   }
 
+  let textArea: HTMLTextAreaElement | null = null;
   try {
-    const textArea = document.createElement('textarea');
+    textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';
     textArea.style.left = '-999999px';
     textArea.style.top = '-999999px';
+    textArea.setAttribute('readonly', '');
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    const successful = document.execCommand('copy');
-    document.body.removeChild(textArea);
-    return successful;
+    return document.execCommand('copy');
   } catch {
     return false;
+  } finally {
+    textArea?.remove();
   }
 }
 

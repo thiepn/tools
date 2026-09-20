@@ -1,4 +1,5 @@
 import React from 'react';
+import { downloadTextFile } from '../../utilities/download';
 
 export const section = 'rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950';
 export const input = 'mt-1 w-full rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700';
@@ -28,5 +29,5 @@ export function Notice({ children }: { children: React.ReactNode }) {
 }
 export function ErrorBox({ error }: { error: string }) { return error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300">{error}</div> : null; }
 export function Json({ value }: { value: unknown }) { return <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-xl border bg-neutral-50 p-3 text-xs dark:bg-neutral-950">{typeof value==='string'?value:JSON.stringify(value,null,2)}</pre>; }
-export function downloadText(name:string, content:string, type='text/plain;charset=utf-8') { const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const anchor=document.createElement('a'); anchor.href=url; anchor.download=name; anchor.click(); setTimeout(()=>URL.revokeObjectURL(url),500); }
+export function downloadText(name:string, content:string, type='text/plain;charset=utf-8') { downloadTextFile(name, content, type); }
 export function formatNumber(value:number,digits=2){return Number.isFinite(value)?value.toLocaleString(undefined,{maximumFractionDigits:digits}):'—'}

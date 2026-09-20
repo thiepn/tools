@@ -1,0 +1,196 @@
+name: Phase 10 release-candidate hardening
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase10-rc-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout exact candidate head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Resolve deterministic RC identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          short_sha="$(git rev-parse --short=12 HEAD)"
+          build_timestamp="$(git show -s --format=%cI HEAD)"
+          source_epoch="$(git show -s --format=%ct HEAD)"
+          version="$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")"
+          echo "RC_SOURCE_SHA=${source_sha}" >> "$GITHUB_ENV"
+          echo "RC_SHORT_SHA=${short_sha}" >> "$GITHUB_ENV"
+          echo "RC_BUILD_TIMESTAMP=${build_timestamp}" >> "$GITHUB_ENV"
+          echo "RC_SOURCE_DATE_EPOCH=${source_epoch}" >> "$GITHUB_ENV"
+          echo "RC_NAME=tiny-tools-v${version}-rc-${short_sha}" >> "$GITHUB_ENV"
+
+      - name: Verify package and lock release identity before install
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+          const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          if(lock.version!==pkg.version) throw new Error(`package-lock top-level version ${lock.version} != package.json ${pkg.version}`);
+          if(lock.packages?.['']?.version!==pkg.version) throw new Error(`package-lock root package version ${lock.packages?.['']?.version} != package.json ${pkg.version}`);
+          if(lock.lockfileVersion!==3) throw new Error(`Expected lockfileVersion 3, got ${lock.lockfileVersion}`);
+          console.log({version:pkg.version,lockfileVersion:lock.lockfileVersion});
+          NODE
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
+
+      - name: Validate installed dependency tree
+        run: npm ls --all
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Phase 10 source release contract
+        run: npm run test:phase10
+
+      - name: Complete unit regression
+        run: npm test
+
+      - name: Deterministic production build A
+        env:
+          TINY_TOOLS_BUILD_TIMESTAMP: ${{ env.RC_BUILD_TIMESTAMP }}
+          TINY_TOOLS_BUILD_COMMIT: ${{ env.RC_SOURCE_SHA }}
+          SOURCE_DATE_EPOCH: ${{ env.RC_SOURCE_DATE_EPOCH }}
+        run: |
+          set -euo pipefail
+          rm -rf dist "$RUNNER_TEMP/tiny-tools-rc-a" "$RUNNER_TEMP/tiny-tools-rc-b"
+          npm run build
+          npm run build:verify
+          cp -a dist "$RUNNER_TEMP/tiny-tools-rc-a"
+
+      - name: Deterministic production build B
+        env:
+          TINY_TOOLS_BUILD_TIMESTAMP: ${{ env.RC_BUILD_TIMESTAMP }}
+          TINY_TOOLS_BUILD_COMMIT: ${{ env.RC_SOURCE_SHA }}
+          SOURCE_DATE_EPOCH: ${{ env.RC_SOURCE_DATE_EPOCH }}
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          npm run build
+          npm run build:verify
+          cp -a dist "$RUNNER_TEMP/tiny-tools-rc-b"
+
+      - name: Prove build reproducibility
+        env:
+          PHASE10_RC_OUT: artifacts/phase10-rc
+        run: npm run rc:compare-builds -- "$RUNNER_TEMP/tiny-tools-rc-a" "$RUNNER_TEMP/tiny-tools-rc-b"
+
+      - name: Previous-generation retention self-test
+        run: npm run build:retention-test
+
+      - name: Chromium route acceptance
+        run: npm run browser:smoke
+
+      - name: Chromium navigation reliability
+        run: npm run browser:navigation
+
+      - name: Chromium stale-deployment recovery
+        run: npm run browser:module-recovery
+
+      - name: Chromium compatibility acceptance
+        run: npm run browser:compatibility
+
+      - name: Authoritative 351-tool health
+        run: npm run browser:health
+
+      - name: Verify frozen health gate
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='artifacts/tool-health/tool-health.json';
+          if(!fs.existsSync(p)) throw new Error('tool-health.json missing');
+          const r=JSON.parse(fs.readFileSync(p,'utf8'));
+          const s=r.summary||{};
+          if(s.total!==351||s.PASS!==351||s.BROKEN!==0||s.BLOCKED!==0||s.FLAKY!==0){
+            throw new Error(`RC health gate failed: ${JSON.stringify(s)}`);
+          }
+          if(r.runsPerTool<2) throw new Error('Expected at least two runtime catalog passes per tool');
+          for(const key of ['r18Executed','phase4DeviceExecuted','phase5FilesExecuted','phase6MediaExecuted','phase7PdfExecuted','phase8ImageExecuted','phase9FinalExecuted']){
+            if(r[key]!==true) throw new Error(`Missing RC health evidence: ${key}`);
+          }
+          console.log(s);
+          NODE
+
+      - name: Generate RC manifest and public checksums
+        env:
+          RC_SOURCE_SHA: ${{ env.RC_SOURCE_SHA }}
+          RC_BUILD_TIMESTAMP: ${{ env.RC_BUILD_TIMESTAMP }}
+          PHASE10_RC_OUT: artifacts/phase10-rc
+        run: npm run rc:certify
+
+      - name: Package deterministic deployable artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/phase10-rc
+          archive="artifacts/phase10-rc/${RC_NAME}.tar.gz"
+          tar             --sort=name             --mtime="@${RC_SOURCE_DATE_EPOCH}"             --owner=0             --group=0             --numeric-owner             -cf -             -C dist .             | gzip -n > "$archive"
+          sha256sum "$archive" > "${archive}.sha256"
+          sha256sum -c "${archive}.sha256"
+          tar -tzf "$archive" > artifacts/phase10-rc/archive-contents.txt
+          test -s artifacts/phase10-rc/archive-contents.txt
+          echo "Archive: $archive"
+          cat "${archive}.sha256"
+
+      - name: Verify RC manifest
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='artifacts/phase10-rc/release-candidate.json';
+          if(!fs.existsSync(p)) throw new Error('release-candidate.json missing');
+          const r=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(r.status!=='CERTIFIED') throw new Error(`RC status is ${r.status}`);
+          if(r.health?.total!==351||r.health?.PASS!==351||r.health?.BROKEN||r.health?.BLOCKED||r.health?.FLAKY){
+            throw new Error(`Invalid RC health: ${JSON.stringify(r.health)}`);
+          }
+          if(!r.reproducibility?.identical) throw new Error('RC reproducibility evidence is not green');
+          if(!/^[a-f0-9]{64}$/.test(r.publicArtifactFingerprintSha256||'')) throw new Error('RC public artifact fingerprint missing');
+          console.log({rcId:r.rcId,fingerprint:r.publicArtifactFingerprintSha256,health:r.health});
+          NODE
+
+      - name: Publish RC summary
+        if: always()
+        run: |
+          test -f artifacts/phase10-rc/release-candidate.md && cat artifacts/phase10-rc/release-candidate.md >> "$GITHUB_STEP_SUMMARY" || true
+          test -f artifacts/phase10-rc/reproducibility.md && cat artifacts/phase10-rc/reproducibility.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload release-candidate evidence and package
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.RC_NAME || 'phase10-release-candidate' }}
+          path: |
+            artifacts/phase10-rc/
+            artifacts/tool-health/tool-health.json
+            artifacts/tool-health/tool-health.md
+          if-no-files-found: error
+          retention-days: 90
