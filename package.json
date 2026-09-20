@@ -4,7 +4,9 @@
   "version": "0.22.0",
   "description": "A privacy-first collection of 351 public browser utility routes with unified file conversion, local viewers, image enhancement and restoration, network/browser diagnostics, PDFs, device diagnostics, calculators, media, study, privacy, security, developer, planning, math, statistics, design, web, and everyday tools.",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build && node scripts/write-build-generation.mjs",
@@ -55,5 +57,8 @@
     "vite": "^6.2.3",
     "vitest": "^4.1.11"
   },
-  "overrides": { "adm-zip": "0.6.0", "sharp": "0.35.4" }
+  "overrides": {
+    "adm-zip": "0.6.1",
+    "sharp": "0.35.4"
+  }
 }
