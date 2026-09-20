@@ -41,7 +41,9 @@
     "test:phase7": "vitest run src/__tests__/phase7-pdf-contracts.test.ts",
     "browser:pdf": "node scripts/phase7-pdf-certification.mjs",
     "test:phase8": "vitest run src/__tests__/phase8-image-contracts.test.ts",
-    "browser:image": "node scripts/phase8-image-certification.mjs"
+    "browser:image": "node scripts/phase8-image-certification.mjs",
+    "test:phase9": "vitest run src/__tests__/phase9-final-coverage.test.ts",
+    "browser:final": "node scripts/phase9-final-certification.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

@@ -38,70 +38,61 @@ async function waitFor(check, label, timeoutMs = 20_000) {
   throw new Error(`Timed out waiting for ${label}${lastError ? `: ${lastError.message}` : ''}`);
 }
 
+function padPdfOffset(value) {
+  return String(value).padStart(10, '0');
+}
+
+function pdfStreamObject(number, dictionary, stream) {
+  const length = new TextEncoder().encode(stream).length;
+  return `${number} 0 obj\n<< ${dictionary}${dictionary ? ' ' : ''}/Length ${length} >>\nstream\n${stream}endstream\nendobj\n`;
+}
+
 function escapePdfText(value) {
   return String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
-function createTextPdf(pageTexts, metadata = {}) {
-  const encoder = new TextEncoder();
+function createTextPdf(pageTexts) {
+  const pageIds = pageTexts.map((_, index) => 4 + index * 2);
+  const contentIds = pageTexts.map((_, index) => 5 + index * 2);
   const objects = [];
-  const pageObjectIds = pageTexts.map((_, index) => 4 + index * 2);
-  const contentObjectIds = pageTexts.map((_, index) => 5 + index * 2);
 
-  objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
-  objects[2] = `<< /Type /Pages /Count ${pageTexts.length} /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(' ')}] >>`;
-  objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  objects[1] = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+  objects[2] = `2 0 obj\n<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageTexts.length} >>\nendobj\n`;
+  objects[3] = '3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n';
 
   for (let index = 0; index < pageTexts.length; index += 1) {
-    const pageId = pageObjectIds[index];
-    const contentId = contentObjectIds[index];
-    const line1 = escapePdfText(pageTexts[index]);
-    const line2 = escapePdfText(`Tiny Tools Phase 7 page ${index + 1}`);
-    const stream = `BT
-/F1 28 Tf
-72 700 Td
-(${line1}) Tj
-0 -48 Td
-/F1 18 Tf
-(${line2}) Tj
-ET
-`;
-    objects[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`;
-    objects[contentId] = `<< /Length ${encoder.encode(stream).length} >>
-stream
-${stream}endstream`;
+    const pageId = pageIds[index];
+    const contentId = contentIds[index];
+    const stream = [
+      'BT',
+      '/F1 24 Tf',
+      '72 700 Td',
+      `(${escapePdfText(pageTexts[index])}) Tj`,
+      '0 -40 Td',
+      '/F1 12 Tf',
+      `(${escapePdfText(`Tiny Tools Phase 9 page ${index + 1} - searchable text.`)}) Tj`,
+      'ET',
+      '',
+    ].join('\n');
+
+    objects[pageId] = `${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>\nendobj\n`;
+    objects[contentId] = pdfStreamObject(contentId, '', stream);
   }
 
-  const infoId = 4 + pageTexts.length * 2;
-  const infoParts = [];
-  if (metadata.title) infoParts.push(`/Title (${escapePdfText(metadata.title)})`);
-  if (metadata.author) infoParts.push(`/Author (${escapePdfText(metadata.author)})`);
-  if (metadata.subject) infoParts.push(`/Subject (${escapePdfText(metadata.subject)})`);
-  objects[infoId] = `<< ${infoParts.join(' ')} /Producer (Tiny Tools Phase 7) >>`;
-
-  let output = '%PDF-1.4\n%TinyToolsPhase7\n';
+  const encoder = new TextEncoder();
+  let body = '%PDF-1.7\n%TinyToolsPhase9\n';
   const offsets = [0];
-  for (let id = 1; id < objects.length; id += 1) {
-    offsets[id] = encoder.encode(output).length;
-    output += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+  const maxId = 3 + pageTexts.length * 2;
+  for (let id = 1; id <= maxId; id += 1) {
+    offsets[id] = encoder.encode(body).length;
+    body += objects[id];
   }
 
-  const xrefOffset = encoder.encode(output).length;
-  output += `xref
-0 ${objects.length}
-0000000000 65535 f 
-`;
-  for (let id = 1; id < objects.length; id += 1) {
-    output += `${String(offsets[id]).padStart(10, '0')} 00000 n 
-`;
-  }
-  output += `trailer
-<< /Size ${objects.length} /Root 1 0 R /Info ${infoId} 0 R >>
-startxref
-${xrefOffset}
-%%EOF
-`;
-  return encoder.encode(output);
+  const xrefOffset = encoder.encode(body).length;
+  body += `xref\n0 ${maxId + 1}\n0000000000 65535 f \n`;
+  for (let id = 1; id <= maxId; id += 1) body += `${padPdfOffset(offsets[id])} 00000 n \n`;
+  body += `trailer\n<< /Size ${maxId + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return encoder.encode(body);
 }
 
 async function makeFixtures() {
@@ -113,10 +104,7 @@ async function makeFixtures() {
 
   await writeFile(one, createTextPdf(['MERGE SOURCE ONE']));
   await writeFile(two, createTextPdf(['MERGE SOURCE TWO']));
-  await writeFile(three, createTextPdf(
-    ['SPLIT PAGE ONE', 'SPLIT PAGE TWO', 'SPLIT PAGE THREE'],
-    { title: 'Original Metadata Title', author: 'Phase 7 Source' }
-  ));
+  await writeFile(three, createTextPdf(['SPLIT PAGE ONE', 'SPLIT PAGE TWO', 'SPLIT PAGE THREE']));
   await writeFile(ocr, createTextPdf(['PHASE SEVEN OCR SEARCHABLE TEXT']));
 
   for (const file of [one, two, three, ocr]) {
@@ -349,10 +337,30 @@ async function waitForRealDownload(downloadDir, downloadEvents, filenamePattern,
   return { event, file, bytes };
 }
 
+function waitForCdpEvent(cdp, method, timeout = 10_000) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    cdp.on(method, (params) => {
+      if (settled) return;
+      settled = true;
+      resolve(params);
+    });
+    setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(`Timed out waiting for CDP event ${method}`));
+    }, timeout);
+  });
+}
+
 async function importForTask(cdp, file) {
+  await cdp.send('Page.setInterceptFileChooserDialog', { enabled: true });
+  const chooser = waitForCdpEvent(cdp, 'Page.fileChooserOpened', 10_000);
   await clickText(cdp, 'Choose PDF');
-  await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('input[type="file"][accept*="pdf"]'))`), 'selected task file input');
-  await setFiles(cdp, 'input[type="file"][accept*="pdf"]', [file]);
+  const event = await chooser;
+  if (!event?.backendNodeId) throw new Error('PDF file chooser did not expose a backend node.');
+  await cdp.send('DOM.setFileInputFiles', { backendNodeId: event.backendNodeId, files: [file] });
+  await cdp.send('Page.setInterceptFileChooserDialog', { enabled: false });
 }
 
 async function certifyMerge(fixtures) {

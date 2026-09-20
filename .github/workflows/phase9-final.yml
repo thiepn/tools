@@ -1,0 +1,69 @@
+name: Phase 9 final functional coverage
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase9-final-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  final-functional-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Run Phase 9 deterministic contracts
+        run: npm run test:phase9
+      - name: Run full unit regression
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Preflight PDF Everything production
+        run: |
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 https://thiepn.github.io/pdf/ > /dev/null
+      - name: Re-certify five PDF production workflows
+        run: npm run browser:pdf
+      - name: Verify repaired PDF prerequisite
+        run: |
+          node -e "const fs=require('fs');const p='artifacts/phase7-pdf-certification/pdf-certification.json';if(!fs.existsSync(p))throw new Error('PDF certification missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.summary?.total!==5||r.summary?.PASS!==5||r.summary?.FAIL)throw new Error('Phase 7 PDF prerequisite is not 5/5 PASS');console.log(r.summary)"
+      - name: Run final three singleton browser workflows
+        run: npm run browser:final
+      - name: Verify final singleton coverage
+        run: |
+          node -e "const fs=require('fs');const p='artifacts/phase9-final-certification/final-certification.json';if(!fs.existsSync(p))throw new Error('Phase 9 final certification missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.summary?.total!==3||r.summary?.PASS!==3||r.summary?.FAIL)throw new Error('Phase 9 singleton certification is not 3/3 PASS');console.log(r.summary)"
+      - name: Publish summary
+        if: always()
+        run: |
+          test -f artifacts/phase7-pdf-certification/pdf-certification.md && cat artifacts/phase7-pdf-certification/pdf-certification.md >> "$GITHUB_STEP_SUMMARY" || true
+          test -f artifacts/phase9-final-certification/final-certification.md && cat artifacts/phase9-final-certification/final-certification.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload Phase 9 evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase9-final-functional-coverage
+          path: |
+            artifacts/phase7-pdf-certification/pdf-certification.json
+            artifacts/phase7-pdf-certification/pdf-certification.md
+            artifacts/phase9-final-certification/final-certification.json
+            artifacts/phase9-final-certification/final-certification.md
+          if-no-files-found: warn
