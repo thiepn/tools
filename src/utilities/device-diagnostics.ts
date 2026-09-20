@@ -160,8 +160,8 @@ export function axisDriftMagnitude(axes: readonly number[]): number {
 }
 
 export function formatDurationSeconds(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return 'Unknown';
   if (seconds === Infinity) return 'Not applicable';
+  if (!Number.isFinite(seconds) || seconds < 0) return 'Unknown';
   const rounded = Math.round(seconds);
   const hours = Math.floor(rounded / 3600);
   const minutes = Math.floor((rounded % 3600) / 60);

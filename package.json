@@ -31,7 +31,9 @@
     "browser:strict-b-to-s": "node scripts/r16-strict-b-to-s-smoke.mjs",
     "browser:strict-a-to-s": "node scripts/r17-strict-a-to-s-smoke.mjs",
     "live:assets": "node scripts/live-asset-integrity.mjs",
-    "test:phase3": "vitest run src/__tests__/phase3-calculator-math-contracts.test.ts"
+    "test:phase3": "vitest run src/__tests__/phase3-calculator-math-contracts.test.ts",
+    "test:phase4": "vitest run src/__tests__/phase4-device-contracts.test.ts",
+    "browser:device": "node scripts/phase4-device-certification.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",

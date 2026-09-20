@@ -1,0 +1,56 @@
+name: Phase 4 device browser certification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase4-device-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  device-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Run Phase 4 deterministic utility contracts
+        run: npm run test:phase4
+      - name: Run full unit regression
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Run 25-route device/browser certification
+        run: npm run browser:device
+      - name: Verify complete device coverage
+        run: |
+          node -e "const fs=require('fs');const p='artifacts/phase4-device-certification/device-certification.json';if(!fs.existsSync(p))throw new Error('device certification missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.summary?.total!==25)throw new Error('expected 25 device routes');if(r.summary?.FAIL)throw new Error('device certification contains failures');if(r.summary?.PASS!==25)throw new Error('expected 25 PASS');console.log(r.summary)"
+      - name: Publish summary
+        if: always()
+        run: |
+          test -f artifacts/phase4-device-certification/device-certification.md && cat artifacts/phase4-device-certification/device-certification.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload Phase 4 evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase4-device-certification
+          path: artifacts/phase4-device-certification/
+          if-no-files-found: error
