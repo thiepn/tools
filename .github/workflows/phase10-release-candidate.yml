@@ -119,6 +119,9 @@ jobs:
       - name: Chromium compatibility acceptance
         run: npm run browser:compatibility
 
+      - name: Production functional wiring across all 351 tools
+        run: npm run browser:functional-wiring
+
       - name: Authoritative 351-tool health
         run: npm run browser:health
 
@@ -192,5 +195,7 @@ jobs:
             artifacts/phase10-rc/
             artifacts/tool-health/tool-health.json
             artifacts/tool-health/tool-health.md
+            artifacts/functional-wiring/functional-wiring.json
+            artifacts/functional-wiring/functional-wiring.md
           if-no-files-found: error
           retention-days: 90
