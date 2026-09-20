@@ -110,7 +110,7 @@ export const CALCULATOR_DEFINITIONS: CalculatorDefinition[] = [
       { id: 'a', label: 'A', type: 'number', defaultValue: '16' }, { id: 'b', label: 'B', type: 'number', defaultValue: '24' },
       { id: 'c', label: 'C (optional proportion A:B = C:X)', type: 'number', defaultValue: '10' },
     ],
-    calculate: (v) => { const a = N(v, 'a'); const b = N(v, 'b'); const c = N(v, 'c'); requirePositive(Math.abs(a), 'A'); requirePositive(Math.abs(b), 'B'); const scale = Math.abs(a) && Math.abs(b) ? Math.abs((awaitGcd(a, b))) : 1; return [result('Simplified ratio', `${number(a / scale, 6)} : ${number(b / scale, 6)}`), result('X in A:B = C:X', number(c * b / a, 8))]; },
+    calculate: (v) => { const a = N(v, 'a'); const b = N(v, 'b'); const c = N(v, 'c'); requirePositive(Math.abs(a), 'A'); requirePositive(Math.abs(b), 'B'); const [ra, rb] = simplifyRatioValues(a, b); return [result('Simplified ratio', `${number(ra, 6)} : ${number(rb, 6)}`), result('X in A:B = C:X', number(c * b / a, 8))]; },
     formula: 'Direct proportion: X = C × B ÷ A.',
   },
   {
@@ -200,8 +200,8 @@ export const CALCULATOR_DEFINITIONS: CalculatorDefinition[] = [
     calculate:(v)=>{const p=N(v,'principal');const interest=p*N(v,'rate')/100*N(v,'years');return[result('Interest',money(interest)),result('Final balance',money(p+interest))];},
   },
   {
-    id:'roi-calculator', inputs:[{id:'initial',label:'Initial investment',type:'number',defaultValue:'10000',unit:'€'},{id:'final',label:'Final value',type:'number',defaultValue:'12500',unit:'€'}],
-    calculate:(v)=>{const initial=requirePositive(Math.abs(N(v,'initial')),'Initial investment');const profit=N(v,'final')-N(v,'initial');return[result('Profit / loss',money(profit)),result('ROI',pct(profit/initial*100))];},
+    id:'roi-calculator', inputs:[{id:'initial',label:'Initial investment',type:'number',defaultValue:'10000',unit:'€',min:0},{id:'final',label:'Final value',type:'number',defaultValue:'12500',unit:'€'}],
+    calculate:(v)=>{const initial=requirePositive(N(v,'initial'),'Initial investment');const profit=N(v,'final')-initial;return[result('Profit / loss',money(profit)),result('ROI',pct(profit/initial*100))];},
   },
   {
     id:'retirement-calculator', inputs:[{id:'current',label:'Current savings',type:'number',defaultValue:'30000',unit:'€',min:0},{id:'monthly',label:'Monthly contribution',type:'number',defaultValue:'500',unit:'€',min:0},{id:'rate',label:'Annual return',type:'number',defaultValue:'5',unit:'%'},{id:'years',label:'Years until retirement',type:'number',defaultValue:'30',min:0}],
@@ -294,7 +294,7 @@ export const CALCULATOR_DEFINITIONS: CalculatorDefinition[] = [
   },
   {
     id:'running-pace-calculator', inputs:[{id:'distance',label:'Distance',type:'number',defaultValue:'10',unit:'km',min:0},{id:'minutes',label:'Elapsed time',type:'number',defaultValue:'50',unit:'minutes',min:0}],
-    calculate:(v)=>{const d=requirePositive(N(v,'distance'),'Distance');const minutes=requirePositive(N(v,'minutes'),'Elapsed time');const pace=minutes/d;const whole=Math.floor(pace);const seconds=Math.round((pace-whole)*60);const speed=d/(minutes/60);return[result('Pace',`${whole}:${String(seconds).padStart(2,'0')} min/km`),result('Average speed',`${number(speed,2)} km/h`),result('Equivalent 5 km time',formatDurationMinutes(pace*5)),result('Equivalent half-marathon time',formatDurationMinutes(pace*21.0975))];},
+    calculate:(v)=>{const d=requirePositive(N(v,'distance'),'Distance');const minutes=requirePositive(N(v,'minutes'),'Elapsed time');const pace=minutes/d;const speed=d/(minutes/60);return[result('Pace',`${formatPace(pace)} min/km`),result('Average speed',`${number(speed,2)} km/h`),result('Equivalent 5 km time',formatDurationMinutes(pace*5)),result('Equivalent half-marathon time',formatDurationMinutes(pace*21.0975))];},
     notice:'Equivalent times assume the same pace over the other distance; they are not race-performance predictions.',
   },
   {
@@ -314,6 +314,32 @@ function awaitGcd(a: number, b: number): number {
   let y = Math.abs(Math.round(b));
   while (y) [x, y] = [y, x % y];
   return x || 1;
+}
+
+function decimalPlaces(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const text = Math.abs(value).toString().toLowerCase();
+  if (!text.includes('e')) return text.includes('.') ? text.length - text.indexOf('.') - 1 : 0;
+  const [coefficient, exponentText] = text.split('e');
+  const exponent = Number(exponentText);
+  const fractionDigits = coefficient.includes('.') ? coefficient.length - coefficient.indexOf('.') - 1 : 0;
+  return Math.max(0, fractionDigits - exponent);
+}
+
+function simplifyRatioValues(a: number, b: number): [number, number] {
+  const places = Math.min(9, Math.max(decimalPlaces(a), decimalPlaces(b)));
+  const factor = 10 ** places;
+  const ai = Math.round(a * factor);
+  const bi = Math.round(b * factor);
+  const divisor = awaitGcd(ai, bi);
+  return [ai / divisor, bi / divisor];
+}
+
+function formatPace(minutesPerUnit: number): string {
+  const totalSeconds = Math.round(minutesPerUnit * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 function formatDurationMinutes(minutes: number): string {
