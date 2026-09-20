@@ -1,0 +1,56 @@
+name: Phase 8 image certification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase8-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Run Phase 8 deterministic image contracts
+        run: npm run test:phase8
+      - name: Run full unit regression
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Run two-route image browser certification
+        run: npm run browser:image
+      - name: Verify Phase 8 coverage
+        run: |
+          node -e "const fs=require('fs');const p='artifacts/phase8-image-certification/image-certification.json';if(!fs.existsSync(p))throw new Error('image certification missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.familyTotal!==32)throw new Error('expected 32 image routes');if(r.summary?.total!==2)throw new Error('expected 2 Phase 8 targets');if(r.summary?.FAIL)throw new Error('image certification contains failures');if(r.summary?.PASS!==2)throw new Error('expected 2 PASS');console.log(r.summary)"
+      - name: Publish summary
+        if: always()
+        run: |
+          test -f artifacts/phase8-image-certification/image-certification.md && cat artifacts/phase8-image-certification/image-certification.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload Phase 8 evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase8-image-certification
+          path: artifacts/phase8-image-certification/
+          if-no-files-found: error

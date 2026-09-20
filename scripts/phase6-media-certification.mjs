@@ -493,7 +493,7 @@ function fixtureExpression(id) {
       if (id === 'reverse-audio') {
         await until(() => body().includes('0:00.10') && body().includes('48,000 Hz'), 'reverse audio decode');
         click('Reverse selection');
-        await until(() => body().includes('Samples reversed') && body().includes('4,800'), 'reverse summary');
+        await until(() => { const text=body().toLowerCase(); return text.includes('samples reversed') && /4[,\s]?800/.test(text); }, 'reverse summary');
         click('Download WAV');
         await until(() => downloads().some((row) => row.download === 'sample-reversed.wav'), 'reverse WAV download');
         return { ok: true, message: 'full audio selection reversed and exported' };
