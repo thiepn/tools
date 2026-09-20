@@ -37,7 +37,9 @@
     "test:phase5": "vitest run src/__tests__/phase5-files-contracts.test.ts",
     "browser:files": "node scripts/phase5-files-certification.mjs",
     "test:phase6": "vitest run src/__tests__/phase6-media-contracts.test.ts",
-    "browser:media": "node scripts/phase6-media-certification.mjs"
+    "browser:media": "node scripts/phase6-media-certification.mjs",
+    "test:phase7": "vitest run src/__tests__/phase7-pdf-contracts.test.ts",
+    "browser:pdf": "node scripts/phase7-pdf-certification.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
