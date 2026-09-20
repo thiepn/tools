@@ -9,6 +9,8 @@ const OUT = path.resolve(ROOT, process.env.PHASE10_RC_OUT || 'artifacts/phase10-
 const HEALTH = path.resolve(ROOT, process.env.PHASE10_HEALTH_REPORT || 'artifacts/tool-health/tool-health.json');
 const REPRO = path.join(OUT, 'reproducibility.json');
 const FUNCTIONAL = path.resolve(ROOT, process.env.PHASE10_FUNCTIONAL_REPORT || 'artifacts/functional-wiring/functional-wiring.json');
+const REAL_MEDIA = path.resolve(ROOT, process.env.PHASE10_REAL_MEDIA_REPORT || 'artifacts/real-media/real-media.json');
+const REAL_CONVERTERS = path.resolve(ROOT, process.env.PHASE10_REAL_CONVERTERS_REPORT || 'artifacts/real-converters/real-converters.json');
 
 const EXPECTED_TOOLS = 351;
 const EXPECTED_BASE = '/tools/';
@@ -73,12 +75,14 @@ async function bundleMetrics() {
   return { assets: { script, stylesheet }, sizes, budgets: BUDGETS };
 }
 
-const [{ raw: packageRaw, value: pkg }, { raw: lockRaw, value: lock }, { raw: healthRaw, value: health }, { raw: functionalRaw, value: functional }, { value: generation }, { value: repro }] =
+const [{ raw: packageRaw, value: pkg }, { raw: lockRaw, value: lock }, { raw: healthRaw, value: health }, { raw: functionalRaw, value: functional }, { raw: realMediaRaw, value: realMedia }, { raw: realConvertersRaw, value: realConverters }, { value: generation }, { value: repro }] =
   await Promise.all([
     readJson(path.join(ROOT, 'package.json'), 'package.json'),
     readJson(path.join(ROOT, 'package-lock.json'), 'package-lock.json'),
     readJson(HEALTH, 'tool-health.json'),
     readJson(FUNCTIONAL, 'functional-wiring.json'),
+    readJson(REAL_MEDIA, 'real-media.json'),
+    readJson(REAL_CONVERTERS, 'real-converters.json'),
     readJson(path.join(DIST, 'build-generation.json'), 'build-generation.json'),
     readJson(REPRO, 'reproducibility.json'),
   ]);
@@ -120,6 +124,10 @@ assert(functional.summary?.total === EXPECTED_TOOLS, `Expected ${EXPECTED_TOOLS}
 assert(functional.summary?.PASS === EXPECTED_TOOLS, `Expected ${EXPECTED_TOOLS} functional wiring PASS; received ${functional.summary?.PASS}.`);
 assert(functional.summary?.INCONCLUSIVE === 0, `Expected 0 INCONCLUSIVE functional wiring routes; received ${functional.summary?.INCONCLUSIVE}.`);
 assert(functional.summary?.FAIL === 0, `Expected 0 FAIL functional wiring routes; received ${functional.summary?.FAIL}.`);
+assert(realMedia.summary?.total === 28, `Expected 28 real media routes; received ${realMedia.summary?.total}.`);
+assert(realMedia.summary?.PASS === 28 && realMedia.summary?.FAIL === 0, `Real media certification is not fully green: ${JSON.stringify(realMedia.summary)}.`);
+assert(realConverters.summary?.total === 6, `Expected 6 unified converter routes; received ${realConverters.summary?.total}.`);
+assert(realConverters.summary?.PASS === 6 && realConverters.summary?.FAIL === 0, `Unified converter certification is not fully green: ${JSON.stringify(realConverters.summary)}.`);
 
 for (const field of [
   'r18Executed',
@@ -191,9 +199,13 @@ const report = {
     packageLockSha256: sha256(lockRaw),
     toolHealthSha256: sha256(healthRaw),
     functionalWiringSha256: sha256(functionalRaw),
+    realMediaSha256: sha256(realMediaRaw),
+    realConvertersSha256: sha256(realConvertersRaw),
   },
   health: health.summary,
   functionalWiring: functional.summary,
+  realMedia: realMedia.summary,
+  realConverters: realConverters.summary,
   families: health.familyHealth,
   evidence: {
     runsPerTool: health.runsPerTool,
@@ -205,6 +217,8 @@ const report = {
     phase8Image: health.phase8ImageExecuted,
     phase9Final: health.phase9FinalExecuted,
     functionalWiring351: true,
+    realMediaProcessing: true,
+    unifiedConverters: true,
   },
   bundle,
 };
@@ -237,6 +251,8 @@ await writeFile(
 - FLAKY: **${health.summary.FLAKY}**
 - Runtime catalog passes/tool: **${health.runsPerTool}**
 - Production functional wiring: **${functional.summary.PASS}/${functional.summary.total} PASS**
+- Real media processing: **${realMedia.summary.PASS}/${realMedia.summary.total} PASS**
+- Unified converters: **${realConverters.summary.PASS}/${realConverters.summary.total} PASS**
 
 ## Initial bundle
 
