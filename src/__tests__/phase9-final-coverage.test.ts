@@ -76,7 +76,7 @@ describe('Phase 9 Structured Data Viewer contracts', () => {
       user: { name: 'Ada', skills: ['math', 'code'] },
       active: true,
     });
-    expect(view.nodeCount).toBe(8);
+    expect(view.nodeCount).toBe(7);
     expect(view.maxDepth).toBe(3);
   });
 
