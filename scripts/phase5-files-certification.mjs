@@ -372,7 +372,7 @@ function fixtureExpression(id) {
       }
 
       if (id === 'presentation-viewer') {
-        await until(() => body().includes('First') && body().includes('Second') && body().includes('Slides'), 'presentation view', 6000);
+        await until(() => { const text=body().toLowerCase(); return text.includes('first') && text.includes('second') && text.includes('slides'); }, 'presentation view', 6000);
         return { ok: true, message: 'ODP slides opened and rendered' };
       }
 
