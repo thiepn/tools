@@ -32,6 +32,8 @@ import {
   type WorkbenchSnapshot,
   type WorkbenchSnapshotDiff,
 } from '../../utilities/s-tier-b-workbench';
+import { copyToClipboard } from '../../utilities/clipboard';
+import { downloadTextFile } from '../../utilities/download';
 
 const WORKBENCH_SELECTOR = '[data-s-tier-workbench]';
 const MAX_SNAPSHOTS = 12;
