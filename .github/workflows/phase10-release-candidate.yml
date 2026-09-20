@@ -122,6 +122,12 @@ jobs:
       - name: Production functional wiring across all 351 tools
         run: npm run browser:functional-wiring
 
+      - name: Real media processing certification
+        run: npm run browser:real-media
+
+      - name: Real unified converter certification
+        run: npm run browser:real-converters
+
       - name: Authoritative 351-tool health
         run: npm run browser:health
 
@@ -178,6 +184,12 @@ jobs:
           if(r.functionalWiring?.total!==351||r.functionalWiring?.PASS!==351||r.functionalWiring?.INCONCLUSIVE||r.functionalWiring?.FAIL){
             throw new Error(`Invalid RC functional wiring: ${JSON.stringify(r.functionalWiring)}`);
           }
+          if(r.realMedia?.total!==28||r.realMedia?.PASS!==28||r.realMedia?.FAIL){
+            throw new Error(`Invalid RC real-media certification: ${JSON.stringify(r.realMedia)}`);
+          }
+          if(r.realConverters?.total!==6||r.realConverters?.PASS!==6||r.realConverters?.FAIL){
+            throw new Error(`Invalid RC unified-converter certification: ${JSON.stringify(r.realConverters)}`);
+          }
           if(!r.reproducibility?.identical) throw new Error('RC reproducibility evidence is not green');
           if(!/^[a-f0-9]{64}$/.test(r.publicArtifactFingerprintSha256||'')) throw new Error('RC public artifact fingerprint missing');
           console.log({rcId:r.rcId,fingerprint:r.publicArtifactFingerprintSha256,health:r.health});
@@ -200,5 +212,9 @@ jobs:
             artifacts/tool-health/tool-health.md
             artifacts/functional-wiring/functional-wiring.json
             artifacts/functional-wiring/functional-wiring.md
+            artifacts/real-media/real-media.json
+            artifacts/real-media/real-media.md
+            artifacts/real-converters/real-converters.json
+            artifacts/real-converters/real-converters.md
           if-no-files-found: error
           retention-days: 90
