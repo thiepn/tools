@@ -1,0 +1,56 @@
+name: Phase 6 media certification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase6-media-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  media-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Run Phase 6 deterministic media contracts
+        run: npm run test:phase6
+      - name: Run full unit regression
+        run: npm test
+      - name: Build production site
+        run: npm run build
+      - name: Verify production build
+        run: npm run build:verify
+      - name: Run 8-route media browser certification
+        run: npm run browser:media
+      - name: Verify blocked-workflow coverage
+        run: |
+          node -e "const fs=require('fs');const p='artifacts/phase6-media-certification/media-certification.json';if(!fs.existsSync(p))throw new Error('media certification missing');const r=JSON.parse(fs.readFileSync(p,'utf8'));if(r.familyTotal!==44)throw new Error('expected 44 media routes');if(r.summary?.total!==8)throw new Error('expected 8 Phase 6 target routes');if(r.summary?.FAIL)throw new Error('media certification contains failures');if(r.summary?.PASS!==8)throw new Error('expected 8 PASS');console.log(r.summary)"
+      - name: Publish summary
+        if: always()
+        run: |
+          test -f artifacts/phase6-media-certification/media-certification.md && cat artifacts/phase6-media-certification/media-certification.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload Phase 6 evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: phase6-media-certification
+          path: artifacts/phase6-media-certification/
+          if-no-files-found: error
