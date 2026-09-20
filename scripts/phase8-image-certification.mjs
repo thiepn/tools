@@ -353,11 +353,18 @@ function fixtureExpression(id) {
         await until(() => {
           const text = body().toLowerCase();
           const preview = root.querySelector('img[alt="Optimized preview"]');
-          return text.includes('png format produces lossless compression') && Boolean(preview && preview.naturalWidth === 16 && preview.naturalHeight === 16);
-        }, 'optimizer PNG output');
+          const blob = preview ? window.__ttImageBlobMeta.get(preview.src) : null;
+          const downloadButton = [...root.querySelectorAll('button')].find((node) =>
+            (node.textContent || '').replace(/\\s+/g, ' ').trim().startsWith('Download PNG')
+          );
+          return text.includes('png format produces lossless compression')
+            && Boolean(preview && preview.naturalWidth === 16 && preview.naturalHeight === 16)
+            && Boolean(blob && blob.type === 'image/png' && blob.size > 20)
+            && Boolean(downloadButton && !downloadButton.disabled);
+        }, 'optimizer completed PNG re-encode');
 
         const preview = root.querySelector('img[alt="Optimized preview"]');
-        await until(() => preview && preview.naturalWidth === 16 && preview.naturalHeight === 16, 'optimizer 16x16 preview');
+        const previewBlob = preview ? window.__ttImageBlobMeta.get(preview.src) || null : null;
 
         const downloadButton = [...root.querySelectorAll('button')].find((node) =>
           (node.textContent || '').replace(/\\s+/g, ' ').trim().startsWith('Download PNG')
@@ -369,7 +376,6 @@ function fixtureExpression(id) {
           () => downloads().find((item) => item.download === 'phase8-source-optimized.png'),
           'optimizer PNG download'
         );
-        const previewBlob = window.__ttImageBlobMeta.get(preview.src) || null;
         if (!previewBlob || previewBlob.type !== 'image/png' || previewBlob.size <= 20) {
           throw new Error('optimizer processed preview Blob metadata is invalid: ' + JSON.stringify(previewBlob));
         }
