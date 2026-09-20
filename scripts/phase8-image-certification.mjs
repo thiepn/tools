@@ -95,7 +95,7 @@ function pngChunk(type, data) {
   return Buffer.concat([length, typeBytes, data, checksum]);
 }
 
-function createFixturePng(width = 8, height = 8) {
+function createFixturePng(width = 32, height = 32) {
   const signature = Buffer.from([137,80,78,71,13,10,26,10]);
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
@@ -112,7 +112,8 @@ function createFixturePng(width = 8, height = 8) {
     raw[row] = 0;
     for (let x = 0; x < width; x += 1) {
       const i = row + 1 + x * 4;
-      const foreground = x >= 2 && x <= 5 && y >= 2 && y <= 5;
+      const foreground = x >= Math.floor(width / 4) && x < Math.ceil(width * 3 / 4)
+        && y >= Math.floor(height / 4) && y < Math.ceil(height * 3 / 4);
       raw[i] = foreground ? 220 : 255;
       raw[i + 1] = foreground ? 30 : 255;
       raw[i + 2] = foreground ? 30 : 255;
@@ -340,23 +341,23 @@ function fixtureExpression(id) {
 
     try {
       if (id === 'image-optimizer') {
-        await until(() => body().includes('phase8-source.png') && body().includes('8 × 8 px'), 'optimizer source metadata');
+        await until(() => body().includes('phase8-source.png') && body().includes('32 × 32 px'), 'optimizer source metadata');
         await until(() => {
           const text = body().toLowerCase();
           const preview = root.querySelector('img[alt="Optimized preview"]');
-          return text.includes('live output preview') && Boolean(preview && preview.naturalWidth === 8 && preview.naturalHeight === 8);
+          return text.includes('live output preview') && Boolean(preview && preview.naturalWidth === 32 && preview.naturalHeight === 32);
         }, 'optimizer initial output');
         click('50%');
-        await until(() => body().includes('4 × 4'), 'optimizer 50% output dimensions');
+        await until(() => body().includes('16 × 16'), 'optimizer 50% output dimensions');
         click('png');
         await until(() => {
           const text = body().toLowerCase();
           const preview = root.querySelector('img[alt="Optimized preview"]');
-          return text.includes('png format produces lossless compression') && Boolean(preview && preview.naturalWidth === 4 && preview.naturalHeight === 4);
+          return text.includes('png format produces lossless compression') && Boolean(preview && preview.naturalWidth === 16 && preview.naturalHeight === 16);
         }, 'optimizer PNG output');
 
         const preview = root.querySelector('img[alt="Optimized preview"]');
-        await until(() => preview && preview.naturalWidth === 4 && preview.naturalHeight === 4, 'optimizer 4x4 preview');
+        await until(() => preview && preview.naturalWidth === 16 && preview.naturalHeight === 16, 'optimizer 16x16 preview');
 
         const downloadButton = [...root.querySelectorAll('button')].find((node) =>
           (node.textContent || '').replace(/\\s+/g, ' ').trim().startsWith('Download PNG')
@@ -368,10 +369,14 @@ function fixtureExpression(id) {
           () => downloads().find((item) => item.download === 'phase8-source-optimized.png'),
           'optimizer PNG download'
         );
-        if (!row.blob || row.blob.type !== 'image/png' || row.blob.size <= 20) {
-          throw new Error('optimizer download Blob metadata is invalid');
+        const previewBlob = window.__ttImageBlobMeta.get(preview.src) || null;
+        if (!previewBlob || previewBlob.type !== 'image/png' || previewBlob.size <= 20) {
+          throw new Error('optimizer processed preview Blob metadata is invalid: ' + JSON.stringify(previewBlob));
         }
-        return { ok: true, message: '8x8 source resized to 4x4 PNG and exported' };
+        if (!row || row.download !== 'phase8-source-optimized.png') {
+          throw new Error('optimizer download intent is invalid');
+        }
+        return { ok: true, message: '32x32 source resized to 16x16 PNG and exported' };
       }
 
       if (id === 'background-remover') {
@@ -403,19 +408,19 @@ function fixtureExpression(id) {
 
         const pixels = (() => {
           const canvas = root.querySelector('canvas');
-          if (!canvas || canvas.width !== 8 || canvas.height !== 8) return null;
+          if (!canvas || canvas.width !== 32 || canvas.height !== 32) return null;
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
           if (!ctx) return null;
-          const data = ctx.getImageData(0, 0, 8, 8).data;
+          const data = ctx.getImageData(0, 0, 32, 32).data;
           return {
             width: canvas.width,
             height: canvas.height,
             cornerAlpha: data[3],
-            centerAlpha: data[(4 * 8 + 4) * 4 + 3],
+            centerAlpha: data[(16 * 32 + 16) * 4 + 3],
           };
         })();
         if (!pixels) throw new Error('background result canvas is unavailable');
-        if (!(pixels.cornerAlpha < 100 && pixels.centerAlpha > 180 && pixels.centerAlpha > pixels.cornerAlpha + 100)) {
+        if (!(pixels.cornerAlpha < 80 && pixels.centerAlpha > 220 && pixels.centerAlpha > pixels.cornerAlpha + 150)) {
           throw new Error('background segmentation alpha contrast is invalid: ' + JSON.stringify(pixels));
         }
 
