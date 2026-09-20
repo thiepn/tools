@@ -66,7 +66,7 @@ jobs:
             throw new Error(`Functional wiring gate failed: ${JSON.stringify(wiring)}`);
           }
           const media=read('artifacts/real-media/real-media.json').summary||{};
-          if(media.total!==27||media.PASS!==27||media.FAIL!==0){
+          if(media.total!==28||media.PASS!==28||media.FAIL!==0){
             throw new Error(`Real media gate failed: ${JSON.stringify(media)}`);
           }
           const converters=read('artifacts/real-converters/real-converters.json').summary||{};
