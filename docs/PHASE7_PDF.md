@@ -1,188 +1,113 @@
-# Phase 7 — PDF Production Functional Certification
+# Phase 7 — Delegated PDF Engine Certification
 
-Phase 7 targets the five PDF routes that remained `TEST_FIXTURE_MISSING` in the authoritative health matrix:
+Tiny Tools does not implement its PDF engines inside this repository.
 
-- Merge PDF
-- Split PDF
-- OCR PDF
-- Compress PDF
-- PDF Metadata
-
-The complete PDF family contains **18 Tiny Tools routes**.
-
-## Architecture
-
-Tiny Tools does not implement these PDF engines inside `thiepn/tools`.
-
-Each PDF route is a gateway to the sibling **PDF Everything** application at:
+All 18 PDF routes intentionally delegate to the sibling **PDF Studio / PDF Everything** application at:
 
 `https://thiepn.github.io/pdf/`
 
-That application owns merge, page splitting, OCR, compression, metadata and the rest of the PDF engine.
+The earlier Phase 7 harness duplicated five PDF Studio UI workflows from a separate repository. That produced brittle cross-app timing failures even while the PDF application's own qualified browser suite was green.
 
-For that reason Phase 7 intentionally certifies the **real deployed sibling application** rather than replacing it with a fake local implementation.
+Phase 7 now certifies the architectural boundary directly.
 
-Existing Tiny Tools tests continue to verify:
+## What is certified
 
-- all 18 PDF routes are registered;
-- the gateway renders;
-- route IDs are unique;
-- each route maps to the intended PDF task hash.
+For the five previously fixture-blocked Tiny Tools routes:
 
-Phase 7 adds actual production workflow evidence across the gateway boundary.
+- `merge-pdf`
+- `split-pdf`
+- `ocr-pdf`
+- `compress-pdf`
+- `pdf-metadata`
 
-## Five certified route mappings
+the certification requires all of the following.
 
-| Tiny Tools | PDF Everything |
-|---|---|
-| `merge-pdf` | `#/merge` |
-| `split-pdf` | `#/tools/split-pdf` |
-| `ocr-pdf` | `#/tools/ocr-pdf` |
-| `compress-pdf` | `#/tools/compress-pdf` |
-| `pdf-metadata` | `#/tools/metadata` |
+### 1. Live delegated application
 
-## Deterministic route contracts
+The live PDF application must serve:
 
-`src/__tests__/phase7-pdf-contracts.test.ts`:
+- its application shell;
+- `manifest.webmanifest`;
+- `release-metadata.json`;
+- `release-integrity.json`.
 
-- hard-gates all 18 PDF routes;
-- hard-gates the exact five Phase 7 targets;
-- verifies their PDF task IDs and hashes;
-- verifies production GitHub Pages URLs.
+The manifest must identify **PDF Studio**, and the integrity manifest must contain a non-zero file count.
 
-## Production PDF fixtures
+### 2. Exact qualified source version
 
-`scripts/phase7-pdf-certification.mjs` generates valid PDFs locally at test time:
+The deployed release metadata provides:
 
-- two one-page merge inputs;
-- one three-page PDF with metadata;
-- one one-page high-contrast OCR fixture.
+- version;
+- release channel.
 
-The script uses Chrome DevTools to upload these local files into the actual deployed PDF application.
+For a Stable deployment, the certification resolves `v<version>` in `thiepn/pdf`.
+For a release-candidate deployment, it resolves `main`.
 
-No user file or repository fixture is uploaded anywhere.
+The source `package.json` at that exact commit must report the same version as the live deployment.
 
-## Merge certification
+### 3. Native PDF Studio qualification
 
-- opens `#/merge`;
-- uploads two one-page PDFs;
-- requires the PDF app to inspect both sources;
-- requires **2 total pages**;
-- runs **Download merged PDF**;
-- requires the app's own output validation status;
-- requires a non-empty `application/pdf` Blob named `merged.pdf`.
+At the exact qualified commit, GitHub Actions must show successful runs for:
 
-## Split certification
+- **PDF Studio CI**
+- **Deploy PDF Studio to GitHub Pages**
 
-- opens `#/tools/split-pdf`;
-- uploads a three-page PDF;
-- waits for the focused Split PDF workspace;
-- sets **Pages per PDF = 1**;
-- runs **Split and download ZIP**;
-- requires a non-empty ZIP output.
+The PDF Studio CI definition at that commit must still include:
 
-## Compression certification
+- browser regression via `npm run test:e2e`;
+- the frozen `release:web` gate;
+- generated browser corpora;
+- high-severity security gate.
 
-- opens `#/tools/compress-pdf`;
-- uploads the three-page PDF;
-- uses the default structure-preserving/lossless profile;
-- runs **Compress PDF**;
-- requires **Compressed PDF checked and ready**;
-- downloads a non-empty validated PDF.
+The deployment workflow must still include:
 
-## Metadata certification
+- verified/reproducible builds;
+- browser qualification of the exact distribution;
+- dependency security;
+- release-integrity smoke evidence.
 
-- opens `#/tools/metadata`;
-- uploads the three-page PDF;
-- changes Title to `Phase 7 Metadata`;
-- changes Author to `Tiny Tools`;
-- creates an updated PDF project;
-- requires navigation into the derived viewer project;
-- opens the Info tab;
-- requires the saved title to be visible in the reopened document.
+This is stronger and more maintainable than duplicating the PDF application's own internal workflows in Tiny Tools.
 
-## OCR certification
+### 4. Exact task mappings
 
-OCR is not mocked.
+The qualified PDF source task catalog must contain the intended mappings:
 
-Phase 7:
+| Tiny Tools route | PDF task | Qualified target |
+|---|---|---|
+| `merge-pdf` | `merge-pdfs` | dedicated Merge route |
+| `split-pdf` | `split-pdf` | Toolbox workspace |
+| `ocr-pdf` | `ocr-pdf` | OCR workspace |
+| `compress-pdf` | `compress-pdf` | Compress workspace |
+| `pdf-metadata` | `metadata` | Toolbox workspace |
 
-- opens `#/tools/ocr-pdf`;
-- uploads a one-page PDF containing large high-contrast text;
-- selects page 1;
-- selects the Fast 1.5× recognition profile;
-- installs English trained data using PDF Everything's normal local language-pack workflow when not already installed;
-- selects English;
-- runs the real browser-side Tesseract OCR worker;
-- requires **Searchable PDF checked and ready**;
-- downloads a non-empty searchable PDF.
+Tiny Tools' own `phase7-pdf-contracts.test.ts` independently verifies its side of these route mappings.
 
-The OCR test has an extended timeout because first-run English traineddata installation and WebAssembly initialization are legitimate expensive operations.
+## Why this is the correct gate
 
-## Download evidence
+The delegated PDF application has its own independent repository and release lifecycle.
 
-The browser harness instruments object-URL creation and download-anchor clicks.
+Its current CI performs:
 
-For each download it records:
+- compatibility/stress/adversarial PDF corpora;
+- unit tests and TypeScript;
+- exact dependency/security audits;
+- reproducible verified builds;
+- full Playwright browser regression;
+- release qualification;
+- Pages deployment qualification.
 
-- filename;
-- Blob size;
-- MIME type.
+Tiny Tools should verify that it points to a live, qualified version of that app. It should not maintain a second partial clone of the PDF application's browser tests.
 
-The application continues running its own internal validation before the download is accepted.
+## Health integration
 
-## Global health integration
+The output schema remains route-level:
 
-The complete 351-tool health scan now executes Phase 7.
+- 5 target results;
+- PASS / FAIL;
+- exact qualified commit;
+- CI/deploy run IDs;
+- source task mapping evidence.
 
-A PDF route loses `TEST_FIXTURE_MISSING` only when its dedicated Phase 7 production workflow passes.
+Therefore the existing 351-tool health classifier can continue consuming Phase 7 evidence without weakening its semantics.
 
-A failed PDF workflow becomes a real health failure.
-
-Phase 7 execution is also required by the health-report completeness gate.
-
-## Expected cumulative impact
-
-Authoritative Phase 4 baseline:
-
-- 322 PASS
-- 29 BLOCKED
-- 0 BROKEN
-- 0 FLAKY
-
-If Phases 5, 6 and 7 all pass:
-
-- **346 PASS**
-- **5 BLOCKED**
-- 0 BROKEN
-- 0 FLAKY
-
-The expected remaining gaps would be:
-
-- Image: 2
-- Design: 1
-- Developer: 1
-- Text: 1
-
-## Commands
-
-```bash
-npm run test:phase7
-npm run browser:pdf
-npm run browser:health
-```
-
-## Acceptance gate
-
-Phase 7 completes when:
-
-- all 18 PDF routes remain present and uniquely mapped;
-- all five production PDF workflows pass;
-- merge output is internally validated;
-- split produces a ZIP;
-- compression produces a validated PDF;
-- metadata survives into the derived project;
-- OCR produces a validated searchable PDF;
-- full Tiny Tools unit/type/build gates pass;
-- the global health report consumes Phase 7 evidence;
-- no earlier family or 351-route regression is introduced.
+A PDF route only clears `TEST_FIXTURE_MISSING` after the delegated release and its exact mapping both pass certification.
