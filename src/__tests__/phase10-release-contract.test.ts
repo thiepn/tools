@@ -29,5 +29,8 @@ describe('Phase 10 release source contract', () => {
     expect(pkg.scripts?.['rc:compare-builds']).toBe('node scripts/phase10-compare-builds.mjs');
     expect(pkg.scripts?.['rc:certify']).toBe('node scripts/phase10-release-candidate.mjs');
     expect(pkg.scripts?.['browser:functional-wiring']).toBe('node scripts/functional-wiring-certification.mjs');
+    expect(pkg.scripts?.['browser:real-media']).toBe('node scripts/real-media-processing-certification.mjs');
+    expect(pkg.scripts?.['browser:real-converters']).toBe('node scripts/real-converter-certification.mjs');
+    expect(pkg.scripts?.['browser:functional-wiring']).toBe('node scripts/functional-wiring-certification.mjs');
   });
 });
