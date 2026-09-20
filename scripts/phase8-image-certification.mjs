@@ -341,11 +341,19 @@ function fixtureExpression(id) {
     try {
       if (id === 'image-optimizer') {
         await until(() => body().includes('phase8-source.png') && body().includes('8 × 8 px'), 'optimizer source metadata');
-        await until(() => body().includes('Live Output Preview') && body().includes('Ready'), 'optimizer initial output');
+        await until(() => {
+          const text = body().toLowerCase();
+          const preview = root.querySelector('img[alt="Optimized preview"]');
+          return text.includes('live output preview') && Boolean(preview && preview.naturalWidth === 8 && preview.naturalHeight === 8);
+        }, 'optimizer initial output');
         click('50%');
         await until(() => body().includes('4 × 4'), 'optimizer 50% output dimensions');
         click('png');
-        await until(() => body().includes('PNG format produces lossless compression') && body().includes('Ready'), 'optimizer PNG output');
+        await until(() => {
+          const text = body().toLowerCase();
+          const preview = root.querySelector('img[alt="Optimized preview"]');
+          return text.includes('png format produces lossless compression') && Boolean(preview && preview.naturalWidth === 4 && preview.naturalHeight === 4);
+        }, 'optimizer PNG output');
 
         const preview = root.querySelector('img[alt="Optimized preview"]');
         await until(() => preview && preview.naturalWidth === 4 && preview.naturalHeight === 4, 'optimizer 4x4 preview');
@@ -371,6 +379,27 @@ function fixtureExpression(id) {
         window.__ttPhase8ForceBackgroundFallback = true;
         click('Remove background');
         await until(() => body().includes('Ready for edge refinement'), 'background removal result', 30000);
+
+        const setRange = (labelPrefix, value) => {
+          const label = [...root.querySelectorAll('label')].find((node) =>
+            (node.textContent || '').replace(/\\s+/g, ' ').trim().toLowerCase().startsWith(labelPrefix.toLowerCase())
+          );
+          const input = label?.querySelector('input[type="range"]');
+          if (!input) throw new Error('Range input not found: ' + labelPrefix);
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+          setter ? setter.call(input, String(value)) : input.value = String(value);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        setRange('Smoothing', 0);
+        setRange('Feather', 0);
+        await until(() => {
+          const text = body().toLowerCase();
+          return text.includes('smoothing 0') && text.includes('feather 0px');
+        }, 'zero-refinement controls');
+
+        // React applies the refinement effect after the control state update.
+        await pause(80);
 
         const pixels = (() => {
           const canvas = root.querySelector('canvas');
