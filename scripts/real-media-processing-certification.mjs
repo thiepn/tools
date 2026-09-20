@@ -10,7 +10,7 @@ import { createServer as createViteServer } from 'vite';
 const ROOT=process.cwd(),DIST=path.resolve(ROOT,'dist'),OUT=path.resolve(ROOT,process.env.REAL_MEDIA_OUT||'artifacts/real-media');
 const HOST='127.0.0.1',PORT=4192,DEBUG_PORT=9242,BASE=`http://${HOST}:${PORT}/tools/`;
 const AUDIO_IDS=['audio-converter','audio-joiner','audio-volume-changer','audio-speed-changer','audio-normalizer','silence-trimmer','audio-equalizer','audio-noise-cleanup','stereo-mono-converter','ringtone-maker','audio-pitch-speed-shifter'];
-const VIDEO_IDS=['merge-videos','video-compressor','video-converter','video-to-audio','add-audio-to-video','add-text-to-video','loop-video','video-to-frames','video-thumbnail-extractor','add-logo-to-video','subtitle-burner','video-to-gif','video-speed-changer','crop-resize-video','mute-video','video-volume-changer'];
+const VIDEO_IDS=['video-toolkit','merge-videos','video-compressor','video-converter','video-to-audio','add-audio-to-video','add-text-to-video','loop-video','video-to-frames','video-thumbnail-extractor','add-logo-to-video','subtitle-burner','video-to-gif','video-speed-changer','crop-resize-video','mute-video','video-volume-changer'];
 const TARGETS=[...AUDIO_IDS,...VIDEO_IDS],sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const MIME=new Map([['.html','text/html; charset=utf-8'],['.js','text/javascript; charset=utf-8'],['.css','text/css; charset=utf-8'],['.json','application/json'],['.svg','image/svg+xml'],['.png','image/png'],['.wasm','application/wasm'],['.woff','font/woff'],['.woff2','font/woff2']]);
 async function waitFor(check,label,timeout=18000){const end=Date.now()+timeout;let last;while(Date.now()<end){try{const v=await check();if(v)return v}catch(e){last=e}await sleep(60)}throw new Error(`Timed out waiting for ${label}${last?': '+last.message:''}`)}
@@ -43,6 +43,15 @@ async function audit(tool,f,cdp,errors){
       result.evidence=`${done.download.download} · ${done.download.blob.size} bytes`;
     }else{
       await setFiles(cdp,'input[type="file"][accept="video/*"]',id==='merge-videos'?[f.video1,f.video2]:[f.video1]);
+      if(id==='video-toolkit'){
+        await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.text.includes('160×90')&&!s.alert},'video-toolkit metadata',12000);
+        await ev(cdp,`(()=>{const r=document.querySelector('[data-tool-id="video-toolkit"] .tt-tool-content'),b=[...r.querySelectorAll('button')].find(x=>(x.textContent||'').replace(/\\s+/g,' ').trim()==='Extract WAV');if(!b||b.disabled)throw new Error('Extract WAV unavailable');b.click();return true})()`,true);
+        await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.alert?false:s?.text.includes('Extracted WAV')},'video-toolkit WAV extraction',18000);
+        await ev(cdp,`(()=>{const r=document.querySelector('[data-tool-id="video-toolkit"] .tt-tool-content'),b=[...r.querySelectorAll('button')].find(x=>(x.textContent||'').replace(/\\s+/g,' ').trim()==='Download WAV');if(!b)throw new Error('Download WAV missing');b.click();return true})()`,true);
+        const s=await waitFor(async()=>{const x=await ev(cdp,stateExpr(id));return x?.downloads?.length?x:null},'video-toolkit WAV download');
+        const d=s.downloads.at(-1);if(!d.download.endsWith('.wav')||!(d.blob?.size>44))throw new Error('Invalid Video Toolkit WAV: '+JSON.stringify(d));
+        result.evidence=`${d.download} · ${d.blob.size} bytes`;
+      }else{
       await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.text.includes('video ready.')&&!s.alert},id+' video decode',12000);
       if(id==='add-audio-to-video')await setFiles(cdp,'input[type="file"][accept="audio/*"]',[f.wav1]);
       if(id==='add-logo-to-video')await setFiles(cdp,'input[type="file"][accept="image/*"]',[f.png]);
@@ -55,6 +64,7 @@ async function audit(tool,f,cdp,errors){
       const ext=id==='video-to-audio'?'.wav':id==='video-to-frames'?'.zip':id==='video-thumbnail-extractor'?'.png':id==='video-to-gif'?'.gif':null;
       if(ext&&!d.download.endsWith(ext))throw new Error(`Expected ${ext} download, got ${d.download}`);
       result.evidence=`${d.download} · ${d.blob.size} bytes`;
+      }
     }
     const errs=errors.slice(e0).filter(x=>!/favicon|ResizeObserver loop/i.test(x));if(errs.length)throw new Error(errs.join(' | '));
   }catch(e){result.status='FAIL';result.findings.push(e instanceof Error?e.message:String(e))}
