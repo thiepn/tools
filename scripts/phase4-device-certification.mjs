@@ -375,12 +375,12 @@ function fixtureExpression(id) {
       if (id === 'keyboard-test') {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true }));
         window.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', code: 'KeyA', bubbles: true }));
-        await until(() => body().includes('KeyA') && body().includes('keydown'), 'keyboard event row');
+        await until(() => body().includes('KeyA') && /\bdown\b/i.test(body()) && /\bup\b/i.test(body()), 'keyboard event row');
         return { ok: true, message: 'keydown/up event captured' };
       }
 
       if (id === 'mouse-test') {
-        const surface = [...root.querySelectorAll('div')].find((node) => (node.textContent || '').includes('Move, click, scroll'));
+        const surface = [...root.querySelectorAll('div')].find((node) => node.classList.contains('h-72') && node.classList.contains('touch-none') && (node.textContent || '').includes('Move, click, scroll'));
         if (!surface) throw new Error('mouse test surface missing');
         surface.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 40, clientY: 50, buttons: 1, pointerId: 1 }));
         surface.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 120 }));
@@ -426,7 +426,8 @@ function fixtureExpression(id) {
       }
 
       if (id === 'device-info') {
-        if (!metric('Screen size').includes('×') || !body().includes('Logical CPU threads')) throw new Error('device metrics missing');
+        const deviceText = body().toLowerCase();
+        if (!deviceText.includes('screen size') || !deviceText.includes('1280 × 900 css px') || !deviceText.includes('logical cpu threads')) throw new Error('device metrics missing');
         return { ok: true, message: 'browser-exposed device metrics rendered' };
       }
 
@@ -447,7 +448,7 @@ function fixtureExpression(id) {
       }
 
       if (id === 'polling-rate-test') {
-        const surface = [...root.querySelectorAll('div')].find((node) => (node.textContent || '').includes('Move the pointer rapidly here'));
+        const surface = [...root.querySelectorAll('div')].find((node) => node.classList.contains('h-72') && node.classList.contains('touch-none') && (node.textContent || '').includes('Move the pointer rapidly here'));
         if (!surface) throw new Error('polling surface missing');
         for (let i = 0; i < 24; i += 1) {
           const event = new PointerEvent('pointermove', { bubbles: true, clientX: 20 + i, clientY: 30, pointerId: 1 });
@@ -508,7 +509,7 @@ function fixtureExpression(id) {
           select.dispatchEvent(new Event('change', { bubbles: true }));
         }
         click(/^Start stability test$/);
-        await until(() => body().includes('Quality score') && body().includes('/100'), 'stability results', 3500);
+        await until(() => body().toLowerCase().includes('quality score') && body().includes('/100'), 'stability results', 3500);
         return { ok: true, message: 'mock repeated HTTPS probes summarized' };
       }
 
@@ -540,7 +541,8 @@ function fixtureExpression(id) {
       }
 
       if (id === 'browser-capability-inspector') {
-        if (!body().includes('Supported') || !body().includes('Coverage') || !body().includes('Groups')) throw new Error('capability summary missing');
+        const capabilityText = body().toLowerCase();
+        if (!capabilityText.includes('supported') || !capabilityText.includes('coverage') || !capabilityText.includes('groups')) throw new Error('capability summary missing');
         return { ok: true, message: 'local capability matrix rendered' };
       }
 
@@ -601,7 +603,7 @@ function fixtureExpression(id) {
           }),
         });
         click(/^Inspect WebGPU$/);
-        await until(() => body().includes('MockVendor') && body().includes('mock-feature'), 'WebGPU details');
+        await until(() => body().toLowerCase().includes('mockvendor') && body().toLowerCase().includes('adapter features') && body().toLowerCase().includes('mock-feature'), 'WebGPU details');
         return { ok: true, message: 'mock WebGPU adapter and limits rendered' };
       }
 
@@ -748,6 +750,14 @@ async function main() {
   await mkdir(OUT, { recursive: true });
 
   const tools = await getDeviceTools();
+  for (const tool of tools) {
+    const source = fixtureExpression(tool.id);
+    try {
+      new Function(`return ${source};`);
+    } catch (error) {
+      throw new Error(`Generated Phase 4 fixture is invalid for ${tool.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   const server = await createStaticServer();
   const profile = await mkdtemp(path.join(tmpdir(), 'tiny-tools-phase4-device-'));
   const chrome = spawn(findChrome(), [
