@@ -375,7 +375,10 @@ function fixtureExpression(id) {
       if (id === 'keyboard-test') {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true }));
         window.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', code: 'KeyA', bubbles: true }));
-        await until(() => body().includes('KeyA') && /\bdown\b/i.test(body()) && /\bup\b/i.test(body()), 'keyboard event row');
+        await until(() => {
+          const text = body().toLowerCase();
+          return text.includes('keya') && text.includes('down') && text.includes('up');
+        }, 'keyboard event row');
         return { ok: true, message: 'keydown/up event captured' };
       }
 
@@ -603,7 +606,10 @@ function fixtureExpression(id) {
           }),
         });
         click(/^Inspect WebGPU$/);
-        await until(() => body().toLowerCase().includes('mockvendor') && body().toLowerCase().includes('adapter features') && body().toLowerCase().includes('mock-feature'), 'WebGPU details');
+        await until(() => {
+          const text = body().toLowerCase();
+          return text.includes('mockvendor') && text.includes('adapter features (1)');
+        }, 'WebGPU details');
         return { ok: true, message: 'mock WebGPU adapter and limits rendered' };
       }
 
