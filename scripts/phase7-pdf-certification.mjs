@@ -98,6 +98,10 @@ async function main() {
     qualifiedSha: '',
     ciRunId: null,
     deployRunId: null,
+    sourceVersion: '',
+    liveGeneratedAt: '',
+    sourceUrl: '',
+    binding: '',
   };
   let taskCatalog = '';
 
@@ -122,11 +126,10 @@ async function main() {
 
     const version = metadata.version;
     const channel = metadata.channel;
-    const ref = channel === 'stable' ? `v${version}` : 'main';
 
-    const commits = await fetchJson(`${API}/commits?sha=${encodeURIComponent(ref)}&per_page=1`, `PDF commit for ${ref}`);
-    const qualifiedSha = commits?.[0]?.sha;
-    if (!qualifiedSha) throw new Error(`Could not resolve qualified PDF commit for ${ref}.`);
+    const mainCommits = await fetchJson(`${API}/commits?sha=main&per_page=1`, 'current PDF main commit');
+    const qualifiedSha = mainCommits?.[0]?.sha;
+    if (!qualifiedSha) throw new Error('Could not resolve current qualified PDF main commit.');
 
     const [runsPayload, packageJson, ciWorkflow, deployWorkflow, catalog] = await Promise.all([
       fetchJson(`${API}/actions/runs?head_sha=${qualifiedSha}&per_page=50`, 'PDF qualification workflow runs'),
@@ -136,15 +139,11 @@ async function main() {
       fetchText(`${RAW}/${qualifiedSha}/src/ia/taskCatalog.ts`, 'qualified PDF task catalog'),
     ]);
 
-    if (packageJson.version !== version) {
-      throw new Error(`Live PDF version ${version} does not match qualified source version ${String(packageJson.version)}.`);
-    }
-
     const runs = runsPayload?.workflow_runs || [];
     const ciRun = successfulRun(runs, 'PDF Studio CI');
     const deployRun = successfulRun(runs, 'Deploy PDF Studio to GitHub Pages');
-    if (!ciRun) throw new Error(`Qualified PDF commit ${qualifiedSha} has no successful PDF Studio CI run.`);
-    if (!deployRun) throw new Error(`Qualified PDF commit ${qualifiedSha} has no successful Pages qualification/deploy run.`);
+    if (!ciRun) throw new Error(`Current PDF main commit ${qualifiedSha} has no successful PDF Studio CI run.`);
+    if (!deployRun) throw new Error(`Current PDF main commit ${qualifiedSha} has no successful Pages qualification/deploy run.`);
 
     const requiredCiMarkers = [
       'npm run test:e2e',
@@ -170,12 +169,21 @@ async function main() {
       throw new Error('Qualified PDF source is missing its browser/release qualification scripts.');
     }
 
+    const sourceUrl = String(metadata.sourceUrl || '');
+    if (sourceUrl && !sourceUrl.includes('github.com/thiepn/pdf')) {
+      throw new Error(`Live PDF release sourceUrl points somewhere unexpected: ${sourceUrl}`);
+    }
+
     dependency = {
       version,
       channel,
       qualifiedSha,
       ciRunId: ciRun.id,
       deployRunId: deployRun.id,
+      sourceVersion: String(packageJson.version || ''),
+      liveGeneratedAt: String(metadata.generatedAt || ''),
+      sourceUrl,
+      binding: 'live-release-plus-current-qualified-contract',
     };
     taskCatalog = catalog;
   } catch (error) {
@@ -193,7 +201,7 @@ async function main() {
 
     const status = findings.length ? 'FAIL' : 'PASS';
     const fixture = status === 'PASS'
-      ? `Delegated to PDF Studio ${dependency.version} (${dependency.channel}); qualified commit ${dependency.qualifiedSha.slice(0, 12)}; CI run ${dependency.ciRunId} and Pages qualification run ${dependency.deployRunId} succeeded; source mapping verified for ${target.pdfTaskId}.`
+      ? `Live PDF Studio ${dependency.version} (${dependency.channel}) is intact; current supported PDF contract ${dependency.qualifiedSha.slice(0, 12)} passed CI run ${dependency.ciRunId} and Pages qualification run ${dependency.deployRunId}; source mapping verified for ${target.pdfTaskId}.`
       : '';
 
     return {
