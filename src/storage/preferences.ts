@@ -11,13 +11,21 @@ function createDefaultPreferences(): UserPreferences {
   };
 }
 
-export function getStoredPreferences(): UserPreferences {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return createDefaultPreferences();
+function getLocalStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage ?? null;
+  } catch {
+    return null;
   }
+}
+
+export function getStoredPreferences(): UserPreferences {
+  const storage = getLocalStorage();
+  if (!storage) return createDefaultPreferences();
 
   try {
-    const raw = window.localStorage.getItem(PREFERENCES_KEY);
+    const raw = storage.getItem(PREFERENCES_KEY);
     if (!raw) return createDefaultPreferences();
 
     const parsed = JSON.parse(raw);
@@ -47,9 +55,10 @@ export function getStoredPreferences(): UserPreferences {
 }
 
 export function savePreferences(prefs: UserPreferences): void {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+  const storage = getLocalStorage();
+  if (!storage) return;
   try {
-    window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(prefs));
+    storage.setItem(PREFERENCES_KEY, JSON.stringify(prefs));
   } catch {
     // Gracefully handle storage quota or privacy mode errors.
   }
