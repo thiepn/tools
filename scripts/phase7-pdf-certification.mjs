@@ -241,17 +241,21 @@ const PRELOAD = `(() => {
         href: this.href,
         blob: window.__ttPdfBlobMeta.get(this.href) || null,
       });
-      return;
     }
     return nativeClick.call(this);
   };
 })();`;
 
-async function openPage(url) {
+async function openPage(url, key) {
   const target = await newTarget();
   const cdp = new Cdp(target.webSocketDebuggerUrl);
   await cdp.open();
   await Promise.all([cdp.send('Page.enable'), cdp.send('Runtime.enable')]);
+  const downloadDir = path.join(OUT, 'downloads', key);
+  await mkdir(downloadDir, { recursive: true });
+  await cdp.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: downloadDir });
+  const downloadEvents = [];
+  cdp.on('Page.downloadWillBegin', (event) => downloadEvents.push(event));
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     width: 1440,
     height: 1000,
@@ -267,7 +271,7 @@ async function openPage(url) {
     `page load for ${url}`,
     30_000
   );
-  return { target, cdp };
+  return { target, cdp, downloadDir, downloadEvents };
 }
 
 function collectErrors(cdp) {
@@ -326,13 +330,33 @@ async function waitForDownload(cdp, predicateSource, label, timeout = 30_000) {
     timeout
   );
 }
+async function waitForRealDownload(downloadDir, downloadEvents, filenamePattern, label, timeout = 60_000) {
+  const event = await waitFor(
+    () => downloadEvents.find((row) => filenamePattern.test(row.suggestedFilename || '')) || null,
+    label + ' event',
+    timeout
+  );
+  const file = path.join(downloadDir, event.suggestedFilename);
+  await waitFor(async () => {
+    try {
+      const info = await stat(file);
+      return info.size > 500 ? info : null;
+    } catch {
+      return null;
+    }
+  }, label + ' file', timeout);
+  const bytes = await readFile(file);
+  return { event, file, bytes };
+}
 
 async function importForTask(cdp, file) {
+  await clickText(cdp, 'Choose PDF');
+  await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('input[type="file"][accept*="pdf"]'))`), 'selected task file input');
   await setFiles(cdp, 'input[type="file"][accept*="pdf"]', [file]);
 }
 
 async function certifyMerge(fixtures) {
-  const { target, cdp } = await openPage(`${PDF_BASE}#/merge`);
+  const { target, cdp, downloadDir, downloadEvents } = await openPage(`${PDF_BASE}#/merge`, 'merge-pdf');
   const errors = collectErrors(cdp);
   try {
     await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('input[type="file"][accept*="pdf"]'))`), 'merge file input');
@@ -342,9 +366,10 @@ async function certifyMerge(fixtures) {
       return text.includes('phase7-one.pdf') && text.includes('phase7-two.pdf') && text.includes('2 total pages');
     }, 'two inspected merge sources', 40_000);
     await clickText(cdp, 'Download merged PDF');
-    const download = await waitForDownload(cdp, `(row) => row.download === 'merged.pdf' && row.blob && row.blob.size > 500 && row.blob.type === 'application/pdf'`, 'merged PDF download', 60_000);
-    await waitFor(async () => (await bodyText(cdp)).includes('Validated 2-page merged PDF.'), 'merged PDF validation', 30_000);
-    return { ok: true, evidence: `merged two one-page PDFs; ${download.blob.size} byte validated PDF`, errors };
+    await waitFor(async () => (await bodyText(cdp)).includes('Validated 2-page merged PDF.'), 'merged PDF validation', 60_000);
+    const download = await waitForRealDownload(downloadDir, downloadEvents, /^merged\.pdf$/i, 'merged PDF download', 60_000);
+    if (!new TextDecoder().decode(download.bytes.slice(0, 5)).startsWith('%PDF-')) throw new Error('merged output is not a PDF');
+    return { ok: true, evidence: `merged two one-page PDFs; ${download.bytes.length} byte validated PDF`, errors };
   } finally {
     cdp.close();
     await closeTarget(target.id);
@@ -352,7 +377,7 @@ async function certifyMerge(fixtures) {
 }
 
 async function certifySplit(fixtures) {
-  const { target, cdp } = await openPage(`${PDF_BASE}#/tools/split-pdf`);
+  const { target, cdp, downloadDir, downloadEvents } = await openPage(`${PDF_BASE}#/tools/split-pdf`, 'split-pdf');
   const errors = collectErrors(cdp);
   try {
     await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('input[type="file"][accept*="pdf"]'))`), 'split import input');
@@ -363,8 +388,9 @@ async function certifySplit(fixtures) {
     }, 'split workspace', 45_000);
     await setLabeledValue(cdp, 'Pages per PDF', 1);
     await clickText(cdp, 'Split and download ZIP');
-    const download = await waitForDownload(cdp, `(row) => /-split\\.zip$/i.test(row.download) && row.blob && row.blob.size > 500 && row.blob.type === 'application/zip'`, 'split ZIP download', 90_000);
-    return { ok: true, evidence: `split three-page PDF into ZIP; ${download.blob.size} byte archive`, errors };
+    const download = await waitForRealDownload(downloadDir, downloadEvents, /-split\.zip$/i, 'split ZIP download', 90_000);
+    if (download.bytes[0] !== 0x50 || download.bytes[1] !== 0x4b) throw new Error('split output is not a ZIP archive');
+    return { ok: true, evidence: `split three-page PDF into ZIP; ${download.bytes.length} byte archive`, errors };
   } finally {
     cdp.close();
     await closeTarget(target.id);
@@ -372,7 +398,7 @@ async function certifySplit(fixtures) {
 }
 
 async function certifyCompression(fixtures) {
-  const { target, cdp } = await openPage(`${PDF_BASE}#/tools/compress-pdf`);
+  const { target, cdp, downloadDir, downloadEvents } = await openPage(`${PDF_BASE}#/tools/compress-pdf`, 'compress-pdf');
   const errors = collectErrors(cdp);
   try {
     await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('input[type="file"][accept*="pdf"]'))`), 'compress import input');
@@ -381,8 +407,9 @@ async function certifyCompression(fixtures) {
     await clickText(cdp, 'Compress PDF');
     await waitFor(async () => (await bodyText(cdp)).includes('Compressed PDF checked and ready'), 'compressed output validation', 90_000);
     await clickText(cdp, 'Download');
-    const download = await waitForDownload(cdp, `(row) => /-compressed\\.pdf$/i.test(row.download) && row.blob && row.blob.size > 500 && row.blob.type === 'application/pdf'`, 'compressed PDF download', 30_000);
-    return { ok: true, evidence: `lossless compression produced validated ${download.blob.size} byte PDF`, errors };
+    const download = await waitForRealDownload(downloadDir, downloadEvents, /-compressed\.pdf$/i, 'compressed PDF download', 60_000);
+    if (!new TextDecoder().decode(download.bytes.slice(0, 5)).startsWith('%PDF-')) throw new Error('compressed output is not a PDF');
+    return { ok: true, evidence: `lossless compression produced validated ${download.bytes.length} byte PDF`, errors };
   } finally {
     cdp.close();
     await closeTarget(target.id);
@@ -390,7 +417,7 @@ async function certifyCompression(fixtures) {
 }
 
 async function certifyMetadata(fixtures) {
-  const { target, cdp } = await openPage(`${PDF_BASE}#/tools/metadata`);
+  const { target, cdp } = await openPage(`${PDF_BASE}#/tools/metadata`, 'pdf-metadata');
   const errors = collectErrors(cdp);
   try {
     await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('input[type="file"][accept*="pdf"]'))`), 'metadata import input');
@@ -414,7 +441,7 @@ async function certifyMetadata(fixtures) {
 }
 
 async function certifyOcr(fixtures) {
-  const { target, cdp } = await openPage(`${PDF_BASE}#/tools/ocr-pdf`);
+  const { target, cdp, downloadDir, downloadEvents } = await openPage(`${PDF_BASE}#/tools/ocr-pdf`, 'ocr-pdf');
   const errors = collectErrors(cdp);
   try {
     await waitFor(() => evaluate(cdp, `Boolean(document.querySelector('input[type="file"][accept*="pdf"]'))`), 'OCR import input');
@@ -457,8 +484,9 @@ async function certifyOcr(fixtures) {
     await clickText(cdp, 'Start OCR');
     await waitFor(async () => (await bodyText(cdp)).includes('Searchable PDF checked and ready'), 'validated searchable OCR PDF', 240_000);
     await clickText(cdp, 'Download');
-    const download = await waitForDownload(cdp, `(row) => /-searchable\\.pdf$/i.test(row.download) && row.blob && row.blob.size > 500 && row.blob.type === 'application/pdf'`, 'OCR searchable PDF download', 30_000);
-    return { ok: true, evidence: `one-page English OCR produced validated ${download.blob.size} byte searchable PDF`, errors };
+    const download = await waitForRealDownload(downloadDir, downloadEvents, /-searchable\.pdf$/i, 'OCR searchable PDF download', 60_000);
+    if (!new TextDecoder().decode(download.bytes.slice(0, 5)).startsWith('%PDF-')) throw new Error('OCR output is not a PDF');
+    return { ok: true, evidence: `one-page English OCR produced validated ${download.bytes.length} byte searchable PDF`, errors };
   } finally {
     cdp.close();
     await closeTarget(target.id);
