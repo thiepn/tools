@@ -35,7 +35,11 @@ async function audit(tool,f,cdp,errors){
     await navigate(cdp,id);
     if(AUDIO_IDS.includes(id)){
       await setFiles(cdp,'input[type="file"][accept*="audio"]',id==='audio-joiner'?[f.wav1,f.wav2]:[f.wav1]);
-      await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.text.includes('ready.')&&!s.alert},id+' audio decode');
+      if(id==='audio-converter'){
+        await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.text.includes('tone-a.wav')&&!s.alert},id+' audio file load');
+      }else{
+        await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s?.text.includes('ready.')&&!s.alert},id+' audio decode');
+      }
       await clickProcess(cdp);
       const done=await waitFor(async()=>{const s=await ev(cdp,stateExpr(id));return s.alert?{error:s.alert}:s.downloads.length?{download:s.downloads.at(-1),text:s.text}:null},id+' audio processing',18000);
       if(done.error)throw new Error(done.error);
