@@ -42,6 +42,10 @@ jobs:
         id: media
         continue-on-error: true
         run: npm run browser:real-media
+      - name: Exercise unified converters
+        id: converters
+        continue-on-error: true
+        run: npm run browser:real-converters
       - name: Upload functional evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -50,6 +54,7 @@ jobs:
           path: |
             artifacts/functional-wiring/
             artifacts/real-media/
+            artifacts/real-converters/
           if-no-files-found: error
       - name: Enforce functional correctness gates
         run: |
@@ -64,5 +69,9 @@ jobs:
           if(media.total!==27||media.PASS!==27||media.FAIL!==0){
             throw new Error(`Real media gate failed: ${JSON.stringify(media)}`);
           }
-          console.log({wiring,media});
+          const converters=read('artifacts/real-converters/real-converters.json').summary||{};
+          if(converters.total!==6||converters.PASS!==6||converters.FAIL!==0){
+            throw new Error(`Unified converter gate failed: ${JSON.stringify(converters)}`);
+          }
+          console.log({wiring,media,converters});
           NODE
