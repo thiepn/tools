@@ -306,14 +306,27 @@ function MouseDiagnostic() {
   const [buttons, setButtons] = useState(0);
   const [wheel, setWheel] = useState({ x: 0, y: 0 });
   const [doubleClicks, setDoubleClicks] = useState(0);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setWheel({ x: event.deltaX, y: event.deltaY });
+    };
+    surface.addEventListener('wheel', handleWheel, { passive: false });
+    return () => surface.removeEventListener('wheel', handleWheel);
+  }, []);
+
   return (
     <section className={panel}>
       <div
+        ref={surfaceRef}
         className="relative h-72 touch-none overflow-hidden rounded-xl border-2 border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50"
         onPointerMove={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setPosition({ x: event.clientX - rect.left, y: event.clientY - rect.top }); setButtons(event.buttons); }}
         onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setButtons(event.buttons); }}
         onPointerUp={(event) => setButtons(event.buttons)}
-        onWheel={(event) => { event.preventDefault(); setWheel({ x: event.deltaX, y: event.deltaY }); }}
         onDoubleClick={() => setDoubleClicks((value) => value + 1)}
       >
         <div className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-500 bg-blue-200/70" style={{ left: position.x, top: position.y }} />
