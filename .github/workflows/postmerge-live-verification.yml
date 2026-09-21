@@ -1,0 +1,42 @@
+name: Post-merge live production verification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout current main-based verifier
+        uses: actions/checkout@v7
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify live asset generation
+        run: node scripts/live-asset-integrity.mjs https://thiepn.dev/tools/
+      - name: Verify representative live browser acceptance
+        run: node scripts/r9-live-site-smoke.mjs https://thiepn.dev/tools/
+      - name: Verify all 351 live tool routes and functional wiring
+        env:
+          FUNCTIONAL_WIRING_BASE_URL: https://thiepn.dev/tools/
+          FUNCTIONAL_WIRING_EXPECTED_COMMIT: e10dc9d0876c23dc8c30ed96d248075631917d17
+          FUNCTIONAL_WIRING_OUT: artifacts/postmerge-live-functional-wiring
+        run: npm run browser:functional-wiring
+      - name: Upload live evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: postmerge-live-functional-wiring
+          path: artifacts/postmerge-live-functional-wiring/
+          if-no-files-found: error
+          retention-days: 30
