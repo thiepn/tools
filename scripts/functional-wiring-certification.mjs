@@ -10,7 +10,11 @@ import JSZip from 'jszip';
 import { createServer as createViteServer } from 'vite';
 
 const ROOT=process.cwd(),DIST=path.resolve(ROOT,'dist'),OUT=path.resolve(ROOT,process.env.FUNCTIONAL_WIRING_OUT||'artifacts/functional-wiring');
-const HOST='127.0.0.1',PORT=4191,DEBUG_PORT=9241,BASE=`http://${HOST}:${PORT}/tools/`,EXPECTED=351;
+const HOST='127.0.0.1',PORT=4191,DEBUG_PORT=9241,EXPECTED=351;
+const REMOTE_RAW=process.env.FUNCTIONAL_WIRING_BASE_URL?.trim()||'';
+const REMOTE_URL=REMOTE_RAW?new URL(REMOTE_RAW.endsWith('/')?REMOTE_RAW:`${REMOTE_RAW}/`):null;
+if(REMOTE_URL)REMOTE_URL.protocol='https:';
+const BASE=REMOTE_URL?.href??`http://${HOST}:${PORT}/tools/`;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const WEBM_BASE64='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';
 
@@ -54,6 +58,24 @@ async function ev(cdp,expression,byValue=true){
   return byValue?x.result?.value:x.result;
 }
 async function waitFor(check,label,timeout=18000){const end=Date.now()+timeout;let last;while(Date.now()<end){try{const v=await check();if(v)return v}catch(e){last=e}await sleep(70)}throw new Error(`Timed out waiting for ${label}${last?': '+last.message:''}`)}
+async function verifyRemoteGeneration(){
+  if(!REMOTE_URL)return null;
+  const expected=process.env.FUNCTIONAL_WIRING_EXPECTED_COMMIT?.trim()||'';
+  const deadline=Date.now()+120000;let last='not published yet';
+  while(Date.now()<deadline){
+    try{
+      const response=await fetch(new URL('build-generation.json',REMOTE_URL),{redirect:'follow',cache:'no-store',headers:{'cache-control':'no-cache'}});
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const generation=await response.json();
+      if(generation?.schemaVersion!==1)throw new Error('unsupported build-generation schema');
+      if(generation?.base!=='/tools/')throw new Error(`unexpected deployment base ${generation?.base}`);
+      if(expected&&generation?.commit!==expected){last=`deployed commit ${generation?.commit??'missing'} != expected ${expected}`;await sleep(1500);continue}
+      return generation?.commit??null;
+    }catch(error){last=error instanceof Error?error.message:String(error)}
+    await sleep(1500);
+  }
+  throw new Error(`Timed out waiting for certified live generation: ${last}`);
+}
 
 function crc32(bytes){let c=0xffffffff;for(const b of bytes){c^=b;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0)}return (c^0xffffffff)>>>0}
 function chunk(type,data){const t=Buffer.from(type),d=Buffer.from(data),out=Buffer.alloc(12+d.length);out.writeUInt32BE(d.length,0);t.copy(out,4);d.copy(out,8);out.writeUInt32BE(crc32(Buffer.concat([t,d])),8+d.length);return out}
@@ -123,8 +145,10 @@ async function attachFirstFile(cdp,row,snap,fixtures){
 function changed(a,b){return Boolean(a&&b)&&(a.result!==b.result||a.outputs!==b.outputs||a.text!==b.text)}
 
 async function main(){
-  await stat(path.join(DIST,'index.html')).catch(()=>{throw new Error('dist/index.html missing; run npm run build')});
-  const rows=await registry(),fixtures=await makeFixtures(),server=await serve(),profile=await mkdtemp(path.join(tmpdir(),'tiny-tools-functional-chrome-'));
+  if(!REMOTE_URL)await stat(path.join(DIST,'index.html')).catch(()=>{throw new Error('dist/index.html missing; run npm run build')});
+  const deployedCommit=await verifyRemoteGeneration();
+  if(REMOTE_URL)console.log(`Live functional target: ${BASE} (${deployedCommit??'unknown commit'})`);
+  const rows=await registry(),fixtures=await makeFixtures(),server=REMOTE_URL?null:await serve(),profile=await mkdtemp(path.join(tmpdir(),'tiny-tools-functional-chrome-'));
   const proc=spawn(chrome(),['--headless=new','--disable-gpu','--no-sandbox','--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update','--disable-sync','--metrics-recording-only',`--remote-debugging-port=${DEBUG_PORT}`,`--user-data-dir=${profile}`,'about:blank'],{stdio:['ignore','ignore','pipe']});
   let stderr='';
   proc.stderr.on('data',c=>stderr+=c.toString());
@@ -169,15 +193,15 @@ async function main(){
     }
     const summary={total:results.length,PASS:results.filter(r=>r.status==='PASS').length,INCONCLUSIVE:results.filter(r=>r.status==='INCONCLUSIVE').length,FAIL:results.filter(r=>r.status==='FAIL').length};
     const families={};for(const r of results){const f=families[r.category]??{total:0,PASS:0,INCONCLUSIVE:0,FAIL:0};f.total++;f[r.status]++;families[r.category]=f}
-    const report={schemaVersion:1,generatedAt:new Date().toISOString(),baselineCommit:process.env.GITHUB_SHA??null,summary,families,results};
+    const report={schemaVersion:1,generatedAt:new Date().toISOString(),baselineCommit:process.env.GITHUB_SHA??null,targetBase:BASE,deployedCommit,summary,families,results};
     await mkdir(OUT,{recursive:true});await writeFile(path.join(OUT,'functional-wiring.json'),JSON.stringify(report,null,2)+'\n');
     const rowsMd=results.filter(r=>r.status!=='PASS').map(r=>`| \`${r.id}\` | ${r.category} | **${r.status}** | ${r.mode} | ${[...r.notes,...r.errors].join('; ').replaceAll('|','\\|')} |`).join('\n');
-    await writeFile(path.join(OUT,'functional-wiring.md'),`# Tiny Tools — Functional Wiring Certification\n\n- Total: **${summary.total}**\n- PASS: **${summary.PASS}**\n- INCONCLUSIVE: **${summary.INCONCLUSIVE}**\n- FAIL: **${summary.FAIL}**\n\nThis gate complements deterministic unit/round-trip contracts by exercising the production build through its actual React controls. Device routes and PDF gateway routes remain delegated to their dedicated production browser certifications.\n\n## Non-passing routes\n\n| Tool | Family | Status | Probe | Finding |\n|---|---|---|---|---|\n${rowsMd||'| — | — | — | — | None |'}\n`);
+    await writeFile(path.join(OUT,'functional-wiring.md'),`# Tiny Tools — Functional Wiring Certification\n\n- Total: **${summary.total}**\n- PASS: **${summary.PASS}**\n- INCONCLUSIVE: **${summary.INCONCLUSIVE}**\n- FAIL: **${summary.FAIL}**\n\nThis gate complements deterministic unit/round-trip contracts by exercising the production build through its actual React controls. When FUNCTIONAL_WIRING_BASE_URL is set, it runs against the deployed HTTPS site and first requires build-generation.json to match FUNCTIONAL_WIRING_EXPECTED_COMMIT. Device routes and PDF gateway routes remain delegated to their dedicated production browser certifications.\n\n## Non-passing routes\n\n| Tool | Family | Status | Probe | Finding |\n|---|---|---|---|---|\n${rowsMd||'| — | — | — | — | None |'}\n`);
     console.log('Functional wiring summary',summary);
     cdp.close();
     if(summary.FAIL||summary.INCONCLUSIVE)process.exitCode=1;
   }finally{
-    await new Promise(r=>server.close(r));
+    if(server)await new Promise(r=>server.close(r));
     if(proc.exitCode===null){proc.kill('SIGTERM');await Promise.race([once(proc,'exit'),sleep(1800)]);if(proc.exitCode===null)proc.kill('SIGKILL')}
     await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:100});await rm(fixtures.dir,{recursive:true,force:true});
     if(process.exitCode&&stderr.trim())console.error(stderr.slice(-2500));

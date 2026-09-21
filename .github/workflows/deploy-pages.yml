@@ -211,6 +211,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install dependencies for full live certification
+        run: npm ci
+
       - name: Live production asset integrity
         env:
           TINY_TOOLS_LIVE_URL: ${{ needs.deploy.outputs.page_url }}
@@ -220,6 +223,22 @@ jobs:
         env:
           TINY_TOOLS_LIVE_URL: ${{ needs.deploy.outputs.page_url }}
         run: node scripts/r9-live-site-smoke.mjs "$TINY_TOOLS_LIVE_URL"
+
+      - name: Live 351-tool functional wiring
+        env:
+          FUNCTIONAL_WIRING_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+          FUNCTIONAL_WIRING_EXPECTED_COMMIT: ${{ github.sha }}
+          FUNCTIONAL_WIRING_OUT: artifacts/live-functional-wiring
+        run: npm run browser:functional-wiring
+
+      - name: Upload live functional evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: live-functional-wiring-351
+          path: artifacts/live-functional-wiring/
+          if-no-files-found: error
+          retention-days: 90
 
   rollback:
     if: ${{ always() && needs.validate.result == 'success' && needs.deploy.result == 'success' && needs.live-acceptance.result == 'failure' && needs.validate.outputs.rollback_available == 'true' }}

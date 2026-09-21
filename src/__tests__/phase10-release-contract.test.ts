@@ -7,6 +7,8 @@ import { TOOLS_REGISTRY } from '../registry/tools';
 const ROOT = process.cwd();
 const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const lock = JSON.parse(readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
+const deployWorkflow = readFileSync(path.join(ROOT, '.github/workflows/deploy-pages.yml'), 'utf8');
+const functionalWiringScript = readFileSync(path.join(ROOT, 'scripts/functional-wiring-certification.mjs'), 'utf8');
 
 registerAllPublicTools();
 
@@ -33,4 +35,14 @@ describe('Phase 10 release source contract', () => {
     expect(pkg.scripts?.['browser:real-converters']).toBe('node scripts/real-converter-certification.mjs');
     expect(pkg.scripts?.['browser:functional-wiring']).toBe('node scripts/functional-wiring-certification.mjs');
   });
+  it('keeps full 351-tool live-production certification in the Pages pipeline', () => {
+    expect(deployWorkflow).toContain('Live 351-tool functional wiring');
+    expect(deployWorkflow).toContain('FUNCTIONAL_WIRING_BASE_URL');
+    expect(deployWorkflow).toContain('FUNCTIONAL_WIRING_EXPECTED_COMMIT');
+    expect(deployWorkflow).toContain('npm run browser:functional-wiring');
+    expect(functionalWiringScript).toContain('FUNCTIONAL_WIRING_BASE_URL');
+    expect(functionalWiringScript).toContain('FUNCTIONAL_WIRING_EXPECTED_COMMIT');
+    expect(functionalWiringScript).toContain('build-generation.json');
+  });
+
 });
