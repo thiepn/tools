@@ -16,6 +16,7 @@ import {
   type VideoQualityPreset,
   type VideoResizeMode,
 } from '../../utilities/video-toolkit';
+import { extractVideoAudioToWav } from '../../utilities/video-audio-extraction';
 
 type ExtendedVideoElement = HTMLVideoElement & {
   captureStream?: () => MediaStream;
@@ -42,31 +43,6 @@ function waitForSeek(video: HTMLVideoElement, time: number): Promise<void> {
     video.addEventListener('error', onError, { once: true });
     video.currentTime = target;
   });
-}
-
-function trimAudioBufferToWav(buffer: AudioBuffer, startSeconds: number, endSeconds: number): Blob {
-  const start = Math.max(0, Math.min(buffer.length, Math.floor(startSeconds * buffer.sampleRate)));
-  const end = Math.max(start, Math.min(buffer.length, Math.ceil(endSeconds * buffer.sampleRate)));
-  const samples = end - start;
-  const channels = Math.max(1, buffer.numberOfChannels);
-  const bytesPerSample = 2;
-  const dataSize = samples * channels * bytesPerSample;
-  const array = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(array);
-  const write = (offset: number, value: string) => { for (let index = 0; index < value.length; index++) view.setUint8(offset + index, value.charCodeAt(index)); };
-  write(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); write(8, 'WAVE'); write(12, 'fmt ');
-  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, channels, true); view.setUint32(24, buffer.sampleRate, true);
-  view.setUint32(28, buffer.sampleRate * channels * bytesPerSample, true); view.setUint16(32, channels * bytesPerSample, true); view.setUint16(34, 16, true); write(36, 'data'); view.setUint32(40, dataSize, true);
-  const channelData = Array.from({ length: channels }, (_, channel) => buffer.getChannelData(channel));
-  let offset = 44;
-  for (let sampleIndex = start; sampleIndex < end; sampleIndex++) {
-    for (let channel = 0; channel < channels; channel++) {
-      const sample = Math.max(-1, Math.min(1, channelData[channel][sampleIndex] || 0));
-      view.setInt16(offset, Math.round(sample < 0 ? sample * 0x8000 : sample * 0x7fff), true);
-      offset += 2;
-    }
-  }
-  return new Blob([array], { type: 'audio/wav' });
 }
 
 export const VideoToolkitTool: React.FC = () => {
@@ -257,15 +233,18 @@ export const VideoToolkitTool: React.FC = () => {
 
   const extractAudio = async () => {
     if (!videoFile || !metadata || isProcessing) return;
-    setError(null); setMessage(null); setIsProcessing(true); setProgress(10); revoke(audioUrlRef); setAudioUrl(null); setAudioSize(null);
-    let audioContext: AudioContext | null = null;
+    setError(null); setMessage(null); setIsProcessing(true); setProgress(0); revoke(audioUrlRef); setAudioUrl(null); setAudioSize(null);
     try {
-      audioContext = new AudioContext(); const bytes = await videoFile.arrayBuffer(); setProgress(35);
-      const decoded = await audioContext.decodeAudioData(bytes.slice(0)); setProgress(70);
-      const blob = trimAudioBufferToWav(decoded, normalizedTrim.start, normalizedTrim.end); if (!blob.size) throw new Error('No decodable audio samples were found in this trim range.');
-      const url = URL.createObjectURL(blob); audioUrlRef.current = url; setAudioUrl(url); setAudioSize(blob.size); setProgress(100); setMessage('Extracted the selected source-audio range as lossless PCM WAV. Playback-speed changes are not applied to WAV extraction.');
+      const blob = await extractVideoAudioToWav(videoFile, {
+        startSeconds: normalizedTrim.start,
+        endSeconds: normalizedTrim.end,
+        onProgress: (value) => setProgress(Math.round(value * 100)),
+      });
+      if (!blob.size) throw new Error('No audio samples were captured in this trim range.');
+      const url = URL.createObjectURL(blob); audioUrlRef.current = url; setAudioUrl(url); setAudioSize(blob.size); setProgress(100);
+      setMessage('Extracted the selected browser-decoded source-audio range as PCM WAV in real time. Playback-speed changes are not applied to WAV extraction.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Audio extraction failed.'); }
-    finally { await audioContext?.close().catch(() => {}); setIsProcessing(false); }
+    finally { setIsProcessing(false); }
   };
 
   const downloadBlobUrl = (url: string, filename: string) => { const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); };

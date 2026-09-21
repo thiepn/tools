@@ -4,10 +4,10 @@ import{Camera,Download,Film,Loader2,ShieldCheck,Square,Upload}from'lucide-react'
 import{ToolShell}from'../../components/tool-shell/ToolShell';
 import{downloadBlobFile}from'../../utilities/download';
 import{getPublicMediaTask,PUBLIC_MEDIA_TASKS}from'../../media/publicMediaTasks';
-import{audioBufferToWavBlob}from'../../utilities/audio-recorder';
 import{encodeGif}from'../../utilities/gif-maker';
 import{estimateLoopedDuration,mediaExtensionFromMime,parseSubtitleCues,planVideoFrameTimes,sanitizeMediaBaseName,subtitleAtTime,supportedVideoRecorderMimes}from'../../utilities/media-micro-tools';
 import{calculateRecommendedVideoBitrate}from'../../utilities/video-toolkit';
+import{extractVideoAudioToWav}from'../../utilities/video-audio-extraction';
 
 type LoadedVideo={file:File;video:HTMLVideoElement;url:string;duration:number;width:number;height:number};
 function currentTaskId(){const clean=window.location.hash.replace(/^#\/?/,'').split('?')[0];return clean.startsWith('tool/')?clean.slice(5).split('/')[0]:clean.split('/')[0];}
@@ -35,7 +35,7 @@ const VideoMicroTools:React.FC=()=>{const task=useMemo(()=>getPublicMediaTask(cu
       if(recorder.state!=='inactive')recorder.stop();const blob=await stopped;if(cancelRef.current){setStatus('Export cancelled.');setProgress(0);return;}if(!blob.size)throw new Error('The browser produced an empty video.');download(blob,`${sanitizeMediaBaseName(files[0]?.name||'video')}-${task.id}.${mediaExtensionFromMime(mime)}`);setProgress(100);setStatus(`Done · real-time ${fps} fps browser export.`);
     }finally{if(visibilityHandler)document.removeEventListener('visibilitychange',visibilityHandler);for(const item of renderSequence)item.video.pause();try{addedAudioSource?.stop();}catch{}if(recorder?.state&&recorder.state!=='inactive')try{recorder.stop();}catch{}recorderRef.current=null;stream.getTracks().forEach(t=>t.stop());output?.getTracks().forEach(t=>t.stop());releaseVideos(renderSequence);await audioCtx.close().catch(()=>{});}
   };
-  const extractAudio=async()=>{if(!files[0])throw new Error('Choose a video first.');const ctx=new AudioContext();try{const buffer=await ctx.decodeAudioData((await files[0].arrayBuffer()).slice(0));download(audioBufferToWavBlob(buffer),`${sanitizeMediaBaseName(files[0].name)}-audio.wav`);setStatus(`Extracted ${buffer.duration.toFixed(2)}s WAV.`);}finally{await ctx.close().catch(()=>{});}};
+  const extractAudio=async()=>{if(!files[0])throw new Error('Choose a video first.');const blob=await extractVideoAudioToWav(files[0],{onProgress:p=>setProgress(Math.round(p*100))});download(blob,`${sanitizeMediaBaseName(files[0].name)}-audio.wav`);setProgress(100);setStatus(`Extracted browser-decoded audio to PCM WAV.`);};
   const frameAt=async(time:number)=>{if(!primary)throw new Error('Choose a video first.');await seek(primary.video,time);const c=document.createElement('canvas');c.width=primary.width;c.height=primary.height;const ctx=c.getContext('2d');if(!ctx)throw new Error('Canvas unavailable.');ctx.drawImage(primary.video,0,0,c.width,c.height);return c;};
   const extractFrames=async()=>{if(!primary)throw new Error('Choose a video first.');const zip=new JSZip(),end=Math.max(0,primary.duration-.01),times=planVideoFrameTimes(primary.duration,frameCount,0,end);for(let i=0;i<times.length;i++){setProgress(Math.round(i/times.length*100));const c=await frameAt(times[i]),blob=await canvasBlob(c);zip.file(`frame-${String(i+1).padStart(3,'0')}-${times[i].toFixed(2)}s.png`,await blob.arrayBuffer());}download(await zip.generateAsync({type:'blob',compression:'DEFLATE'}),`${sanitizeMediaBaseName(primary.file.name)}-frames.zip`);setProgress(100);setStatus(`${times.length} frames exported.`);};
   const thumbnail=async()=>{const c=await frameAt(thumbTime),blob=await canvasBlob(c);download(blob,`${sanitizeMediaBaseName(primary!.file.name)}-${thumbTime.toFixed(2)}s.png`);setStatus('Thumbnail exported.');};

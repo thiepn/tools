@@ -24,6 +24,7 @@
     "browser:compatibility": "node scripts/r8-compatibility-smoke.mjs",
     "browser:full-audit": "node scripts/r11-full-catalog-audit.mjs",
     "browser:health": "node scripts/phase1-tool-health.mjs",
+    "browser:functional-wiring": "node scripts/functional-wiring-certification.mjs",
     "tools:health": "npm run build && npm run build:verify && npm run browser:health",
     "browser:b-to-s": "node scripts/r12-b-uplift-smoke.mjs",
     "browser:a-to-s": "node scripts/r13-a-uplift-smoke.mjs",
@@ -46,7 +47,9 @@
     "browser:final": "node scripts/phase9-final-certification.mjs",
     "rc:compare-builds": "node scripts/phase10-compare-builds.mjs",
     "rc:certify": "node scripts/phase10-release-candidate.mjs",
-    "test:phase10": "vitest run src/__tests__/phase10-release-contract.test.ts"
+    "test:phase10": "vitest run src/__tests__/phase10-release-contract.test.ts",
+    "browser:real-media": "node scripts/real-media-processing-certification.mjs",
+    "browser:real-converters": "node scripts/real-converter-certification.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
